@@ -1,0 +1,285 @@
+<tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="185" data-tip-type="overflow-text-with-several-rows">-</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-44" tip-id="181">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-44 window-is-open" tip-id="182">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-44" tip-id="183">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div><div class="button small remove button-remove-id-44" tip-id="184">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-close ie-icon--no-hover"></div></div>
+    </div></div></td></tr>
+
+<tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1972" data-tip-type="overflow-text-with-several-rows">Ithan i okolica</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-10197" tip-id="1969">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-10197 window-is-open" tip-id="1970">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-10197" tip-id="1971">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div></div></td></tr>  
+
+  <div class="quest-window">
+      <div class="cards-header-wrapper tabs-nav"><div class="card ACTIVE-tab active">
+        <div class="label">Aktywne</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div><div class="card AVAILABLE-tab">
+        <div class="label">Dostępne</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div><div class="card FINISHED-tab">
+        <div class="label">Ukończone</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div><div class="card ALL-tab">
+        <div class="label">Wszystkie</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div></div>
+      <div class="quests-tab-content-wrapper">
+            <div class="active-quests-tab tab-content active"><div class="left-grouped-list-and-right-description-window hide-right-header hide-left-header">
+        <div class="left-column">
+            <div class="interface-element-middle-3-background-stretch"></div>
+            <div class="left-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                    <div class="items-list"><div class="divide-list-group group-id-1 active" group-id="1">
+        <div class="group-header">
+            <div class="card-graphic interface-element-active-card-border-image"></div>
+            <div class="label">Główne</div>
+            <div class="direction"></div>
+            <div class="amount"></div>
+        </div>
+        <div class="group-list"><div class="one-item-on-divide-list crafting-recipe-in-list" data-tab-id="undefined">
+        <!--<div class="item-wrapper">-->
+        <!--<div class="result-item item-slot"></div>-->
+        <!--</div>-->
+        <div class="name-wrapper">
+            <div class="name">Arc 5: Torneg - nadchodzę!</div>
+        </div>
+    </div><div class="one-item-on-divide-list crafting-recipe-in-list" data-tab-id="undefined">
+        <!--<div class="item-wrapper">-->
+        <!--<div class="result-item item-slot"></div>-->
+        <!--</div>-->
+        <div class="name-wrapper">
+            <div class="name">Arc 16: Akademia wojskowa</div>
+        </div>
+    </div></div>
+    </div><div class="divide-list-group group-id-10 active" group-id="10">
+        <div class="group-header">
+            <div class="card-graphic interface-element-active-card-border-image"></div>
+            <div class="label">Poboczne II</div>
+            <div class="direction"></div>
+            <div class="amount"></div>
+        </div>
+        <div class="group-list"><div class="one-item-on-divide-list crafting-recipe-in-list" data-tab-id="undefined">
+        <!--<div class="item-wrapper">-->
+        <!--<div class="result-item item-slot"></div>-->
+        <!--</div>-->
+        <div class="name-wrapper">
+            <div class="name">Pozostałe</div>
+        </div>
+    </div></div>
+    </div></div>
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        <div class="search-wrapper search-in-left-column">
+            <input class="search" placeholder="Szukaj">
+            <div class="search-x" data-trans="data-tip#delete" tip-id="78"></div>
+        </div></div>
+    <div class="left-grouped-list-right-column right-column">
+            <div class="right-column-background interface-element-middle-1-background-stretch"></div>
+            <div class="right-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                <div class="subgroup-content subgroup-54"><div class="c-table one-new-quests quest-id-44" element-id="44"><table class="table">
+            <thead><tr><th colspan="2"><div class="quest-header" tip-id="180"><div class="quest-name-wrapper"><div class="quest-debug-id">44</div><span class="quest-level">(30)</span><span class="quest-name">Zdobądź piwo dla Tafina.</span></div><div class="show-more-wrapper quest-toggle"><div class="show-more-icon" tip-id="186"></div></div></div></th></tr></thead>
+            <tbody><tr><td colspan="2" class="quest-description" style="display: table-cell;">Porozmawiaj z Tafinem.</td></tr></tbody>
+        </table></div></div><div class="subgroup-content subgroup-5"><div class="c-table one-new-quests quest-id-10038" element-id="10038"><table class="table">
+            <thead><tr><th colspan="2"><div class="quest-header" tip-id="187"><div class="quest-name-wrapper"><div class="quest-debug-id">10038</div><span class="quest-level">(20)</span><span class="quest-name">Prace gospodarcze u Idalii.</span></div><div class="show-more-wrapper quest-toggle"><div class="show-more-icon" tip-id="193"></div></div></div></th></tr></thead>
+            <tbody><tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="192" data-tip-type="overflow-text-with-several-rows">Torneg i okolica</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-10038" tip-id="188">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-10038 window-is-open" tip-id="189">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-10038" tip-id="190">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div><div class="button small remove button-remove-id-10038" tip-id="191">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-close ie-icon--no-hover"></div></div>
+    </div></div></td></tr><tr><td colspan="2" class="quest-description" style="display: table-cell;">Idalia poprosiła cię o przeprowadzenie Krasuli na pobliską polankę. Przywołaj do siebie krowę i doprowadź ją we wskazane miejsce. Podobno lubi, gdy się do niej mówi.</td></tr><tr><td colspan="2" class="quest-missions" style="display: table-cell;"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-17"><div class="text-wrapper"><span class="mission-type-label">Porozmawiaj z: </span><span class="one-name"> Krasula Idalii</span></div></div></div></td></tr></tbody>
+        </table></div></div><div class="subgroup-content subgroup-16"><div class="c-table one-new-quests quest-id-10197" element-id="10197"><table class="table">
+            <thead><tr><th colspan="2"><div class="quest-header" tip-id="1968"><div class="quest-name-wrapper"><div class="quest-debug-id">10197</div><span class="quest-level">(46)</span><span class="quest-name">Każdy awans jest powodem do dumy!</span></div><div class="show-more-wrapper quest-toggle"><div class="show-more-icon" tip-id="1973"></div></div></div></th></tr></thead>
+            <tbody><tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1972" data-tip-type="overflow-text-with-several-rows">Ithan i okolica</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-10197" tip-id="1969">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-10197 window-is-open" tip-id="1970">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-10197" tip-id="1971">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div></div></td></tr><tr><td colspan="2" class="quest-description" style="display: table-cell;">Po przebudzeniu i odebraniu śniadania udaj się na kolejną część szkolenia do archiwisty Wita.</td></tr><tr><td colspan="2" class="quest-missions" style="display: table-cell;"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-13"><div class="text-wrapper"><span class="mission-type-label">Udaj się do: </span><span class="one-name"> Mury Ithan - archiwa</span></div></div></div></td></tr></tbody>
+        </table></div></div></div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        </div><div class="left-grouped-list-right-column-bottom-row-panel bottom-row-panel">
+        <div class="interface-element-bottom-bar-background-stretch"></div>
+    <div class="level-filter-component">
+            <div class="filter-label-component" data-trans="#filter-level">Filtruj poziom:</div>
+            <div class="start-lvl-wrapper-component"><div class="ni-input min-level-input">
+        <input class="default" placeholder="od">
+        <div class="clear-cross" tip-id="176"></div>
+    </div></div>
+            <div class="stop-lvl-wrapper-component"><div class="ni-input man-level-input">
+        <input class="default" placeholder="do">
+        <div class="clear-cross" tip-id="177"></div>
+    </div></div>
+        </div><div class="button small green observe-quest-button">
+        <div class="background"></div>
+        <div class="label">Obserwowane zadania</div>
+    </div></div></div></div>
+            <div class="pagination-quests-tab tab-content"><div class="left-grouped-list-and-right-description-window hide-right-header hide-left-header">
+        <div class="left-column">
+            <div class="interface-element-middle-3-background-stretch"></div>
+            <div class="left-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                    <div class="items-list"></div>
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        <div class="search-wrapper search-in-left-column">
+            <input class="search" placeholder="Szukaj">
+            <div class="search-x" data-trans="data-tip#delete" tip-id="78"></div>
+        </div></div>
+    <div class="left-grouped-list-right-column right-column">
+            <div class="right-column-background interface-element-middle-1-background-stretch"></div>
+            <div class="right-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        </div><div class="left-grouped-list-right-column-bottom-row-panel bottom-row-panel">
+        <div class="interface-element-bottom-bar-background-stretch"></div>
+    <div class="level-filter-component">
+            <div class="filter-label-component" data-trans="#filter-level">Filtruj poziom:</div>
+            <div class="start-lvl-wrapper-component"><div class="ni-input min-level-input">
+        <input class="default" placeholder="od">
+        <div class="clear-cross" tip-id="178"></div>
+    </div></div>
+            <div class="stop-lvl-wrapper-component"><div class="ni-input man-level-input">
+        <input class="default" placeholder="do">
+        <div class="clear-cross" tip-id="179"></div>
+    </div></div>
+        </div><div class="menu profession-filter menu-list"><div class="bck button small green no-hover"><span class="menu-option" value="all">Profesja</span></div><div class="dropdown-menu">
+        <div class="arrow" style="display: block;">
+            <div class="menu-arrow"></div>
+        </div>
+        <div class="reset" data-trans="data-tip#reset#ah_filter_history" tip-id="96" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+
+        <div class="scroll-wrapper small-bar menu-wrapper" style="display: none; width: 0px;">
+            <div class="wrapper scroll-pane"><div class="bck-wrapper"><div class="option" value="all"><div class="text">Profesja</div></div><div class="option" value="m"><div class="text">mag</div></div><div class="option" value="w"><div class="text">wojownik</div></div><div class="option" value="p"><div class="text">paladyn</div></div><div class="option" value="t"><div class="text">tropiciel</div></div><div class="option" value="h"><div class="text">łowca</div></div><div class="option" value="b"><div class="text">tancerz ostrzy</div></div></div></div>
+        <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+    </div></div></div></div></div>
+      </div>
+    </div>
+
+<div class="inner-content"><div class="quest-observe-window" style="width: 212px; height: 167px;">
+        <div class="scroll-wrapper small-bar scrollable">
+            <div class="scroll-pane">
+                <div class="empty" style="display: none;">----</div>
+                <div class="quest-observe-list"><div class="one-observe quest-observe-10197 quest-tracked">
+        <span class="one-observe__debug">10197</span>
+        <div class="one-observe__title full">Każdy awans jest powodem do dumy!</div><div class="one-observe__title short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1974" data-tip-type="overflow-text-with-several-rows">Każdy awans jest powodem do dumy!</div>
+        <div class="one-observe__content"><div class="quest-description full">Po przebudzeniu i odebraniu śniadania udaj się na kolejną część szkolenia do archiwisty Wita.</div><div class="quest-description short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1975" data-tip-type="overflow-text-with-several-rows">Po przebudzeniu i odebraniu śniadania udaj się na kolejną część szkolenia do archiwisty Wita.</div><div class="active-quest-mission-wrapper"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-13"><div class="text-wrapper"><span class="mission-type-label">Udaj się do: </span><span class="one-name"> Mury Ithan - archiwa</span></div></div></div></div></div>
+        <div class="one-observe__remove-btn" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+        <div class="c-line end-line"></div>
+    </div><div class="one-observe quest-observe-44">
+        <span class="one-observe__debug">44</span>
+        <div class="one-observe__title full">Zdobądź piwo dla Tafina.</div><div class="one-observe__title short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="375" data-tip-type="overflow-text-with-several-rows">Zdobądź piwo dla Tafina.</div>
+        <div class="one-observe__content"><div class="quest-description full">Porozmawiaj z Tafinem.</div><div class="quest-description short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="376" data-tip-type="overflow-text-with-several-rows">Porozmawiaj z Tafinem.</div></div>
+        <div class="one-observe__remove-btn" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+        <div class="c-line end-line"></div>
+    </div><div class="one-observe quest-observe-10038">
+        <span class="one-observe__debug">10038</span>
+        <div class="one-observe__title full">Prace gospodarcze u Idalii.</div><div class="one-observe__title short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="377" data-tip-type="overflow-text-with-several-rows">Prace gospodarcze u Idalii.</div>
+        <div class="one-observe__content"><div class="quest-description full">Idalia poprosiła cię o przeprowadzenie Krasuli na pobliską polankę. Przywołaj do siebie krowę i doprowadź ją we wskazane miejsce. Podobno lubi, gdy się do niej mówi.</div><div class="quest-description short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="378" data-tip-type="overflow-text-with-several-rows">Idalia poprosiła cię o przeprowadzenie Krasuli na pobliską polankę. Przywołaj do siebie krowę i doprowadź ją we wskazane miejsce. Podobno lubi, gdy się do niej mówi.</div><div class="active-quest-mission-wrapper"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-17"><div class="text-wrapper"><span class="mission-type-label">Porozmawiaj z: </span><span class="one-name"> Krasula Idalii</span></div></div></div></div></div>
+        <div class="one-observe__remove-btn" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+        <div class="c-line end-line"></div>
+    </div></div>
+            </div>
+        <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+        <div class="relogger__error"></div>
+    </div></div>
+
+ <div class="c-window border-window ui-draggable quest-observer-window-transparent transparent" style="position: absolute; left: 0px; top: 104px; display: block;" data-opacity-lvl="3" size-opt="1">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Obserwowane zadania">Obserwowane zadania</div>
+            </div>
+        </div>
+        <div class="content content--padding-md">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            
+            <div class="window-controlls">
+            </div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        </div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="150"><div class="ie-icon ie-icon-close"></div></button>
+        </div>
+    <div class="border-image"></div><div class="transparent-window-buttons-menu"><div class="manage-hamburger-button"><div class="ie-icon ie-icon-menu"></div></div><div class="increase-opacity" tip-id="151"></div><div class="toggle-size-button" tip-id="152"></div><div class="collapse" tip-id="153"></div></div></div>

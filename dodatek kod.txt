@@ -1,0 +1,543 @@
+// ==UserScript==
+// @name         Margonem – Auto Build Switcher (Umki na ustawkowe)
+// @namespace    margonem-build-switcher
+// @version      1.0.0
+// @description  Automatyczne przełączanie zestawów umiejętności (build) na "ustawkowy" gdy jesteś w drużynie i w pobliżu jest X+ wrogów. Wspiera NI i SI. Rozpoznaje tagi zestawów z ich nazw w grze.
+// @match        https://*.margonem.pl/*
+// @match        https://margonem.pl/*
+// @run-at       document-idle
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    /* ============================================================
+       UWAGA (przeczytaj zanim zgłosisz "nie działa"):
+       Ten skrypt NIE korzysta z wewnętrznych funkcji silnika gry do
+       zmiany zestawu (nie znam ich na pewno), tylko SYMULUJE Twoje
+       kliknięcia: otwiera okno zestawów tym samym przyciskiem co Ty
+       i klika właściwy zestaw na liście. Jest to podejście odporne
+       na drobne różnice w kodzie gry, ale jeśli coś się zmieni w
+       HTML gry (nowa aktualizacja NI/SI), selektory w sekcji
+       SELECTORS niżej trzeba będzie poprawić.
+       ============================================================ */
+
+    // ---------- SELEKTORY DOM (na podstawie dostarczonych zrzutów NI/SI) ----------
+    const SEL = {
+        buildOpener: '.builds-interface .choose-build.build-index', // przycisk otwierający listę zestawów (wspólny dla NI i SI)
+        buildsWindow: '.builds-window',                              // okno z listą zestawów po otwarciu
+        oneBuild: '.one-build',                                      // pojedynczy wpis zestawu na liście
+        buildIndex: '.build-index',                                  // numer zestawu (jeśli widoczny w DOM)
+        buildName: '.build-name',                                    // nazwa zestawu
+        siClickArea: '.build-click-area',                            // SI: klikalny obszar wyboru zestawu
+        siCloseBtn: '.builds-close-button',                          // SI: przycisk zamknięcia okna zestawów
+        niSkillsBtn: '#b_skills',                                    // NI: przycisk otwierający umiejętności (do wykrywania interfejsu)
+        siSkillsBtn: '.widget-skills',                               // SI: przycisk otwierający umiejętności (do wykrywania interfejsu)
+    };
+
+    // ---------- DOMYŚLNA KONFIGURACJA ----------
+    const DEFAULT_CONFIG = {
+        autoSwitchEnabled: true,
+        enemyThreshold: 5,
+        // mapowanie: numer_zestawu -> tag (np. "1": "ustawka", "2": "kolosy")
+        buildTags: {},
+        // które przypisania zostały ustawione ręcznie (nie nadpisuj ich przy auto-skanie)
+        manualOverride: {},
+        // ostatnio zeskanowane zestawy: [{index, name}]
+        scannedBuilds: [],
+        // słowa kluczowe do automatycznego rozpoznawania tagu z nazwy zestawu w grze
+        tagKeywords: {
+            'ustawka': ['ustawk', 'pvp', 'arena'],
+            '2h': ['2h', '2 h'],
+            '1.5h': ['1.5h', '1,5h', '1.5 h', '1,5 h'],
+            'kolosy': ['kolos'],
+            'ogień': ['ogień', 'ogien', 'fire'],
+            'zimno': ['zimno', 'mróz', 'mroz', 'cold'],
+            'trop': ['trop'],
+            'mag': ['mag'],
+            'łowca': ['łowca', 'lowca'],
+            'paladyn': ['paladyn'],
+            'wojownik': ['wojownik', 'wojo'],
+            'tancerz': ['tancerz', 'tan'],
+        },
+        panelPos: { x: 20, y: 80 },
+    };
+
+    let CONFIG = loadConfig();
+    let lastCondition = false;
+    let panelOpen = false;
+
+    // ---------- KONFIG: ZAPIS / ODCZYT ----------
+    function loadConfig() {
+        let saved = null;
+        try {
+            if (window.margoStorage && typeof window.margoStorage.get === 'function') {
+                saved = window.margoStorage.get('buildSwitcher/config', null);
+            } else {
+                saved = JSON.parse(localStorage.getItem('mgBuildSwitcherConfig'));
+            }
+        } catch (e) { saved = null; }
+        const merged = Object.assign({}, DEFAULT_CONFIG, saved || {});
+        // głębokie scalenie dla obiektów zagnieżdżonych
+        merged.buildTags = Object.assign({}, DEFAULT_CONFIG.buildTags, (saved && saved.buildTags) || {});
+        merged.manualOverride = Object.assign({}, DEFAULT_CONFIG.manualOverride, (saved && saved.manualOverride) || {});
+        merged.tagKeywords = Object.assign({}, DEFAULT_CONFIG.tagKeywords, (saved && saved.tagKeywords) || {});
+        merged.panelPos = Object.assign({}, DEFAULT_CONFIG.panelPos, (saved && saved.panelPos) || {});
+        return merged;
+    }
+
+    function saveConfig() {
+        try {
+            if (window.margoStorage && typeof window.margoStorage.set === 'function') {
+                window.margoStorage.set('buildSwitcher/config', CONFIG);
+            } else {
+                localStorage.setItem('mgBuildSwitcherConfig', JSON.stringify(CONFIG));
+            }
+        } catch (e) { console.warn('[BuildSwitcher] Nie udało się zapisać configu:', e); }
+    }
+
+    // ---------- WYKRYWANIE INTERFEJSU ----------
+    function detectInterface() {
+        if (document.querySelector(SEL.niSkillsBtn)) return 'NI';
+        if (document.querySelector(SEL.siSkillsBtn)) return 'SI';
+        return 'unknown';
+    }
+
+    // ---------- POWIADOMIENIA (prosty toast) ----------
+    function notify(text, kind) {
+        console.log('[BuildSwitcher]', text);
+        const t = document.createElement('div');
+        t.textContent = text;
+        t.style.cssText = `
+            position:fixed; top:10px; right:10px; z-index:999999;
+            background:${kind === 'warn' ? 'rgba(120,20,20,.92)' : 'rgba(20,20,20,.92)'};
+            color:#fff; padding:8px 12px; border-radius:4px; font:13px sans-serif;
+            box-shadow:0 0 0 1px #000, 0 2px 6px rgba(0,0,0,.5); max-width:280px;
+        `;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; }, 2600);
+        setTimeout(() => t.remove(), 3100);
+    }
+
+    // ---------- ODCZYT AKTUALNEGO ZESTAWU ----------
+    function getCurrentBuildIndex() {
+        const el = document.querySelector(SEL.buildOpener);
+        if (!el) return null;
+        const txt = (el.textContent || '').trim();
+        const n = parseInt(txt, 10);
+        return isNaN(n) ? null : n;
+    }
+
+    // ---------- OTWIERANIE / ZAMYKANIE OKNA ZESTAWÓW ----------
+    function openBuildsWindow(cb) {
+        const opener = document.querySelector(SEL.buildOpener);
+        if (!opener) {
+            notify('Nie znalazłem przycisku zestawów (' + SEL.buildOpener + '). Sprawdź, czy interfejs się nie zmienił.', 'warn');
+            cb(null);
+            return;
+        }
+        opener.click();
+        setTimeout(() => {
+            const win = document.querySelector(SEL.buildsWindow);
+            cb(win);
+        }, 250);
+    }
+
+    function closeBuildsWindow() {
+        const win = document.querySelector(SEL.buildsWindow);
+        if (!win) return;
+        const siClose = document.querySelector(SEL.siCloseBtn);
+        if (siClose) { siClose.click(); return; }
+        const cwin = win.closest('.c-window');
+        if (cwin) {
+            const btn = cwin.querySelector('.close-button');
+            if (btn) btn.click();
+        }
+    }
+
+    function readBuildEntries(win) {
+        const entries = Array.from(win.querySelectorAll(SEL.oneBuild));
+        return entries.map((el, i) => {
+            const idxEl = el.querySelector(SEL.buildIndex);
+            const idx = idxEl ? parseInt((idxEl.textContent || '').trim(), 10) : (i + 1);
+            const nameEl = el.querySelector(SEL.buildName);
+            let name = nameEl ? (nameEl.textContent || '').trim() : ('Zestaw ' + idx);
+            return { index: isNaN(idx) ? (i + 1) : idx, name, el };
+        });
+    }
+
+    // ---------- SKANOWANIE NAZW ZESTAWÓW + AUTO-TAGOWANIE ----------
+    function scanBuilds(showToast) {
+        openBuildsWindow((win) => {
+            if (!win) return;
+            const entries = readBuildEntries(win);
+            CONFIG.scannedBuilds = entries.map(e => ({ index: e.index, name: e.name }));
+            autoDetectTags(entries);
+            saveConfig();
+            closeBuildsWindow();
+            renderPanel();
+            if (showToast) notify('Zeskanowano ' + entries.length + ' zestawów.');
+        });
+    }
+
+    function autoDetectTags(entries) {
+        entries.forEach(({ index, name }) => {
+            if (CONFIG.manualOverride[index]) return; // nie nadpisuj ręcznych ustawień
+            const lower = name.toLowerCase();
+            let found = null;
+            for (const [tag, keywords] of Object.entries(CONFIG.tagKeywords)) {
+                if (keywords.some(k => k && lower.includes(k.toLowerCase()))) { found = tag; break; }
+            }
+            if (found) CONFIG.buildTags[index] = found;
+        });
+    }
+
+    function findBuildIndexByTag(tag) {
+        for (const [idxStr, t] of Object.entries(CONFIG.buildTags)) {
+            if (t === tag) return parseInt(idxStr, 10);
+        }
+        return null;
+    }
+
+    // ---------- PRZEŁĄCZANIE ZESTAWU ----------
+    function switchToBuildIndex(targetIndex, silent) {
+        const current = getCurrentBuildIndex();
+        if (current === targetIndex) return;
+        openBuildsWindow((win) => {
+            if (!win) return;
+            const entries = readBuildEntries(win);
+            const target = entries.find(e => e.index === targetIndex);
+            if (!target) {
+                notify('Nie znaleziono zestawu nr ' + targetIndex + ' na liście.', 'warn');
+                return;
+            }
+            const clickTarget =
+                target.el.querySelector(SEL.siClickArea) ||
+                target.el.querySelector('.build-name-wrapper') ||
+                target.el;
+            clickTarget.click();
+            setTimeout(closeBuildsWindow, 150);
+            if (!silent) {
+                const name = (CONFIG.scannedBuilds.find(b => b.index === targetIndex) || {}).name || ('Zestaw ' + targetIndex);
+                notify('Przełączono na: ' + name);
+            }
+        });
+    }
+
+    function switchToTag(tag, silent) {
+        const idx = findBuildIndexByTag(tag);
+        if (idx == null) {
+            notify('Brak zestawu z tagiem "' + tag + '". Kliknij "Odśwież listę zestawów" i przypisz tag ręcznie.', 'warn');
+            return false;
+        }
+        switchToBuildIndex(idx, silent);
+        return true;
+    }
+
+    // ---------- WYKRYWANIE WROGÓW I DRUŻYNY ----------
+    function countEnemies() {
+        if (typeof g === 'undefined' || !g.other) return 0;
+        let c = 0;
+        for (const id in g.other) {
+            const o = g.other[id];
+            if (o && o.relation === 'en') c++;
+        }
+        return c;
+    }
+
+    function isInParty() {
+        return typeof g !== 'undefined' && !!g.party && Object.keys(g.party).length > 1;
+    }
+
+    // ---------- GŁÓWNA PĘTLA (wyzwalanie na zboczu narastającym) ----------
+    function tick() {
+        const enemies = countEnemies();
+        const party = isInParty();
+        const conditionNow = CONFIG.autoSwitchEnabled && party && enemies >= CONFIG.enemyThreshold;
+
+        updateStatus(enemies, party, conditionNow);
+
+        // przełączamy tylko w momencie, gdy warunek STAJE SIĘ prawdziwy (zbocze narastające)
+        // — jeśli ręcznie zmienisz zestaw później, dodatek Cię nie "poprawi",
+        //   dopóki warunek nie zniknie i nie pojawi się od nowa.
+        if (conditionNow && !lastCondition) {
+            switchToTag('ustawka');
+        }
+        lastCondition = conditionNow;
+    }
+
+    setInterval(tick, 2000);
+
+    // ============================================================
+    //                          PANEL UI
+    // ============================================================
+    const css = `
+    #mg-bs-toggle{
+        position:fixed; z-index:999998; bottom:14px; right:14px;
+        width:38px; height:38px; border-radius:50%; background:rgba(20,20,20,.85);
+        color:#fff; display:flex; align-items:center; justify-content:center;
+        font:16px sans-serif; cursor:pointer; box-shadow:0 0 0 1px #000, 0 2px 6px rgba(0,0,0,.5);
+        user-select:none;
+    }
+    #mg-bs-panel{
+        position:fixed; z-index:999999; width:340px; max-height:80vh; overflow:auto;
+        background:rgba(15,15,15,.95); color:#eee; font:12px/1.4 sans-serif;
+        border-radius:6px; box-shadow:0 0 0 1px #000,0 4px 14px rgba(0,0,0,.6);
+    }
+    #mg-bs-panel .hdr{ cursor:move; padding:8px 10px; background:rgba(255,255,255,.06);
+        display:flex; justify-content:space-between; align-items:center; border-radius:6px 6px 0 0; }
+    #mg-bs-panel .hdr b{ font-size:13px; }
+    #mg-bs-panel .close{ cursor:pointer; opacity:.7; padding:0 4px; }
+    #mg-bs-panel .close:hover{ opacity:1; }
+    #mg-bs-panel .body{ padding:10px; }
+    #mg-bs-panel .row{ margin-bottom:8px; }
+    #mg-bs-panel label{ display:block; margin-bottom:3px; color:#ccc; }
+    #mg-bs-panel input[type=range]{ width:100%; }
+    #mg-bs-panel button{
+        background:#2b2b2b; color:#eee; border:1px solid #444; border-radius:3px;
+        padding:5px 8px; cursor:pointer; font:12px sans-serif; margin-right:4px; margin-top:4px;
+    }
+    #mg-bs-panel button:hover{ background:#3a3a3a; }
+    #mg-bs-panel table{ width:100%; border-collapse:collapse; margin-top:4px; }
+    #mg-bs-panel td, #mg-bs-panel th{ border-bottom:1px solid #333; padding:3px 4px; text-align:left; }
+    #mg-bs-panel select, #mg-bs-panel input[type=text]{
+        background:#1c1c1c; color:#eee; border:1px solid #444; border-radius:3px; padding:2px 4px; width:100%;
+    }
+    #mg-bs-panel .status{ padding:6px 8px; border-radius:4px; margin-top:6px; }
+    #mg-bs-panel .status.ok{ background:rgba(40,120,40,.35); }
+    #mg-bs-panel .status.warn{ background:rgba(120,90,20,.35); }
+    #mg-bs-panel .status.bad{ background:rgba(120,30,30,.35); }
+    #mg-bs-panel .kw-row{ display:flex; gap:4px; margin-bottom:3px; align-items:center; }
+    #mg-bs-panel .kw-row input:first-child{ width:70px; flex:0 0 70px; }
+    #mg-bs-panel .small{ opacity:.65; font-size:11px; }
+    `;
+    const styleEl = document.createElement('style');
+    styleEl.textContent = css;
+    document.head.appendChild(styleEl);
+
+    // przycisk otwierający panel
+    const toggleBtn = document.createElement('div');
+    toggleBtn.id = 'mg-bs-toggle';
+    toggleBtn.textContent = '⚔';
+    toggleBtn.title = 'Build Switcher – ustawienia (Ctrl+Alt+B)';
+    document.body.appendChild(toggleBtn);
+    toggleBtn.addEventListener('click', () => togglePanel());
+
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.altKey && (e.key === 'b' || e.key === 'B')) {
+            togglePanel();
+        }
+    });
+
+    let panelEl = null;
+    let statusEl = null;
+
+    function togglePanel() {
+        panelOpen = !panelOpen;
+        if (panelOpen) renderPanel(); else if (panelEl) { panelEl.remove(); panelEl = null; }
+    }
+
+    function renderPanel() {
+        if (!panelOpen) return;
+        if (panelEl) panelEl.remove();
+
+        panelEl = document.createElement('div');
+        panelEl.id = 'mg-bs-panel';
+        panelEl.style.left = CONFIG.panelPos.x + 'px';
+        panelEl.style.top = CONFIG.panelPos.y + 'px';
+
+        const iface = detectInterface();
+
+        panelEl.innerHTML = `
+            <div class="hdr">
+                <b>⚔ Build Switcher (${iface})</b>
+                <span class="close">✕</span>
+            </div>
+            <div class="body">
+                <div class="row">
+                    <label><input type="checkbox" id="mg-bs-enabled" ${CONFIG.autoSwitchEnabled ? 'checked' : ''}> Auto-przełączanie aktywne</label>
+                </div>
+                <div class="row">
+                    <label>Próg wrogów w pobliżu: <b id="mg-bs-th-val">${CONFIG.enemyThreshold}</b></label>
+                    <input type="range" id="mg-bs-threshold" min="1" max="20" value="${CONFIG.enemyThreshold}">
+                </div>
+                <div class="row">
+                    <button id="mg-bs-scan">🔄 Odśwież listę zestawów</button>
+                    <button id="mg-bs-force">⚡ Wymuś ustawkę teraz</button>
+                </div>
+                <div class="row">
+                    <label>Zestawy i przypisane tagi:</label>
+                    <table id="mg-bs-table"><thead><tr><th>#</th><th>Nazwa w grze</th><th>Tag</th></tr></thead><tbody></tbody></table>
+                    <div class="small">Kliknij „Odśwież listę zestawów”, żeby wczytać nazwy z gry. Tag możesz poprawić ręcznie — wtedy auto-wykrywanie już go nie nadpisze.</div>
+                </div>
+                <div class="row">
+                    <label>Słowa kluczowe rozpoznawania tagów (edytowalne):</label>
+                    <div id="mg-bs-keywords"></div>
+                    <button id="mg-bs-add-tag">+ Dodaj tag</button>
+                </div>
+                <div id="mg-bs-status" class="status">Status: ...</div>
+            </div>
+        `;
+        document.body.appendChild(panelEl);
+        statusEl = panelEl.querySelector('#mg-bs-status');
+
+        // header controls
+        panelEl.querySelector('.close').addEventListener('click', () => { panelOpen = false; panelEl.remove(); panelEl = null; });
+        makeDraggable(panelEl, panelEl.querySelector('.hdr'));
+
+        // enabled checkbox
+        panelEl.querySelector('#mg-bs-enabled').addEventListener('change', (e) => {
+            CONFIG.autoSwitchEnabled = e.target.checked;
+            saveConfig();
+        });
+
+        // threshold slider
+        const thRange = panelEl.querySelector('#mg-bs-threshold');
+        const thVal = panelEl.querySelector('#mg-bs-th-val');
+        thRange.addEventListener('input', (e) => {
+            thVal.textContent = e.target.value;
+        });
+        thRange.addEventListener('change', (e) => {
+            CONFIG.enemyThreshold = parseInt(e.target.value, 10);
+            saveConfig();
+        });
+
+        // buttons
+        panelEl.querySelector('#mg-bs-scan').addEventListener('click', () => scanBuilds(true));
+        panelEl.querySelector('#mg-bs-force').addEventListener('click', () => switchToTag('ustawka'));
+
+        renderBuildsTable();
+        renderKeywords();
+        panelEl.querySelector('#mg-bs-add-tag').addEventListener('click', () => {
+            const name = prompt('Nazwa nowego tagu (np. "obrona", "farm"):');
+            if (!name) return;
+            if (!CONFIG.tagKeywords[name]) CONFIG.tagKeywords[name] = [];
+            saveConfig();
+            renderKeywords();
+            renderBuildsTable();
+        });
+
+        tickPanelStatus();
+    }
+
+    function renderBuildsTable() {
+        const tbody = panelEl.querySelector('#mg-bs-table tbody');
+        tbody.innerHTML = '';
+        const builds = CONFIG.scannedBuilds.length ? CONFIG.scannedBuilds : [];
+        if (!builds.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="small">Brak danych — kliknij „Odśwież listę zestawów”.</td></tr>';
+            return;
+        }
+        builds.forEach(({ index, name }) => {
+            const tr = document.createElement('tr');
+            const tagOptions = ['(brak)', ...Object.keys(CONFIG.tagKeywords)];
+            const current = CONFIG.buildTags[index] || '(brak)';
+            tr.innerHTML = `
+                <td>${index}</td>
+                <td>${escapeHtml(name)}</td>
+                <td><select data-idx="${index}">${tagOptions.map(t => `<option value="${escapeHtml(t)}" ${t === current ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}</select></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll('select').forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                const idx = e.target.getAttribute('data-idx');
+                const val = e.target.value;
+                if (val === '(brak)') {
+                    delete CONFIG.buildTags[idx];
+                    delete CONFIG.manualOverride[idx];
+                } else {
+                    CONFIG.buildTags[idx] = val;
+                    CONFIG.manualOverride[idx] = true; // ręczna zmiana = nie nadpisuj przy auto-skanie
+                }
+                saveConfig();
+            });
+        });
+    }
+
+    function renderKeywords() {
+        const wrap = panelEl.querySelector('#mg-bs-keywords');
+        wrap.innerHTML = '';
+        Object.entries(CONFIG.tagKeywords).forEach(([tag, kws]) => {
+            const row = document.createElement('div');
+            row.className = 'kw-row';
+            row.innerHTML = `
+                <input type="text" value="${escapeHtml(tag)}" data-role="tagname" disabled>
+                <input type="text" value="${escapeHtml(kws.join(', '))}" data-role="kws" placeholder="słowa kluczowe po przecinku">
+                <button data-role="del" title="Usuń tag">✕</button>
+            `;
+            wrap.appendChild(row);
+            row.querySelector('[data-role=kws]').addEventListener('change', (e) => {
+                CONFIG.tagKeywords[tag] = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                saveConfig();
+            });
+            row.querySelector('[data-role=del]').addEventListener('click', () => {
+                delete CONFIG.tagKeywords[tag];
+                saveConfig();
+                renderKeywords();
+                renderBuildsTable();
+            });
+        });
+    }
+
+    function tickPanelStatus() {
+        if (!panelOpen || !statusEl) return;
+        const enemies = countEnemies();
+        const party = isInParty();
+        const currentIdx = getCurrentBuildIndex();
+        const currentTag = CONFIG.buildTags[currentIdx] || '(brak tagu)';
+        const conditionNow = CONFIG.autoSwitchEnabled && party && enemies >= CONFIG.enemyThreshold;
+        const suggested = conditionNow ? 'ustawka' : null;
+
+        let cls = 'ok';
+        let verdict = 'Zestaw wygląda OK jak na obecną sytuację.';
+        if (suggested && currentTag !== suggested) {
+            cls = 'bad';
+            verdict = `⚠ Powinieneś mieć zestaw z tagiem "${suggested}", a masz "${currentTag}"!`;
+        } else if (!CONFIG.scannedBuilds.length) {
+            cls = 'warn';
+            verdict = 'Nie zeskanowano jeszcze zestawów — kliknij „Odśwież listę zestawów”.';
+        }
+
+        statusEl.className = 'status ' + cls;
+        statusEl.innerHTML = `
+            Interfejs: <b>${detectInterface()}</b><br>
+            Drużyna: <b>${party ? 'TAK' : 'nie'}</b> · Wrogowie w pobliżu: <b>${enemies}</b> (próg: ${CONFIG.enemyThreshold})<br>
+            Aktywny zestaw: <b>#${currentIdx ?? '?'} — ${currentTag}</b><br>
+            ${verdict}
+        `;
+        setTimeout(tickPanelStatus, 1500);
+    }
+
+    function makeDraggable(panel, handle) {
+        let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+        handle.addEventListener('mousedown', (e) => {
+            dragging = true;
+            sx = e.clientX; sy = e.clientY;
+            const r = panel.getBoundingClientRect();
+            ox = r.left; oy = r.top;
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const nx = ox + (e.clientX - sx);
+            const ny = oy + (e.clientY - sy);
+            panel.style.left = nx + 'px';
+            panel.style.top = ny + 'px';
+        });
+        document.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            const r = panel.getBoundingClientRect();
+            CONFIG.panelPos = { x: r.left, y: r.top };
+            saveConfig();
+        });
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    console.log('[BuildSwitcher] Załadowano. Interfejs wykryty jako:', detectInterface(), '— Ctrl+Alt+B otwiera panel.');
+})();

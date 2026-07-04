@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Margonem Bot — DEV Control Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo-area">
+            <h1>⚔ Margonem Bot <span class="badge">DEV PANEL</span></h1>
+        </div>
+        <div class="status-area">
+            <span id="conn-badge" class="conn-badge err">Rozłączony</span>
+            <span id="bot-status-badge" class="status-badge stopped">OFFLINE</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- EKRAN BŁĘDU / BRAKU POŁĄCZENIA -->
+        <div id="no-data" class="no-data-card">
+            <div class="icon">📡</div>
+            <h2>Oczekiwanie na sygnał bota</h2>
+            <p>
+                Dashboard nie otrzymuje danych z bota. Uruchom <code>npm run dev</code>, 
+                ustaw <code>const DEV = true</code> w <code>loader.user.js</code>, 
+                zainstaluj skrypt w Tampermonkey i odśwież grę na margonem.pl.
+            </p>
+            <div class="info-box">
+                <strong>Firefox:</strong> pamiętaj, aby zezwolić na połączenia z siecią lokalną (127.0.0.1) 
+                przy pierwszym ładowaniu gry z aktywnym skryptem.
+            </div>
+        </div>
+
+        <!-- GŁÓWNY PANEL STEROWANIA -->
+        <div id="dashboard" class="dashboard-grid hidden">
+            
+            <!-- LEWA KOLUMNA: STAN I STATYSTYKI -->
+            <div class="column">
+                
+                <!-- BOHATER & MAPA -->
+                <div class="card hero-card">
+                    <div class="card-glow"></div>
+                    <div class="hero-header">
+                        <div>
+                            <div class="hero-name" id="hero-name">Ładowanie...</div>
+                            <div class="hero-sub" id="hero-sub">—</div>
+                        </div>
+                        <div class="map-container">
+                            <div class="map-name" id="map-name">—</div>
+                            <div class="map-id" id="map-id">ID: —</div>
+                            <div class="map-slug" id="map-slug">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-group">
+                        <div class="stat-row">
+                            <span class="stat-label">Punkty Życia (HP)</span>
+                            <span class="stat-value" id="hp-pct">—</span>
+                        </div>
+                        <div class="bar-wrap"><div class="bar bar-hp" id="hp-bar" style="width:0%"></div></div>
+                    </div>
+                </div>
+
+                <!-- KONTROLA OPERACYJNA (START/STOP) -->
+                <div class="card control-card">
+                    <h2>🎮 Kontrola Bota</h2>
+                    <div class="action-buttons">
+                        <button id="btn-start-bot" class="btn btn-success">▶ Start Bot</button>
+                        <button id="btn-stop-bot" class="btn btn-danger" disabled>⏹ Stop Bot</button>
+                    </div>
+                    <div class="stat-grid" style="margin-top: 12px;">
+                        <div class="stat-box">
+                            <div class="label">Status działania</div>
+                            <div class="val" id="bot-status">⏹ Zatrzymany</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">Faza logiki</div>
+                            <div class="val accent" id="bot-phase">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-row" style="margin-top: 10px;">
+                        <span class="stat-label">Status bota</span>
+                        <span class="stat-value" id="bot-status-txt">—</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Aktualny cel</span>
+                        <span class="stat-value accent" id="bot-target">brak</span>
+                    </div>
+                </div>
+
+                <!-- AUTOMATYCZNA PODRÓŻ (NAWIGACJA) -->
+                <div class="card travel-card">
+                    <h2>🗺️ Podróż & Nawigacja</h2>
+                    <datalist id="maps-datalist"></datalist>
+
+                    <div class="toggle-grid" style="margin-bottom: 12px;">
+                        <div class="toggle-item">
+                            <label class="switch-container">
+                                <input type="checkbox" id="field-travel-enabled">
+                                <span class="switch-slider"></span>
+                                <span class="label-text">Włącz podróż (Auto-Travel)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <label for="field-start-map">Mapa startowa</label>
+                        <input type="text" list="maps-datalist" id="field-start-map" placeholder="Bieżąca mapa bota" style="width: 170px;" class="select-input">
+                    </div>
+                    <div class="input-row" style="margin-top: 6px;">
+                        <label for="field-target-map">Mapa docelowa</label>
+                        <input type="text" list="maps-datalist" id="field-target-map" placeholder="Wpisz cel..." style="width: 170px;" class="select-input">
+                    </div>
+
+                    <div class="action-buttons" style="margin-top: 12px; gap: 8px;">
+                        <button id="btn-simulate-path" class="btn btn-secondary" style="flex: 1;">🔍 Planuj trasę</button>
+                        <button id="btn-start-travel" class="btn btn-primary" style="flex: 1;">➔ Podróżuj</button>
+                    </div>
+                    <div style="margin-top: 8px; display: none;" id="btn-stop-travel-container">
+                        <button id="btn-stop-travel" class="btn btn-danger" style="width: 100%;">⏹ Przerwij podróż</button>
+                    </div>
+
+                    <hr class="divider">
+                    <div class="status-row">
+                        <span class="stat-label">Status trasy</span>
+                        <span class="stat-value accent" id="travel-status-txt">nieaktywna</span>
+                    </div>
+                    <div class="potions-list-title" id="travel-path-title">Trasa map w kolejce:</div>
+                    <div id="travel-path-container" class="pot-list-container" style="max-height: 170px; padding: 8px 12px;">
+                        Wybierz mapę docelową i kliknij "Planuj trasę" lub "Podróżuj".
+                    </div>
+                </div>
+
+                <!-- EXP & ZŁOTO -->
+                <div class="card stats-card">
+                    <h2>📈 Statystyki Sesji</h2>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="label">Złoto (portfel)</div>
+                            <div class="val gold" id="gold-cur">—</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">Zysk złota</div>
+                            <div class="val green" id="gold-gain">—</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">Złoto / godzina</div>
+                            <div class="val gold" id="gold-rate">—</div>
+                        </div>
+                    </div>
+
+                    <hr class="divider">
+
+                    <div class="stat-row" style="margin-bottom: 2px;">
+                        <span class="stat-label">Postęp poziomu</span>
+                        <span class="stat-value" id="exp-pct">—</span>
+                    </div>
+                    <div class="bar-wrap"><div class="bar bar-exp" id="exp-bar" style="width:0%"></div></div>
+
+                    <div class="stat-grid" style="margin-top: 10px;">
+                        <div class="stat-box">
+                            <div class="label">Aktualny EXP</div>
+                            <div class="val" id="exp-cur">—</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">Pozostało do awansu</div>
+                            <div class="val" id="exp-left">—</div>
+                        </div>
+                    </div>
+
+                    <div class="double-row" style="margin-top: 12px;">
+                        <div class="stat-row"><span class="stat-label">Zysk exp sesja</span><span class="stat-value green" id="exp-session">—</span></div>
+                        <div class="stat-row"><span class="stat-label">Prędkość exp</span><span class="stat-value" id="exp-session-rate">—</span></div>
+                        <div class="stat-row"><span class="stat-label">Czas do poziomu</span><span class="stat-value accent" id="exp-eta">—</span></div>
+                    </div>
+                </div>
+
+                <!-- TORBA / POTKI -->
+                <div class="card bag-card">
+                    <h2>🎒 Ekwipunek & Potki HP</h2>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="label">Wolne sloty torby</div>
+                            <div class="val" id="bag-free">—</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="label">Zajęte miejsca</div>
+                            <div class="val" id="bag-used">—</div>
+                        </div>
+                    </div>
+                    <div class="potions-list-title">Lista Potek HP w torbie:</div>
+                    <div id="pot-list" class="pot-list-container"></div>
+                </div>
+
+            </div>
+
+            <!-- PRAWA KOLUMNA: USTAWIENIA I AI -->
+            <div class="column">
+                
+                <!-- AUTO-F & CAPTCHA -->
+                <div class="card automation-card">
+                    <h2>⚡ Automatyzacja Walki & CAPTCHA</h2>
+                    <div class="toggle-grid">
+                        <div class="toggle-item">
+                            <label class="switch-container">
+                                <input type="checkbox" id="field-autof-enabled">
+                                <span class="switch-slider"></span>
+                                <span class="label-text">Auto Szybka Walka (Auto-F)</span>
+                            </label>
+                        </div>
+                        <div class="toggle-item">
+                            <label class="switch-container">
+                                <input type="checkbox" id="field-captcha-enabled">
+                                <span class="switch-slider"></span>
+                                <span class="label-text">Auto Solver CAPTCHA</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr class="divider">
+
+                    <div class="input-row">
+                        <label for="field-autof-minhp">Próg HP dla Auto-F (%)</label>
+                        <div class="input-wrap">
+                            <input type="number" id="field-autof-minhp" min="1" max="99" style="width: 70px;">
+                            <span class="unit">%</span>
+                        </div>
+                    </div>
+                    <div class="help-text">Poniżej tego progu bot przełączy się na bezpieczną walkę turową.</div>
+
+                    <div class="status-row" style="margin-top: 12px;">
+                        <span class="stat-label">Status Auto-F</span>
+                        <span class="stat-value accent" id="autof-status">—</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="stat-label">Status CAPTCHA</span>
+                        <span class="stat-value accent" id="captcha-status">—</span>
+                    </div>
+                </div>
+
+                <!-- AI SKILLS ALLOCATOR -->
+                <div class="card ai-card">
+                    <h2>🧠 System Umiejętności AI</h2>
+                    <div class="toggle-grid">
+                        <div class="toggle-item">
+                            <label class="switch-container">
+                                <input type="checkbox" id="field-ai-skills-enabled">
+                                <span class="switch-slider"></span>
+                                <span class="label-text">Aktywuj planowanie AI</span>
+                            </label>
+                        </div>
+                        <div class="toggle-item">
+                            <label class="switch-container">
+                                <input type="checkbox" id="field-ai-apply-enabled">
+                                <span class="switch-slider"></span>
+                                <span class="label-text">AI może klikać (Auto-Clicker)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons" style="margin-top: 14px;">
+                        <button id="btn-ai-plan" class="btn btn-secondary">🔮 Generuj plan AI</button>
+                        <button id="btn-ai-apply" class="btn btn-primary">✍ Zastosuj plan teraz</button>
+                    </div>
+
+                    <div class="stat-row" style="margin-top: 14px;">
+                        <span class="stat-label">Dostępne punkty</span>
+                        <span class="stat-value accent" id="skill-pts">—</span>
+                    </div>
+
+                    <div class="ai-box">
+                        <div class="ai-box-title">Ostatni plan od AI:</div>
+                        <div id="ai-plan-container" class="ai-plan-container">
+                            <span class="placeholder">Brak wygenerowanego planu. Kliknij "Generuj plan AI".</span>
+                        </div>
+                    </div>
+
+                    <div class="skills-list-title">Skan umiejętności Paladyna:</div>
+                    <div id="skill-list" class="skills-container"></div>
+                </div>
+
+                <!-- HERO HUNTER CARD (SZUKANIE HEROSÓW) -->
+                <div class="card heroes-card">
+                    <div class="card-glow" style="background: radial-gradient(circle, rgba(239, 68, 68, 0.12) 0%, transparent 60%);"></div>
+                    <h2>👹 Poszukiwacz Herosów (Hero Hunter)</h2>
+                    <div class="toggle-grid" style="margin-bottom: 12px;">
+                        <div class="toggle-item">
+                            <label class="switch-container">
+                                <input type="checkbox" id="field-hero-hunter-enabled">
+                                <span class="switch-slider" style="border-color: #ef4444; background-color: rgba(239, 68, 68, 0.1);"></span>
+                                <span class="label-text">Włącz szukanie Herosów</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <label for="field-hero-hunter-name">Nazwa herosa</label>
+                        <input type="text" id="field-hero-hunter-name" placeholder="np. Zmora" style="width: 140px;" class="select-input">
+                    </div>
+                    <div class="potions-list-title" style="margin-top: 10px;">Lista map do patrolowania:</div>
+                    <textarea id="field-patrol-maps" style="width: 100%; height: 110px; background: #0d111d; border: 1px solid var(--border); color: #fff; border-radius: 6px; padding: 6px 10px; font-family: 'Outfit', sans-serif; font-size: 12px; resize: vertical; outline: none;" placeholder="Wpisz nazwy map (jedna w linijce) np.:
+Ithan
+Morwowe Przejście"></textarea>
+                    <div class="action-buttons" style="margin-top: 10px;">
+                        <button id="btn-load-zmora-maps" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">👹 Załaduj mapy Zmory (35 lvl)</button>
+                    </div>
+                    <hr class="divider">
+                    <div class="status-row">
+                        <span class="stat-label">Bieżący patrol</span>
+                        <span class="stat-value accent" id="patrol-status-txt">nieaktywny</span>
+                    </div>
+                </div>
+
+                <!-- KONTROLKI KONFIGURACYJNE (DANE BOTA) -->
+                <div class="card config-card">
+                    <h2>⚙ Konfiguracja parametrów Bota</h2>
+                    
+                    <div class="input-grid">
+                        <div class="input-row">
+                            <label for="field-min-lvl">Minimalny Lvl NPC</label>
+                            <input type="number" id="field-min-lvl" min="1" max="999">
+                        </div>
+                        <div class="input-row">
+                            <label for="field-max-lvl">Maksymalny Lvl NPC</label>
+                            <input type="number" id="field-max-lvl" min="1" max="999">
+                        </div>
+                        <div class="input-row">
+                            <label for="field-range">Zasięg bota (kafelki)</label>
+                            <div class="input-wrap">
+                                <input type="number" id="field-range" min="1" max="999">
+                                <span class="unit">kaf</span>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <label for="field-arr-dist">Dystans ataku (arrDist)</label>
+                            <div class="input-wrap">
+                                <input type="number" id="field-arr-dist" step="0.1" min="1" max="10">
+                                <span class="unit">kaf</span>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <label for="field-walk-delay">Opóźnienie ruchu (Walk)</label>
+                            <div class="input-wrap">
+                                <input type="number" id="field-walk-delay" step="50" min="200" max="9999">
+                                <span class="unit">ms</span>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <label for="field-atk-delay">Opóźnienie ataku (Atk)</label>
+                            <div class="input-wrap">
+                                <input type="number" id="field-atk-delay" step="50" min="200" max="9999">
+                                <span class="unit">ms</span>
+                            </div>
+                        </div>
+                        <div class="input-row" style="grid-column: span 2;">
+                            <label for="field-sort-by">Kryterium sortowania mobów</label>
+                            <select id="field-sort-by" class="select-input">
+                                <option value="dist">Najbliższy dystans ⚡</option>
+                                <option value="lvl_asc">Poziom rosnąco ↑</option>
+                                <option value="lvl_desc">Poziom malejąco ↓</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="divider">
+
+                    <div class="checkbox-list">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="field-grp-only">
+                            <span class="checkbox-checkmark"></span>
+                            Tylko moby grupowe (grp)
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="field-stop-full">
+                            <span class="checkbox-checkmark"></span>
+                            Zatrzymaj bota, gdy torba jest pełna
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="field-stop-no-pot">
+                            <span class="checkbox-checkmark"></span>
+                            Zatrzymaj bota, gdy skończą się potki HP
+                        </label>
+                    </div>
+                </div>
+
+                <!-- AKTYWNE NPC W POBLIŻU -->
+                <div class="card mobs-card">
+                    <h2>🎯 Moby w pobliżu (przefiltrowane)</h2>
+                    <div id="mob-list"></div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <footer id="last-update">Ostatnia aktualizacja: —</footer>
+
+    <script src="/dashboard/app.js"></script>
+</body>
+</html>

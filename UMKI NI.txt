@@ -1,0 +1,378 @@
+ZESTAWY <div class="inner-content"><div class="builds-window">
+            <div class="attach-icon-show-handheld attach-icon" data-trans="data-tip#attach_to_quick_items" tip-id="95"></div>
+            <div class="scroll-wrapper classic-bar scrollable">
+                <div class="window-wood-background interface-element-middle-1-background"></div>
+                <div class="scroll-pane">
+
+                <div class="one-build">
+            <div class="build-name-wrapper">
+                <!--<div class="build-number"></div>-->
+                <div class="build-name" tip-id="440">Zestaw 1 [1]</div>
+            </div>
+            <div class="build-icon-wrapper">
+                <div class="build-icon" icon-id="0"></div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div><div class="item item-id-1060352263 item-tpl-26902" tip-id="456" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div><div class="item item-id-1060332346 item-tpl-25612" data-cl="11" tip-id="454" data-tip-type="t_item" data-item-type="t-her">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div><div class="item item-id-1061350017 item-tpl-33030" data-cl="4" tip-id="469" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div><div class="item item-id-1060319272 item-tpl-35645" tip-id="453" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div><div class="item item-id-1061350018 item-tpl-51938" data-upgrade="4" tip-id="470" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div><div class="item item-id-1061344307 item-tpl-22293" tip-id="468" data-tip-type="t_item" data-item-type="t-her">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+    </div>
+                <!--<div class="items"></div>-->
+                <!--<div class="build-index-wrapper">-->
+                    <!--<div class="build-index"></div>-->
+                <!--</div>-->
+            </div>
+            <div class="build-index-wrapper">
+                <div class="build-index">1</div>
+            </div>
+            <div class="build-skills-left-wrapper">
+                <span class="build-skills-left" tip-id="441">19/19</span>
+            </div>
+            <div class="build-overlay"></div>
+        </div><div class="one-build active">
+            <div class="build-name-wrapper">
+                <!--<div class="build-number"></div>-->
+                <div class="build-name" tip-id="443">Zestaw 2 [2]</div>
+            </div>
+            <div class="build-icon-wrapper">
+                <div class="build-icon" icon-id="1"></div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div><div class="item item-id-1060352263 item-tpl-26902" tip-id="456" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div><div class="item item-id-1062265589 item-tpl-21755" tip-id="474" data-tip-type="t_item" data-item-type="t-her">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div><div class="item item-id-1063472585 item-tpl-19003" tip-id="480" data-tip-type="t_item" data-item-type="t-her">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div><div class="item item-id-1062246230 item-tpl-21735" data-upgrade="2" tip-id="472" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div><div class="item item-id-1062946081 item-tpl-45589" tip-id="477" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div><div class="item item-id-1060319272 item-tpl-35645" tip-id="453" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div><div class="item item-id-1061350018 item-tpl-51938" data-upgrade="4" tip-id="470" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div><div class="item item-id-1061344307 item-tpl-22293" tip-id="468" data-tip-type="t_item" data-item-type="t-her">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+    </div>
+                <!--<div class="items"></div>-->
+                <!--<div class="build-index-wrapper">-->
+                    <!--<div class="build-index"></div>-->
+                <!--</div>-->
+            </div>
+            <div class="build-index-wrapper">
+                <div class="build-index">2</div>
+            </div>
+            <div class="build-skills-left-wrapper">
+                <span class="build-skills-left" tip-id="444">19/19</span>
+            </div>
+            <div class="build-overlay"></div>
+        </div><div class="one-build">
+            <div class="build-name-wrapper">
+                <!--<div class="build-number"></div>-->
+                <div class="build-name" tip-id="446">Zestaw 3 [3]</div>
+            </div>
+            <div class="build-icon-wrapper">
+                <div class="build-icon" icon-id="2"></div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <!--<div class="items"></div>-->
+                <!--<div class="build-index-wrapper">-->
+                    <!--<div class="build-index"></div>-->
+                <!--</div>-->
+            </div>
+            <div class="build-index-wrapper">
+                <div class="build-index">3</div>
+            </div>
+            <div class="build-skills-left-wrapper">
+                <span class="build-skills-left" tip-id="447">0/19</span>
+            </div>
+            <div class="build-overlay"></div>
+        </div><div class="one-build-to-buy active">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 4</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">5m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">150</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 5</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">5m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">150</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 6</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">5m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">150</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 7</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">10m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">225</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 8</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">10m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">225</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 9</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">10m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">225</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div></div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+            <div class="info-icon" tip-id="137"></div>
+        </div></div>
+
+UMKI  

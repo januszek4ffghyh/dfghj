@@ -1,0 +1,812 @@
+<div class="dialogue-window is-open" data-opacity-lvl="4">
+        <!--<div class="dialogue-background-color"></div>-->
+        <!--<div class="dialogue-border"></div>-->
+        <div class="content">
+            <div class="border-image"></div>
+            <div class="dialogue-timer"><div class="c-timer c-timer--theme-light c-timer--low-time"><div class="c-timer__progress-bar" style="width: 0%;"></div><div class="c-timer__text">0s</div></div></div>
+            <div class="npc-message-scroll scroll-wrapper small-bar">
+              <div class="scroll-pane">
+                <div class="npc-dialogue-wrapper">
+                  <div class="h_content">Kapral Tychon</div>
+                  <div class="npc-message">A ty za co, Kartusie? </div>
+                </div>
+              </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+            <div class="answers-scroll scroll-wrapper small-bar" style="height: 125px;">
+                <div class="scroll-pane">
+                    <ul class="answers"><li class="dialogue-window-answer answer line_option">
+        <div class="icon line_option"></div>
+        <span class="answer-text">1. No właśnie! </span>
+    </li></ul>
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+        </div>
+        <!--<header>-->
+
+        <!--</header>-->
+    <div class="increase-opacity" tip-id="987"></div><div class="toggle-size-button" tip-id="988"></div></div>
+
+<div class="content">
+            <div class="border-image"></div>
+            <div class="dialogue-timer"><div class="c-timer c-timer--theme-light"><div class="c-timer__progress-bar" style="width: 61.5385%;"></div><div class="c-timer__text">8s</div></div></div>
+            <div class="npc-message-scroll scroll-wrapper small-bar">
+              <div class="scroll-pane">
+                <div class="npc-dialogue-wrapper">
+                  <div class="h_content">Sierżant Tymbar</div>
+                  <div class="npc-message">[ Tymbar wskakuje na stół, wznosząc toast! Drze się wniebogłosy! ] </div>
+                </div>
+              </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+            <div class="answers-scroll scroll-wrapper small-bar" style="height: 125px;">
+                <div class="scroll-pane">
+                    <ul class="answers"><li class="dialogue-window-answer answer line_option">
+        <div class="icon line_option"></div>
+        <span class="answer-text">1. Dalej. </span>
+    </li><li class="dialogue-window-answer answer line_option">
+        <div class="icon line_option"></div>
+        <span class="answer-text">2. Pomiń. </span>
+    </li></ul>
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+        </div>   CAPCHAT D <div class="captcha-layer layer"><div class="c-window border-window ui-draggable captcha-window transparent window-on-peak no-exit-button" style="position: absolute; z-index: 18; left: 398.5px; top: 255.359px;">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Zagadka">Zagadka</div>
+            </div>
+        </div>
+        <div class="content content--padding-md">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            <div class="inner-content"><div class="captcha">
+        <div class="captcha__question">Zaznacz wszystkie odpowiedzi z gwiazdką. Miłego dnia!</div>
+        <div class="captcha__image"><img src="data:image/jpg;base64,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" width="256" height="128"></div>
+        <div class="captcha__buttons"><div class="button small green">
+        <div class="background"></div>
+        <div class="label">*a*</div>
+    </div><div class="button small green">
+        <div class="background"></div>
+        <div class="label">@b@</div>
+    </div><div class="button small green">
+        <div class="background"></div>
+        <div class="label">*c*</div>
+    </div><div class="button small green">
+        <div class="background"></div>
+        <div class="label">%d%</div>
+    </div><div class="button small green">
+        <div class="background"></div>
+        <div class="label">*e*</div>
+    </div><div class="button small green">
+        <div class="background"></div>
+        <div class="label">*f*</div>
+    </div></div>
+        <div class="captcha__confirm"><div class="button small green">
+        <div class="background"></div>
+        <div class="label">Potwierdzam</div>
+    </div></div>
+        <div class="captcha__triesleft">Liczba pozostałych prób: 3</div>
+    </div></div>
+            <div class="window-controlls">
+            </div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        </div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="917"><div class="ie-icon ie-icon-close"></div></button>
+        </div>
+    <div class="border-image"></div><div class="transparent-window-buttons-menu"></div></div></div>  NA NI XD
+
+<div class="inner-content"><div class="quest-window">
+      <div class="cards-header-wrapper tabs-nav"><div class="card ACTIVE-tab active">
+        <div class="label">Aktywne</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div><div class="card AVAILABLE-tab">
+        <div class="label">Dostępne</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div><div class="card FINISHED-tab">
+        <div class="label">Ukończone</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div><div class="card ALL-tab">
+        <div class="label">Wszystkie</div>
+        <div class="card-notification"></div>
+        <div class="amount"></div>
+    </div></div>
+      <div class="quests-tab-content-wrapper">
+            <div class="active-quests-tab tab-content active"><div class="left-grouped-list-and-right-description-window hide-right-header hide-left-header">
+        <div class="left-column">
+            <div class="interface-element-middle-3-background-stretch"></div>
+            <div class="left-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                    <div class="items-list"><div class="divide-list-group group-id-1 active" group-id="1">
+        <div class="group-header">
+            <div class="card-graphic interface-element-active-card-border-image"></div>
+            <div class="label">Główne</div>
+            <div class="direction"></div>
+            <div class="amount"></div>
+        </div>
+        <div class="group-list"><div class="one-item-on-divide-list crafting-recipe-in-list" data-tab-id="undefined">
+        <!--<div class="item-wrapper">-->
+        <!--<div class="result-item item-slot"></div>-->
+        <!--</div>-->
+        <div class="name-wrapper">
+            <div class="name">Arc 5: Torneg - nadchodzę!</div>
+        </div>
+    </div><div class="one-item-on-divide-list crafting-recipe-in-list active" data-tab-id="undefined">
+        <!--<div class="item-wrapper">-->
+        <!--<div class="result-item item-slot"></div>-->
+        <!--</div>-->
+        <div class="name-wrapper">
+            <div class="name">Arc 16: Akademia wojskowa</div>
+        </div>
+    </div></div>
+    </div><div class="divide-list-group group-id-10 active" group-id="10">
+        <div class="group-header">
+            <div class="card-graphic interface-element-active-card-border-image"></div>
+            <div class="label">Poboczne II</div>
+            <div class="direction"></div>
+            <div class="amount"></div>
+        </div>
+        <div class="group-list"><div class="one-item-on-divide-list crafting-recipe-in-list" data-tab-id="undefined">
+        <!--<div class="item-wrapper">-->
+        <!--<div class="result-item item-slot"></div>-->
+        <!--</div>-->
+        <div class="name-wrapper">
+            <div class="name">Pozostałe</div>
+        </div>
+    </div></div>
+    </div></div>
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        <div class="search-wrapper search-in-left-column">
+            <input class="search" placeholder="Szukaj">
+            <div class="search-x" data-trans="data-tip#delete" tip-id="78"></div>
+        </div></div>
+    <div class="left-grouped-list-right-column right-column">
+            <div class="right-column-background interface-element-middle-1-background-stretch"></div>
+            <div class="right-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                <div class="subgroup-content subgroup-54"><div class="c-table one-new-quests quest-id-44" element-id="44"><table class="table">
+            <thead><tr><th colspan="2"><div class="quest-header" tip-id="180"><div class="quest-name-wrapper"><div class="quest-debug-id">44</div><span class="quest-level">(30)</span><span class="quest-name">Zdobądź piwo dla Tafina.</span></div><div class="show-more-wrapper quest-toggle"><div class="show-more-icon" tip-id="186"></div></div></div></th></tr></thead>
+            <tbody><tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="185" data-tip-type="overflow-text-with-several-rows">-</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-44" tip-id="181">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-44 window-is-open" tip-id="182">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-44" tip-id="183">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div><div class="button small remove button-remove-id-44" tip-id="184">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-close ie-icon--no-hover"></div></div>
+    </div></div></td></tr><tr><td colspan="2" class="quest-description" style="display: table-cell;">Porozmawiaj z Tafinem.</td></tr></tbody>
+        </table></div></div><div class="subgroup-content subgroup-5"><div class="c-table one-new-quests quest-id-10038" element-id="10038"><table class="table">
+            <thead><tr><th colspan="2"><div class="quest-header" tip-id="187"><div class="quest-name-wrapper"><div class="quest-debug-id">10038</div><span class="quest-level">(20)</span><span class="quest-name">Prace gospodarcze u Idalii.</span></div><div class="show-more-wrapper quest-toggle"><div class="show-more-icon" tip-id="193"></div></div></div></th></tr></thead>
+            <tbody><tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="192" data-tip-type="overflow-text-with-several-rows">Torneg i okolica</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-10038" tip-id="188">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-10038 window-is-open" tip-id="189">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-10038" tip-id="190">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div><div class="button small remove button-remove-id-10038" tip-id="191">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-close ie-icon--no-hover"></div></div>
+    </div></div></td></tr><tr><td colspan="2" class="quest-description" style="display: table-cell;">Idalia poprosiła cię o przeprowadzenie Krasuli na pobliską polankę. Przywołaj do siebie krowę i doprowadź ją we wskazane miejsce. Podobno lubi, gdy się do niej mówi.</td></tr><tr><td colspan="2" class="quest-missions" style="display: table-cell;"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-17"><div class="text-wrapper"><span class="mission-type-label">Porozmawiaj z: </span><span class="one-name"> Krasula Idalii</span></div></div></div></td></tr></tbody>
+        </table></div></div><div class="subgroup-content subgroup-16 active"><div class="c-table one-new-quests quest-id-10201" element-id="10201"><table class="table">
+            <thead><tr><th colspan="2"><div class="quest-header" tip-id="1063"><div class="quest-name-wrapper"><div class="quest-debug-id">10201</div><span class="quest-level">(47)</span><span class="quest-name">Spryt i rozwaga traperów.</span></div><div class="show-more-wrapper quest-toggle"><div class="show-more-icon" tip-id="1070"></div></div></div></th></tr></thead>
+            <tbody><tr><td colspan="1" class="quest-location"><div class="marker-name overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1069" data-tip-type="overflow-text-with-several-rows">Ithan i okolica</div></td><td colspan="1" class="quest-buttons"><div class="buttons-wrapper"><div class="button small green track button-tracking-id-10201 window-is-open" tip-id="1066">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck tracking"></div></div>
+    </div><div class="button small green observe button-observe-id-10201 window-is-open" tip-id="1067">
+        <div class="background"></div>
+        <div class="label"><div class="add-bck observed"></div></div>
+    </div><div class="button small green reward button-reward-id-10201" tip-id="1068">
+        <div class="background"></div>
+        <div class="label"><div class="ie-icon ie-icon-reward"></div></div>
+    </div></div></td></tr><tr><td colspan="2" class="quest-description" style="display: table-cell;">Skrawek materiału znaleziony na brzegu rzeki Yss zasugerował wam, że Miłobąd kontynuował podróż rzeką. Odnajdź kolejne ślady jego obecności.</td></tr><tr><td colspan="2" class="quest-missions" style="display: table-cell;"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-12"><div class="text-wrapper"><span class="mission-type-label">Przeszukaj obszar w: </span><span class="one-name"> Dolina Yss - północ</span></div></div></div></td></tr></tbody>
+        </table></div></div></div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        </div><div class="left-grouped-list-right-column-bottom-row-panel bottom-row-panel">
+        <div class="interface-element-bottom-bar-background-stretch"></div>
+    <div class="level-filter-component">
+            <div class="filter-label-component" data-trans="#filter-level">Filtruj poziom:</div>
+            <div class="start-lvl-wrapper-component"><div class="ni-input min-level-input">
+        <input class="default" placeholder="od">
+        <div class="clear-cross" tip-id="176"></div>
+    </div></div>
+            <div class="stop-lvl-wrapper-component"><div class="ni-input man-level-input">
+        <input class="default" placeholder="do">
+        <div class="clear-cross" tip-id="177"></div>
+    </div></div>
+        </div><div class="button small green observe-quest-button">
+        <div class="background"></div>
+        <div class="label">Obserwowane zadania</div>
+    </div></div></div></div>
+            <div class="pagination-quests-tab tab-content"><div class="left-grouped-list-and-right-description-window hide-right-header hide-left-header">
+        <div class="left-column">
+            <div class="interface-element-middle-3-background-stretch"></div>
+            <div class="left-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                    <div class="items-list"></div>
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        <div class="search-wrapper search-in-left-column">
+            <input class="search" placeholder="Szukaj">
+            <div class="search-x" data-trans="data-tip#delete" tip-id="78"></div>
+        </div></div>
+    <div class="left-grouped-list-right-column right-column">
+            <div class="right-column-background interface-element-middle-1-background-stretch"></div>
+            <div class="right-scroll scroll-wrapper classic-bar">
+                <div class="scroll-pane">
+                </div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+        </div><div class="left-grouped-list-right-column-bottom-row-panel bottom-row-panel">
+        <div class="interface-element-bottom-bar-background-stretch"></div>
+    <div class="level-filter-component">
+            <div class="filter-label-component" data-trans="#filter-level">Filtruj poziom:</div>
+            <div class="start-lvl-wrapper-component"><div class="ni-input min-level-input">
+        <input class="default" placeholder="od">
+        <div class="clear-cross" tip-id="178"></div>
+    </div></div>
+            <div class="stop-lvl-wrapper-component"><div class="ni-input man-level-input">
+        <input class="default" placeholder="do">
+        <div class="clear-cross" tip-id="179"></div>
+    </div></div>
+        </div><div class="menu profession-filter menu-list"><div class="bck button small green no-hover"><span class="menu-option" value="all">Profesja</span></div><div class="dropdown-menu">
+        <div class="arrow" style="display: block;">
+            <div class="menu-arrow"></div>
+        </div>
+        <div class="reset" data-trans="data-tip#reset#ah_filter_history" tip-id="96" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+
+        <div class="scroll-wrapper small-bar menu-wrapper" style="display: none; width: 0px;">
+            <div class="wrapper scroll-pane"><div class="bck-wrapper"><div class="option" value="all"><div class="text">Profesja</div></div><div class="option" value="m"><div class="text">mag</div></div><div class="option" value="w"><div class="text">wojownik</div></div><div class="option" value="p"><div class="text">paladyn</div></div><div class="option" value="t"><div class="text">tropiciel</div></div><div class="option" value="h"><div class="text">łowca</div></div><div class="option" value="b"><div class="text">tancerz ostrzy</div></div></div></div>
+        <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="position: relative;"></div>
+        </div>
+    </div></div>
+    </div></div></div></div></div>
+      </div>
+    </div></div>
+
+
+<div class="inner-content"><div class="builds-window">
+            <div class="attach-icon-show-handheld attach-icon" data-trans="data-tip#attach_to_quick_items" tip-id="95"></div>
+            <div class="scroll-wrapper classic-bar">
+                <div class="window-wood-background interface-element-middle-1-background"></div>
+                <div class="scroll-pane">
+
+                <div class="one-build">
+            <div class="build-name-wrapper">
+                <!--<div class="build-number"></div>-->
+                <div class="build-name" tip-id="312">Zestaw 1 [1]</div>
+            </div>
+            <div class="build-icon-wrapper">
+                <div class="build-icon" icon-id="0"></div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div><div class="item item-id-1065412370 item-tpl-33332" tip-id="363" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div><div class="item item-id-1065358530 item-tpl-34808" tip-id="360" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div><div class="item item-id-1065412374 item-tpl-33380" tip-id="365" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div><div class="item item-id-1065335162 item-tpl-52213" tip-id="356" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div><div class="item item-id-1065413902 item-tpl-33384" tip-id="366" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div><div class="item item-id-1065399026 item-tpl-43087" tip-id="362" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div><div class="item item-id-1065413903 item-tpl-33415" tip-id="367" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div><div class="item item-id-1065412371 item-tpl-33341" tip-id="364" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+    </div>
+                <!--<div class="items"></div>-->
+                <!--<div class="build-index-wrapper">-->
+                    <!--<div class="build-index"></div>-->
+                <!--</div>-->
+            </div>
+            <div class="build-index-wrapper">
+                <div class="build-index">1</div>
+            </div>
+            <div class="build-skills-left-wrapper">
+                <span class="build-skills-left" tip-id="313">22/23</span>
+            </div>
+            <div class="build-overlay"></div>
+        </div><div class="one-build active">
+            <div class="build-name-wrapper">
+                <!--<div class="build-number"></div>-->
+                <div class="build-name" tip-id="315">Zestaw 2 [2]</div>
+            </div>
+            <div class="build-icon-wrapper">
+                <div class="build-icon" icon-id="1"></div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div><div class="item item-id-1065412370 item-tpl-33332" tip-id="363" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div><div class="item item-id-1065358530 item-tpl-34808" tip-id="360" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div><div class="item item-id-1065412374 item-tpl-33380" tip-id="365" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div><div class="item item-id-1065335162 item-tpl-52213" tip-id="356" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div><div class="item item-id-1065413902 item-tpl-33384" tip-id="366" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div><div class="item item-id-1065399026 item-tpl-43087" tip-id="362" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div><div class="item item-id-1065413903 item-tpl-33415" tip-id="367" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div><div class="item item-id-1065412371 item-tpl-33341" tip-id="364" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+    </div>
+                <!--<div class="items"></div>-->
+                <!--<div class="build-index-wrapper">-->
+                    <!--<div class="build-index"></div>-->
+                <!--</div>-->
+            </div>
+            <div class="build-index-wrapper">
+                <div class="build-index">2</div>
+            </div>
+            <div class="build-skills-left-wrapper">
+                <span class="build-skills-left" tip-id="316">22/23</span>
+            </div>
+            <div class="build-overlay"></div>
+        </div><div class="one-build">
+            <div class="build-name-wrapper">
+                <!--<div class="build-number"></div>-->
+                <div class="build-name" tip-id="318">Zestaw 3 [3]</div>
+            </div>
+            <div class="build-icon-wrapper">
+                <div class="build-icon" icon-id="2"></div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <!--<div class="items"></div>-->
+                <!--<div class="build-index-wrapper">-->
+                    <!--<div class="build-index"></div>-->
+                <!--</div>-->
+            </div>
+            <div class="build-index-wrapper">
+                <div class="build-index">3</div>
+            </div>
+            <div class="build-skills-left-wrapper">
+                <span class="build-skills-left" tip-id="319">0/23</span>
+            </div>
+            <div class="build-overlay"></div>
+        </div><div class="one-build-to-buy active">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 4</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">5m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">150</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 5</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">5m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">150</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 6</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">5m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">150</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 7</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">10m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">225</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 8</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">10m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">225</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div><div class="one-build-to-buy">
+            <div class="build-name-wrapper">
+                <div class="build-name">Zestaw 9</div>
+            </div>
+            <div class="build-items-wrapper"><div class="interface-element-equipment">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div></div>
+    </div>
+                <div class="items"></div>
+            </div>
+            <div class="build-overlay"></div>
+            <div class="build-buttons-wrapper"><div class="button small green background-gold">
+        <div class="background"></div>
+        <div class="label">10m</div>
+    </div><div class="button small purple green background-draconite">
+        <div class="background"></div>
+        <div class="label">225</div>
+    </div></div>
+            <!--<div class="buttons-overlay"></div>-->
+        </div></div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle"></div>
+        </div>
+    </div></div>
+            <div class="info-icon" tip-id="137"></div>
+        </div></div>
+
+<div class="c-window border-window ui-draggable quest-observer-window-transparent transparent window-on-peak" style="position: absolute; left: 0px; top: 104px; display: block; z-index: 17;" data-opacity-lvl="3" size-opt="1">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Obserwowane zadania">Obserwowane zadania</div>
+            </div>
+        </div>
+        <div class="content content--padding-md">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            <div class="inner-content"><div class="quest-observe-window" style="width: 212px; height: 167px;">
+        <div class="scroll-wrapper small-bar scrollable">
+            <div class="scroll-pane">
+                <div class="empty" style="display: none;">----</div>
+                <div class="quest-observe-list"><div class="one-observe quest-observe-10201 quest-tracked">
+        <span class="one-observe__debug">10201</span>
+        <div class="one-observe__title full">Spryt i rozwaga traperów.</div><div class="one-observe__title short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1110" data-tip-type="overflow-text-with-several-rows">Spryt i rozwaga traperów.</div>
+        <div class="one-observe__content"><div class="quest-description full">Lina doprowadziła was na urwisko. Niedaleko znajduje się kolejna... Zbadajcie ją, może Miłobąd tędy przechodził.</div><div class="quest-description short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="1111" data-tip-type="overflow-text-with-several-rows">Lina doprowadziła was na urwisko. Niedaleko znajduje się kolejna... Zbadajcie ją, może Miłobąd tędy przechodził.</div><div class="active-quest-mission-wrapper"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-12"><div class="text-wrapper"><span class="mission-type-label">Przeszukaj obszar w: </span><span class="one-name"> Dolina Yss - północ</span></div></div></div></div></div>
+        <div class="one-observe__remove-btn" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+        <div class="c-line end-line"></div>
+    </div><div class="one-observe quest-observe-44">
+        <span class="one-observe__debug">44</span>
+        <div class="one-observe__title full">Zdobądź piwo dla Tafina.</div><div class="one-observe__title short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="376" data-tip-type="overflow-text-with-several-rows">Zdobądź piwo dla Tafina.</div>
+        <div class="one-observe__content"><div class="quest-description full">Porozmawiaj z Tafinem.</div><div class="quest-description short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="377" data-tip-type="overflow-text-with-several-rows">Porozmawiaj z Tafinem.</div></div>
+        <div class="one-observe__remove-btn" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+        <div class="c-line end-line"></div>
+    </div><div class="one-observe quest-observe-10038">
+        <span class="one-observe__debug">10038</span>
+        <div class="one-observe__title full">Prace gospodarcze u Idalii.</div><div class="one-observe__title short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="378" data-tip-type="overflow-text-with-several-rows">Prace gospodarcze u Idalii.</div>
+        <div class="one-observe__content"><div class="quest-description full">Idalia poprosiła cię o przeprowadzenie Krasuli na pobliską polankę. Przywołaj do siebie krowę i doprowadź ją we wskazane miejsce. Podobno lubi, gdy się do niej mówi.</div><div class="quest-description short overflow-text-with-several-rows" style="-webkit-line-clamp: 1;" tip-id="379" data-tip-type="overflow-text-with-several-rows">Idalia poprosiła cię o przeprowadzenie Krasuli na pobliską polankę. Przywołaj do siebie krowę i doprowadź ją we wskazane miejsce. Podobno lubi, gdy się do niej mówi.</div><div class="active-quest-mission-wrapper"><div class="active-quest-mission-wrapper"><div class="one-quest-mission mission-type-17"><div class="text-wrapper"><span class="mission-type-label">Porozmawiaj z: </span><span class="one-name"> Krasula Idalii</span></div></div></div></div></div>
+        <div class="one-observe__remove-btn" style="display: none;"><div class="ie-icon ie-icon-close"></div></div>
+        <div class="c-line end-line"></div>
+    </div></div>
+            </div>
+        <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+        <div class="relogger__error"></div>
+    </div></div>
+            <div class="window-controlls">
+            </div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        </div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="150"><div class="ie-icon ie-icon-close"></div></button>
+        </div>
+    <div class="border-image"></div><div class="transparent-window-buttons-menu"><div class="manage-hamburger-button"><div class="ie-icon ie-icon-menu"></div></div><div class="increase-opacity" tip-id="151"></div><div class="toggle-size-button" tip-id="152"></div><div class="collapse" tip-id="153"></div></div></div>  
+<div class="inner-content"><div class="window-list elite-timer-wnd">
+        <div class="open-edit-panel"></div>
+        <div class="scroll-wrapper small-bar">
+            <div class="scroll-pane">
+                 <div class="empty">----</div>
+                <div class="list npc-list"></div>
+            </div>
+        <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+    </div></div>   tu masz hp <div class="hp-indicator-wrapper-template"><div class="hp-indicator-wrapper">
+        <div class="hp-indicator">
+            <div class="blood-frame" style="display: none; background-position-x: 0px;"></div>
+            <div class="blood" bar-horizontal="false" bar-percent="100"></div>
+            <div class="hpp"><span class="value">100%</span></div>
+        </div>
+        <div class="glass" tip-id="298" data-tip-type="t_static"></div>
+    </div></div> 

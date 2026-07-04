@@ -1,0 +1,1140 @@
+{
+  "1": [
+    {
+      "toMapId": 138,
+      "gatewayId": "gw17152",
+      "tx": 1,
+      "ty": 68,
+      "name": "Porzucone Pasieki"
+    },
+    {
+      "toMapId": 34,
+      "gatewayId": "gw24586",
+      "tx": 11,
+      "ty": 97,
+      "name": "Dom Huslina"
+    },
+    {
+      "toMapId": 2720,
+      "gatewayId": "gw1038",
+      "tx": 15,
+      "ty": 5,
+      "name": "Mury Ithan - strażnica północno-zachodnia"
+    },
+    {
+      "toMapId": 13,
+      "gatewayId": "gw3859",
+      "tx": 20,
+      "ty": 16,
+      "name": "Dom sióstr"
+    },
+    {
+      "toMapId": 191,
+      "gatewayId": "gw16660",
+      "tx": 21,
+      "ty": 66,
+      "name": "Stary magazyn"
+    },
+    {
+      "toMapId": 17,
+      "gatewayId": "gw11288",
+      "tx": 25,
+      "ty": 45,
+      "name": "Zajazd u Makiny"
+    },
+    {
+      "toMapId": 2712,
+      "gatewayId": "gw17435",
+      "tx": 28,
+      "ty": 69,
+      "name": "Mury Ithan - strażnica południowo-zachodnia"
+    },
+    {
+      "toMapId": 26,
+      "gatewayId": "gw13600",
+      "tx": 33,
+      "ty": 54,
+      "name": "Dom Roana"
+    },
+    {
+      "toMapId": 7,
+      "gatewayId": "gw3618",
+      "tx": 35,
+      "ty": 15,
+      "name": "Ratusz Ithan"
+    },
+    {
+      "toMapId": 610,
+      "gatewayId": "gw7202",
+      "tx": 35,
+      "ty": 29,
+      "name": "Dom Aukcyjny"
+    },
+    {
+      "toMapId": 2713,
+      "gatewayId": "gw17450",
+      "tx": 43,
+      "ty": 69,
+      "name": "Mury Ithan - strażnica południowo-wschodnia"
+    },
+    {
+      "toMapId": 8,
+      "gatewayId": "gw25388",
+      "tx": 45,
+      "ty": 100,
+      "name": "Zniszczone Opactwo"
+    },
+    {
+      "toMapId": 3081,
+      "gatewayId": "gw9259",
+      "tx": 44,
+      "ty": 37,
+      "name": "Dom Niela"
+    },
+    {
+      "toMapId": 3130,
+      "gatewayId": "gw3884",
+      "tx": 45,
+      "ty": 16,
+      "name": "Gildia Nerthusa - przedsionek"
+    },
+    {
+      "toMapId": 2665,
+      "gatewayId": "gw5425",
+      "tx": 50,
+      "ty": 22,
+      "name": "Pod Rozbrykanym Niziołkiem"
+    },
+    {
+      "toMapId": 297,
+      "gatewayId": "gw9266",
+      "tx": 51,
+      "ty": 37,
+      "name": "Dom Eldrika"
+    },
+    {
+      "toMapId": 967,
+      "gatewayId": "gw5685",
+      "tx": 54,
+      "ty": 23,
+      "name": "Szkoła"
+    },
+    {
+      "toMapId": 5,
+      "gatewayId": "gw14137",
+      "tx": 58,
+      "ty": 56,
+      "name": "Baraki"
+    },
+    {
+      "toMapId": 2517,
+      "gatewayId": "gw22597",
+      "tx": 70,
+      "ty": 89,
+      "name": "Kopalnia Dogoran p.1"
+    },
+    {
+      "toMapId": 2711,
+      "gatewayId": "gw3144",
+      "tx": 73,
+      "ty": 13,
+      "name": "Mury Ithan - strażnica północno-wschodnia"
+    },
+    {
+      "toMapId": 18,
+      "gatewayId": "gw13388",
+      "tx": 77,
+      "ty": 53,
+      "name": "Dom Unila"
+    },
+    {
+      "toMapId": 333,
+      "gatewayId": "gw79",
+      "tx": 80,
+      "ty": 1,
+      "name": "Wioska Gnolli"
+    },
+    {
+      "toMapId": 15,
+      "gatewayId": "gw6995",
+      "tx": 84,
+      "ty": 28,
+      "name": "Jaskinia Łowców p.1"
+    },
+    {
+      "toMapId": 2663,
+      "gatewayId": "gw5207",
+      "tx": 88,
+      "ty": 21,
+      "name": "Jaskinia Łowców p.2"
+    },
+    {
+      "toMapId": 11,
+      "gatewayId": "gw23391",
+      "tx": 96,
+      "ty": 92,
+      "name": "Dolina Yss"
+    }
+  ],
+  "2": [
+    {
+      "toMapId": 2029,
+      "gatewayId": "gw11264",
+      "tx": 1,
+      "ty": 45,
+      "name": "Łany Zboża"
+    },
+    {
+      "toMapId": 66,
+      "gatewayId": "gw2308",
+      "tx": 5,
+      "ty": 10,
+      "name": "Dom Mira"
+    },
+    {
+      "toMapId": 73,
+      "gatewayId": "gw8197",
+      "tx": 6,
+      "ty": 33,
+      "name": "Zielna Grota p.1 - sala 1"
+    },
+    {
+      "toMapId": 69,
+      "gatewayId": "gw9227",
+      "tx": 12,
+      "ty": 37,
+      "name": "Dom Szagarata"
+    },
+    {
+      "toMapId": 2002,
+      "gatewayId": "gw1808",
+      "tx": 17,
+      "ty": 8,
+      "name": "Kurnik"
+    },
+    {
+      "toMapId": 68,
+      "gatewayId": "gw7187",
+      "tx": 20,
+      "ty": 29,
+      "name": "Dom Galisa"
+    },
+    {
+      "toMapId": 3986,
+      "gatewayId": "gw11030",
+      "tx": 23,
+      "ty": 44,
+      "name": "Dom Antoniego"
+    },
+    {
+      "toMapId": 2217,
+      "gatewayId": "gw15646",
+      "tx": 31,
+      "ty": 62,
+      "name": "Dom Toksyniusza"
+    },
+    {
+      "toMapId": 2213,
+      "gatewayId": "gw7720",
+      "tx": 41,
+      "ty": 31,
+      "name": "Dom Salome"
+    },
+    {
+      "toMapId": 70,
+      "gatewayId": "gw14380",
+      "tx": 45,
+      "ty": 57,
+      "name": "Zajazd Umbara"
+    },
+    {
+      "toMapId": 2199,
+      "gatewayId": "gw6959",
+      "tx": 48,
+      "ty": 28,
+      "name": "Dom Cedrika"
+    },
+    {
+      "toMapId": 12,
+      "gatewayId": "gw16176",
+      "tx": 49,
+      "ty": 64,
+      "name": "Stare Ruiny"
+    },
+    {
+      "toMapId": 1111,
+      "gatewayId": "gw50",
+      "tx": 51,
+      "ty": 1,
+      "name": "Zapomniany LasPrzejście dostępne od 160 poziomu"
+    },
+    {
+      "toMapId": 76,
+      "gatewayId": "gw4920",
+      "tx": 57,
+      "ty": 20,
+      "name": "Dom Alrika"
+    },
+    {
+      "toMapId": 71,
+      "gatewayId": "gw7997",
+      "tx": 62,
+      "ty": 32,
+      "name": "Dom Moliwii"
+    },
+    {
+      "toMapId": 78,
+      "gatewayId": "gw11838",
+      "tx": 63,
+      "ty": 47,
+      "name": "Dom Idalii"
+    },
+    {
+      "toMapId": 82,
+      "gatewayId": "gw9024",
+      "tx": 65,
+      "ty": 36,
+      "name": "Dom Wei"
+    },
+    {
+      "toMapId": 80,
+      "gatewayId": "gw14409",
+      "tx": 74,
+      "ty": 57,
+      "name": "Dom Sary"
+    },
+    {
+      "toMapId": 354,
+      "gatewayId": "gw2130",
+      "tx": 83,
+      "ty": 9,
+      "name": "Zakon Białej Lilii - kaplica"
+    },
+    {
+      "toMapId": 2197,
+      "gatewayId": "gw15191",
+      "tx": 88,
+      "ty": 60,
+      "name": "Dom Barabasza"
+    },
+    {
+      "toMapId": 2206,
+      "gatewayId": "gw10586",
+      "tx": 91,
+      "ty": 42,
+      "name": "Dom Syntii i Leona"
+    },
+    {
+      "toMapId": 1108,
+      "gatewayId": "gw13151",
+      "tx": 96,
+      "ty": 52,
+      "name": "Leśna Przełęcz"
+    }
+  ],
+  "3": [
+    {
+      "toMapId": 11,
+      "gatewayId": "gw18688",
+      "tx": 1,
+      "ty": 74,
+      "name": "Dolina Yss"
+    },
+    {
+      "toMapId": 4,
+      "gatewayId": "gw24338",
+      "tx": 19,
+      "ty": 96,
+      "name": "Przełęcz Łotrzyków"
+    },
+    {
+      "toMapId": 19,
+      "gatewayId": "gw10261",
+      "tx": 22,
+      "ty": 41,
+      "name": "Spustoszona jaskinia"
+    },
+    {
+      "toMapId": 12,
+      "gatewayId": "gw44",
+      "tx": 45,
+      "ty": 1,
+      "name": "Stare Ruiny"
+    },
+    {
+      "toMapId": 634,
+      "gatewayId": "gw21297",
+      "tx": 50,
+      "ty": 84,
+      "name": "Przejście Myśliwych p.2"
+    },
+    {
+      "toMapId": 5735,
+      "gatewayId": "gw3379",
+      "tx": 52,
+      "ty": 14,
+      "name": "Przeklęta Strażnica p.2"
+    },
+    {
+      "toMapId": 5733,
+      "gatewayId": "gw6197",
+      "tx": 54,
+      "ty": 25,
+      "name": "Przeklęta Strażnica"
+    },
+    {
+      "toMapId": 633,
+      "gatewayId": "gw14390",
+      "tx": 55,
+      "ty": 57,
+      "name": "Przejście Myśliwych p.1"
+    },
+    {
+      "toMapId": 631,
+      "gatewayId": "gw18751",
+      "tx": 64,
+      "ty": 74,
+      "name": "Dziewicza Knieja"
+    }
+  ],
+  "4": [
+    {
+      "toMapId": 110,
+      "gatewayId": "gw24332",
+      "tx": 13,
+      "ty": 96,
+      "name": "Dolina Rozbójników"
+    },
+    {
+      "toMapId": 3,
+      "gatewayId": "gw18",
+      "tx": 19,
+      "ty": 1,
+      "name": "Orla Grań"
+    },
+    {
+      "toMapId": 2524,
+      "gatewayId": "gw12351",
+      "tx": 64,
+      "ty": 49,
+      "name": "Pagórki Łupieżców"
+    }
+  ],
+  "8": [
+    {
+      "toMapId": 38,
+      "gatewayId": "gw9984",
+      "tx": 1,
+      "ty": 40,
+      "name": "Uroczysko"
+    },
+    {
+      "toMapId": 28,
+      "gatewayId": "gw13315",
+      "tx": 4,
+      "ty": 53,
+      "name": "Piekielna Grota p.1"
+    },
+    {
+      "toMapId": 1055,
+      "gatewayId": "gw13573",
+      "tx": 6,
+      "ty": 54,
+      "name": "Domek Hektora(Wymaga klucza)"
+    },
+    {
+      "toMapId": 212,
+      "gatewayId": "gw13065",
+      "tx": 10,
+      "ty": 52,
+      "name": "Prywatna jaskinia(Wymaga klucza)"
+    },
+    {
+      "toMapId": 1,
+      "gatewayId": "gw12",
+      "tx": 13,
+      "ty": 1,
+      "name": "Ithan"
+    },
+    {
+      "toMapId": 116,
+      "gatewayId": "gw16139",
+      "tx": 12,
+      "ty": 64,
+      "name": "Zburzona Twierdza"
+    },
+    {
+      "toMapId": 290,
+      "gatewayId": "gw6430",
+      "tx": 31,
+      "ty": 26,
+      "name": "Opactwo"
+    },
+    {
+      "toMapId": 723,
+      "gatewayId": "gw3387",
+      "tx": 60,
+      "ty": 14,
+      "name": "Dom Paladiego(Wymaga klucza)"
+    },
+    {
+      "toMapId": 23,
+      "gatewayId": "gw14397",
+      "tx": 62,
+      "ty": 57,
+      "name": "Granitowa Jaskinia"
+    },
+    {
+      "toMapId": 2520,
+      "gatewayId": "gw4671",
+      "tx": 64,
+      "ty": 19,
+      "name": "Leśny Bród"
+    }
+  ],
+  "11": [
+    {
+      "toMapId": 1,
+      "gatewayId": "gw22272",
+      "tx": 1,
+      "ty": 88,
+      "name": "Ithan"
+    },
+    {
+      "toMapId": 3263,
+      "gatewayId": "gw15367",
+      "tx": 8,
+      "ty": 61,
+      "name": "Namiot ubogich ludzi"
+    },
+    {
+      "toMapId": 1227,
+      "gatewayId": "gw7176",
+      "tx": 9,
+      "ty": 29,
+      "name": "Opuszczona Grota p.1 - sala 1"
+    },
+    {
+      "toMapId": 1062,
+      "gatewayId": "gw18",
+      "tx": 19,
+      "ty": 1,
+      "name": "Wilczy Szpic"
+    },
+    {
+      "toMapId": 2520,
+      "gatewayId": "gw24339",
+      "tx": 20,
+      "ty": 96,
+      "name": "Leśny Bród"
+    },
+    {
+      "toMapId": 2790,
+      "gatewayId": "gw12074",
+      "tx": 43,
+      "ty": 48,
+      "name": "Jaskinia Medytacji Tududu"
+    },
+    {
+      "toMapId": 302,
+      "gatewayId": "gw15659",
+      "tx": 44,
+      "ty": 62,
+      "name": "Dom Kastora"
+    },
+    {
+      "toMapId": 289,
+      "gatewayId": "gw4917",
+      "tx": 54,
+      "ty": 20,
+      "name": "Siedziba Furiatów(Wymaga klucza)"
+    },
+    {
+      "toMapId": 428,
+      "gatewayId": "gw4409",
+      "tx": 58,
+      "ty": 18,
+      "name": "Magiczna Twierdza Alchemików(Wymaga klucza)"
+    },
+    {
+      "toMapId": 362,
+      "gatewayId": "gw5181",
+      "tx": 62,
+      "ty": 21,
+      "name": "Domek Tibora(Wymaga klucza)"
+    },
+    {
+      "toMapId": 3,
+      "gatewayId": "gw18751",
+      "tx": 64,
+      "ty": 74,
+      "name": "Orla Grań"
+    }
+  ],
+  "12": [
+    {
+      "toMapId": 1062,
+      "gatewayId": "gw10496",
+      "tx": 1,
+      "ty": 42,
+      "name": "Wilczy Szpic"
+    },
+    {
+      "toMapId": 166,
+      "gatewayId": "gw3598",
+      "tx": 15,
+      "ty": 15,
+      "name": "Dom Grambera"
+    },
+    {
+      "toMapId": 168,
+      "gatewayId": "gw2593",
+      "tx": 34,
+      "ty": 11,
+      "name": "Przeklęty Zamek - wejście północne"
+    },
+    {
+      "toMapId": 3,
+      "gatewayId": "gw16172",
+      "tx": 45,
+      "ty": 64,
+      "name": "Orla Grań"
+    },
+    {
+      "toMapId": 2,
+      "gatewayId": "gw48",
+      "tx": 49,
+      "ty": 1,
+      "name": "Torneg"
+    },
+    {
+      "toMapId": 167,
+      "gatewayId": "gw13621",
+      "tx": 54,
+      "ty": 54,
+      "name": "Przeklęty Zamek - wejście południowe"
+    },
+    {
+      "toMapId": 169,
+      "gatewayId": "gw4667",
+      "tx": 60,
+      "ty": 19,
+      "name": "Przeklęty Zamek - wejście wschodnie"
+    },
+    {
+      "toMapId": 3741,
+      "gatewayId": "gw5450",
+      "tx": 75,
+      "ty": 22,
+      "name": "Przeklęty Zamek p.2"
+    },
+    {
+      "toMapId": 631,
+      "gatewayId": "gw16205",
+      "tx": 78,
+      "ty": 64,
+      "name": "Dziewicza Knieja"
+    },
+    {
+      "toMapId": 7251,
+      "gatewayId": "gw8799",
+      "tx": 96,
+      "ty": 35,
+      "name": "Zatopiony Szczyt"
+    }
+  ],
+  "38": [
+    {
+      "toMapId": 84,
+      "gatewayId": "gw11008",
+      "tx": 1,
+      "ty": 44,
+      "name": "Wichrowe Szczyty"
+    },
+    {
+      "toMapId": 138,
+      "gatewayId": "gw24",
+      "tx": 25,
+      "ty": 1,
+      "name": "Porzucone Pasieki"
+    },
+    {
+      "toMapId": 814,
+      "gatewayId": "gw1573",
+      "tx": 38,
+      "ty": 7,
+      "name": "Lazurytowa Grota p.1"
+    },
+    {
+      "toMapId": 150,
+      "gatewayId": "gw16183",
+      "tx": 56,
+      "ty": 64,
+      "name": "Zapomniany Szlak"
+    },
+    {
+      "toMapId": 8,
+      "gatewayId": "gw10079",
+      "tx": 96,
+      "ty": 40,
+      "name": "Zniszczone Opactwo"
+    }
+  ],
+  "110": [
+    {
+      "toMapId": 4,
+      "gatewayId": "gw12",
+      "tx": 13,
+      "ty": 1,
+      "name": "Przełęcz Łotrzyków"
+    },
+    {
+      "toMapId": 115,
+      "gatewayId": "gw24348",
+      "tx": 29,
+      "ty": 96,
+      "name": "Mokradła"
+    },
+    {
+      "toMapId": 2530,
+      "gatewayId": "gw15923",
+      "tx": 52,
+      "ty": 63,
+      "name": "Kamienna Kryjówka"
+    },
+    {
+      "toMapId": 111,
+      "gatewayId": "gw5183",
+      "tx": 64,
+      "ty": 21,
+      "name": "Ghuli Mogilnik"
+    }
+  ],
+  "111": [
+    {
+      "toMapId": 110,
+      "gatewayId": "gw5120",
+      "tx": 1,
+      "ty": 21,
+      "name": "Dolina Rozbójników"
+    },
+    {
+      "toMapId": 3402,
+      "gatewayId": "gw16151",
+      "tx": 24,
+      "ty": 64,
+      "name": "Polana Ścierwojadów"
+    },
+    {
+      "toMapId": 112,
+      "gatewayId": "gw5407",
+      "tx": 32,
+      "ty": 22,
+      "name": "Zapomniany Grobowiec p.1"
+    },
+    {
+      "toMapId": 2536,
+      "gatewayId": "gw9791",
+      "tx": 64,
+      "ty": 39,
+      "name": "Warczące Osuwiska"
+    }
+  ],
+  "112": [
+    {
+      "toMapId": 111,
+      "gatewayId": "gw7696",
+      "tx": 17,
+      "ty": 31,
+      "name": "Ghuli Mogilnik"
+    },
+    {
+      "toMapId": 702,
+      "gatewayId": "gw2075",
+      "tx": 28,
+      "ty": 9,
+      "name": "Zapomniany Grobowiec p.2"
+    }
+  ],
+  "115": [
+    {
+      "toMapId": 727,
+      "gatewayId": "gw9984",
+      "tx": 1,
+      "ty": 40,
+      "name": "Podmokła Dolina"
+    },
+    {
+      "toMapId": 110,
+      "gatewayId": "gw28",
+      "tx": 29,
+      "ty": 1,
+      "name": "Dolina Rozbójników"
+    },
+    {
+      "toMapId": 244,
+      "gatewayId": "gw16158",
+      "tx": 31,
+      "ty": 64,
+      "name": "Fort Eder"
+    },
+    {
+      "toMapId": 294,
+      "gatewayId": "gw5164",
+      "tx": 45,
+      "ty": 21,
+      "name": "Zajazd pod Zielonym Jednorożcem"
+    },
+    {
+      "toMapId": 3402,
+      "gatewayId": "gw3647",
+      "tx": 64,
+      "ty": 15,
+      "name": "Polana Ścierwojadów"
+    },
+    {
+      "toMapId": 5948,
+      "gatewayId": "gw14399",
+      "tx": 64,
+      "ty": 57,
+      "name": "Skarpiska Tolloków"
+    }
+  ],
+  "150": [
+    {
+      "toMapId": 6535,
+      "gatewayId": "gw13583",
+      "tx": 16,
+      "ty": 54,
+      "name": "Kamienna Jaskinia - sala 1"
+    },
+    {
+      "toMapId": 283,
+      "gatewayId": "gw3352",
+      "tx": 25,
+      "ty": 14,
+      "name": "Twierdza Magów(Wymaga klucza)"
+    },
+    {
+      "toMapId": 38,
+      "gatewayId": "gw55",
+      "tx": 56,
+      "ty": 1,
+      "name": "Uroczysko"
+    },
+    {
+      "toMapId": 6473,
+      "gatewayId": "gw3893",
+      "tx": 54,
+      "ty": 16,
+      "name": "Grota Bezszelestnych Kroków - sala 1"
+    },
+    {
+      "toMapId": 176,
+      "gatewayId": "gw6713",
+      "tx": 58,
+      "ty": 27,
+      "name": "Mokra Grota p.1"
+    },
+    {
+      "toMapId": 140,
+      "gatewayId": "gw16194",
+      "tx": 67,
+      "ty": 64,
+      "name": "Mroczny Przesmyk"
+    },
+    {
+      "toMapId": 152,
+      "gatewayId": "gw2383",
+      "tx": 80,
+      "ty": 10,
+      "name": "Zapomniana Pustelnia(Wymaga klucza)"
+    }
+  ],
+  "244": [
+    {
+      "toMapId": 725,
+      "gatewayId": "gw13056",
+      "tx": 1,
+      "ty": 52,
+      "name": "Las Goblinów"
+    },
+    {
+      "toMapId": 1670,
+      "gatewayId": "gw21511",
+      "tx": 8,
+      "ty": 85,
+      "name": "Pieczara Niepogody p.2 - sala 2"
+    },
+    {
+      "toMapId": 1664,
+      "gatewayId": "gw18954",
+      "tx": 11,
+      "ty": 75,
+      "name": "Pieczara Niepogody p.1"
+    },
+    {
+      "toMapId": 250,
+      "gatewayId": "gw16665",
+      "tx": 26,
+      "ty": 66,
+      "name": "Fortyfikacja p.3"
+    },
+    {
+      "toMapId": 248,
+      "gatewayId": "gw18713",
+      "tx": 26,
+      "ty": 74,
+      "name": "Fortyfikacja p.1"
+    },
+    {
+      "toMapId": 33,
+      "gatewayId": "gw24349",
+      "tx": 30,
+      "ty": 96,
+      "name": "Eder"
+    },
+    {
+      "toMapId": 252,
+      "gatewayId": "gw14363",
+      "tx": 28,
+      "ty": 57,
+      "name": "Fortyfikacja p.5"
+    },
+    {
+      "toMapId": 115,
+      "gatewayId": "gw30",
+      "tx": 31,
+      "ty": 1,
+      "name": "Mokradła"
+    },
+    {
+      "toMapId": 2350,
+      "gatewayId": "gw21308",
+      "tx": 61,
+      "ty": 84,
+      "name": "Ciemnica Szubrawców p.1 - sala 1"
+    },
+    {
+      "toMapId": 2308,
+      "gatewayId": "gw13887",
+      "tx": 64,
+      "ty": 55,
+      "name": "Stary Kupiecki Trakt"
+    }
+  ],
+  "702": [
+    {
+      "toMapId": 703,
+      "gatewayId": "gw13597",
+      "tx": 30,
+      "ty": 54,
+      "name": "Zapomniany Grobowiec p.3"
+    },
+    {
+      "toMapId": 112,
+      "gatewayId": "gw2871",
+      "tx": 56,
+      "ty": 12,
+      "name": "Zapomniany Grobowiec p.1"
+    }
+  ],
+  "703": [
+    {
+      "toMapId": 702,
+      "gatewayId": "gw7456",
+      "tx": 33,
+      "ty": 30,
+      "name": "Zapomniany Grobowiec p.2"
+    },
+    {
+      "toMapId": 704,
+      "gatewayId": "gw8506",
+      "tx": 59,
+      "ty": 34,
+      "name": "Zapomniany Grobowiec p.4"
+    }
+  ],
+  "704": [
+    {
+      "toMapId": 703,
+      "gatewayId": "gw1312",
+      "tx": 33,
+      "ty": 6,
+      "name": "Zapomniany Grobowiec p.3"
+    },
+    {
+      "toMapId": 705,
+      "gatewayId": "gw15916",
+      "tx": 45,
+      "ty": 63,
+      "name": "Zapomniany Grobowiec p.5"
+    }
+  ],
+  "705": [
+    {
+      "toMapId": 704,
+      "gatewayId": "gw776",
+      "tx": 9,
+      "ty": 4,
+      "name": "Zapomniany Grobowiec p.4"
+    }
+  ],
+  "725": [
+    {
+      "toMapId": 727,
+      "gatewayId": "gw43",
+      "tx": 44,
+      "ty": 1,
+      "name": "Podmokła Dolina"
+    },
+    {
+      "toMapId": 244,
+      "gatewayId": "gw13119",
+      "tx": 64,
+      "ty": 52,
+      "name": "Fort Eder"
+    }
+  ],
+  "726": [
+    {
+      "toMapId": 122,
+      "gatewayId": "gw5120",
+      "tx": 1,
+      "ty": 21,
+      "name": "Nawiedzony Jar"
+    },
+    {
+      "toMapId": 727,
+      "gatewayId": "gw16161",
+      "tx": 34,
+      "ty": 64,
+      "name": "Podmokła Dolina"
+    }
+  ],
+  "727": [
+    {
+      "toMapId": 3149,
+      "gatewayId": "gw12558",
+      "tx": 15,
+      "ty": 50,
+      "name": "Jaskinia PogardyPrzejście dostępne do 53 poziomu"
+    },
+    {
+      "toMapId": 726,
+      "gatewayId": "gw33",
+      "tx": 34,
+      "ty": 1,
+      "name": "Morwowe Przejście"
+    },
+    {
+      "toMapId": 725,
+      "gatewayId": "gw16171",
+      "tx": 44,
+      "ty": 64,
+      "name": "Las Goblinów"
+    },
+    {
+      "toMapId": 115,
+      "gatewayId": "gw10047",
+      "tx": 64,
+      "ty": 40,
+      "name": "Mokradła"
+    }
+  ],
+  "2524": [
+    {
+      "toMapId": 4,
+      "gatewayId": "gw12288",
+      "tx": 1,
+      "ty": 49,
+      "name": "Przełęcz Łotrzyków"
+    },
+    {
+      "toMapId": 2531,
+      "gatewayId": "gw10257",
+      "tx": 18,
+      "ty": 41,
+      "name": "Skład Grabieżców"
+    },
+    {
+      "toMapId": 2532,
+      "gatewayId": "gw12823",
+      "tx": 24,
+      "ty": 51,
+      "name": "Schowek na Łupy"
+    },
+    {
+      "toMapId": 2317,
+      "gatewayId": "gw12347",
+      "tx": 60,
+      "ty": 49,
+      "name": "Namiot BandytówPrzejście dostępne do 45 poziomu"
+    }
+  ],
+  "2531": [
+    {
+      "toMapId": 2524,
+      "gatewayId": "gw7698",
+      "tx": 19,
+      "ty": 31,
+      "name": "Pagórki Łupieżców"
+    }
+  ],
+  "2532": [
+    {
+      "toMapId": 2524,
+      "gatewayId": "gw270",
+      "tx": 15,
+      "ty": 2,
+      "name": "Pagórki Łupieżców"
+    }
+  ],
+  "3402": [
+    {
+      "toMapId": 115,
+      "gatewayId": "gw11776",
+      "tx": 1,
+      "ty": 47,
+      "name": "Mokradła"
+    },
+    {
+      "toMapId": 111,
+      "gatewayId": "gw23",
+      "tx": 24,
+      "ty": 1,
+      "name": "Ghuli Mogilnik"
+    },
+    {
+      "toMapId": 5948,
+      "gatewayId": "gw16155",
+      "tx": 28,
+      "ty": 64,
+      "name": "Skarpiska Tolloków"
+    },
+    {
+      "toMapId": 4546,
+      "gatewayId": "gw3903",
+      "tx": 64,
+      "ty": 16,
+      "name": "Legowisko Wilczej Hordy"
+    }
+  ],
+  "-1": [
+    {
+      "toMapId": 727,
+      "tx": -1,
+      "ty": -1
+    },
+    {
+      "toMapId": 725,
+      "tx": -1,
+      "ty": -1
+    },
+    {
+      "toMapId": 4157,
+      "tx": -1,
+      "ty": -1
+    }
+  ]
+}
