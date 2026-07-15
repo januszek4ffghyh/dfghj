@@ -6,7 +6,7 @@ let botProcess = null;
 const CHECK_INTERVAL = 45000;        // co ile sprawdza harmonogram
 const STATUS_LOG_INTERVAL = 90000;   // co 90 sekund ładny status (1.5 min)
 
-const RAW_SCHEDULE = process.env.MAW_SCHEDULE || "06:00-24:00";
+const RAW_SCHEDULE = process.env.MAW_SCHEDULE || "06:00-23:59";
 
 let scheduleSlots = [];
 

@@ -2971,7 +2971,7 @@
         }, 1500);
     }
 
-    // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
     //  INIT
     // ═══════════════════════════════════════════════════════════════
     // ═══════════════════════════════════════════════════════════════
@@ -3001,118 +3001,83 @@
         if (counter) counter.textContent = `${_aiReplyCount} odpowiedzi`;
     }
 
-// ═══════════════════════════════════════════════════════════════
-//  AI AUTO-REPLY – TYLKO PRYWATNE
-// ═══════════════════════════════════════════════════════════════
+    function sendPrivateMessage(nick, text) {
+        try {
+            // KROK 1: Kliknij na nick nadawcy w ostatniej prywatnej wiadomości
+            // żeby przełączyć czat na tryb prywatny z tym graczem
+            const allPrivMsgs = document.querySelectorAll('.chat-PRIVATE-message');
+            let clickedAuthor = false;
 
-function sendPrivateMessage(nick, text) {
-    try {
-        // 1. Spróbuj przez silnik gry (API websocket Margonem)
-        if (window.Engine?.chat?.sendMessage) {
-            console.log(`[AI] Wysyłam przez Engine.chat do ${nick}`);
-            window.Engine.chat.sendMessage(text, 'PRIVATE', nick);
-            return true;
-        }
-
-        // 2. Spróbuj przez _g (starszy endpoint)
-        if (window._g) {
-            console.log(`[AI] Wysyłam przez _g do ${nick}`);
-            window._g(`chat&c=${encodeURIComponent(nick)}&txt=${encodeURIComponent(text)}`);
-            return true;
-        }
-
-        // 3. Kliknięcie na nick nadawcy w ostatniej prywatnej wiadomości żeby otworzyć czat prywatny
-        const privMsgs = document.querySelectorAll('.chat-PRIVATE-message');
-        let clicked = false;
-
-        for (let i = privMsgs.length - 1; i >= 0; i--) {
-            const msg = privMsgs[i];
-            const authorEl = msg.querySelector('.author-section.click-able');
-            if (!authorEl) continue;
-
-            const author = authorEl.textContent.trim().replace(/[«»:\s]+$/g, '');
-            if (author === nick) {
-                authorEl.click();
-                clicked = true;
-                break;
+            // Szukaj od końca (najnowsze wiadomości) — klikamy nick autora
+            for (let i = allPrivMsgs.length - 1; i >= 0; i--) {
+                const msgEl = allPrivMsgs[i];
+                const authorEl = msgEl.querySelector('.author-section.click-able');
+                if (!authorEl) continue;
+                const authorName = (authorEl.textContent || '').replace(/[«»:\s]+$/g, '').trim();
+                if (authorName === nick) {
+                    authorEl.click();
+                    clickedAuthor = true;
+                    break;
+                }
             }
-        }
 
-        if (!clicked) {
-            log('<span class="warn">⚠ AI: Nie udało się kliknąć nicku prywatnej wiadomości</span>');
+            if (!clickedAuthor) {
+                // Fallback: kliknij na receiver jeśli to my pisaliśmy
+                log('<span class="warn">⚠ AI: Nie znaleziono wiadomości od ' + nick + ' do kliknięcia, próbuję _g...</span>');
+                // Ostateczny fallback — użyj komendy _g
+                if (window._g) {
+                    window._g('chat&c=' + encodeURIComponent(nick) + '&txt=' + encodeURIComponent(text));
+                    return true;
+                }
+                return false;
+            }
+
+            // KROK 2: Poczekaj aż czat się przełączy na tryb prywatny, potem wpisz tekst
+            setTimeout(() => {
+                const magicInput = document.querySelector('magic_input.magic-input')
+                    || document.querySelector('.magic-input[contenteditable]')
+                    || document.querySelector('[contenteditable="true"]');
+
+                if (!magicInput) {
+                    log('<span class="warn">⚠ AI: Nie znaleziono magic_input</span>');
+                    // Fallback _g
+                    if (window._g) {
+                        window._g('chat&c=' + encodeURIComponent(nick) + '&txt=' + encodeURIComponent(text));
+                    }
+                    return;
+                }
+
+                // Wyczyść i wpisz tekst
+                magicInput.focus();
+                magicInput.textContent = '';
+                magicInput.textContent = text;
+
+                // Dispatch input event żeby Margonem zauważył zmianę
+                magicInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+                // KROK 3: Wyślij Enterem po krótkim opóźnieniu
+                setTimeout(() => {
+                    magicInput.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                        bubbles: true, cancelable: true
+                    }));
+                    magicInput.dispatchEvent(new KeyboardEvent('keypress', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                        bubbles: true, cancelable: true
+                    }));
+                    magicInput.dispatchEvent(new KeyboardEvent('keyup', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                        bubbles: true, cancelable: true
+                    }));
+                }, 120);
+            }, 300); // 300ms na przełączenie czatu na prywatny
+
+            return true;
+        } catch (e) {
+            log(`<span class="err">✗ AI: Błąd wysyłania: ${e.message}</span>`);
             return false;
         }
-
-        // 4. Czekamy na przełączenie czatu i wpisujemy tekst
-        setTimeout(() => {
-            // Szukamy pola czatu – magic_input Margonem to contenteditable div lub custom element
-            const input = document.querySelector('magic_input') ||
-                         document.querySelector('.magic-input') ||
-                         document.querySelector('[contenteditable="true"]');
-
-            if (!input) {
-                log('<span class="warn">⚠ AI: Nie znaleziono pola tekstowego czatu</span>');
-                return;
-            }
-
-            input.focus();
-
-            // Wyczyść pole
-            input.textContent = '';
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-
-            // Wstaw tekst przez execCommand – jedyna metoda działająca z contenteditable Margonem
-            try {
-                document.execCommand('insertText', false, text);
-            } catch (e) {
-                // Fallback: bezpośrednie ustawienie textContent z ręcznym triggerem
-                input.textContent = text;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-
-            // Wyślij Enterem po chwili (potrzeba by Margonem zobaczył wpisany tekst)
-            setTimeout(() => {
-                // Margonem nasłuchuje keydown z keyCode 13
-                const enterEvent = new KeyboardEvent('keydown', {
-                    key: 'Enter',
-                    code: 'Enter',
-                    keyCode: 13,
-                    which: 13,
-                    bubbles: true,
-                    cancelable: true
-                });
-                input.dispatchEvent(enterEvent);
-
-                // Dodatkowy fallback: sprawdź czy tekst nadal w polu (nie wysłany) i spróbuj kliknąć przycisk Send
-                setTimeout(() => {
-                    if (input.textContent && input.textContent.trim().length > 0) {
-                        const sendBtn = document.querySelector('.chat-send-button') ||
-                                       document.querySelector('[data-action="send"]') ||
-                                       document.querySelector('.chat-submit');
-                        if (sendBtn) {
-                            sendBtn.click();
-                        } else {
-                            // Ostatni resort: symuluj naciśnięcie klawisza
-                            input.dispatchEvent(new KeyboardEvent('keypress', {
-                                key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
-                            }));
-                            input.dispatchEvent(new KeyboardEvent('keyup', {
-                                key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
-                            }));
-                        }
-                    }
-                }, 200);
-            }, 150);
-        }, 400);
-
-        return true;
-    } catch (e) {
-        log(`<span class="err">✗ AI: Błąd wysyłania → ${e.message}</span>`);
-        return false;
     }
-}
-
- 
 
     async function askOpenRouter(nick, message) {
         if (!cfg.aiApiKey) {
@@ -3230,13 +3195,12 @@ function sendPrivateMessage(nick, text) {
                 if (cleanReply.length > 180) cleanReply = cleanReply.slice(0, 177) + '...';
 
                 const sent = sendPrivateMessage(authorNick, cleanReply);
-                _aiReplyCount++;
-                _aiLastReplyTime = Date.now();
-                aiLogChat(`<b>→ ${heroNick}</b>: ${cleanReply}`, 'out');
-                log(`<span class="ok">🤖 → ${authorNick}: ${cleanReply}</span>`);
-                updateAiStatus('Nasłuchuję...', 'on');
-                if (!sent) {
-                    log(`<span class="warn">⚠ AI: Wiadomość przetworzona ale wysyłka niepewna (brak potwierdzenia od silnika gry)</span>`);
+                if (sent) {
+                    _aiReplyCount++;
+                    _aiLastReplyTime = Date.now();
+                    aiLogChat(`<b>→ ${heroNick}</b>: ${cleanReply}`, 'out');
+                    log(`<span class="ok">🤖 → ${authorNick}: ${cleanReply}</span>`);
+                    updateAiStatus('Nasłuchuję...', 'on');
                 }
             }
         }, delay);
@@ -3288,36 +3252,39 @@ function sendPrivateMessage(nick, text) {
                     for (const msgEl of msgs) {
                         // ★ KLUCZOWE: sprawdź czy już przetworzona (oznaczona)
                         if (msgEl.getAttribute('data-ai-done') === '1') continue;
+                        // Pomijaj stare/expired wiadomości
+                        if (msgEl.classList.contains('expired-message')) continue;
 
                         const authorEl = msgEl.querySelector('.author-section');
                         const messageEl = msgEl.querySelector('.message-section');
+                        const receiverEl = msgEl.querySelector('.receiver-section');
 
                         if (!authorEl || !messageEl) continue;
 
-                        const author = (authorEl.textContent || '').replace(/\s+/g, ' ').replace(/[«»:\s]+$/g, '').trim();
+                        const author = (authorEl.textContent || '').replace(/[«»:\s]+$/g, '').trim();
                         const message = (messageEl.textContent || '').trim();
+                        const receiver = (receiverEl?.textContent || '').replace(/[:\s]+$/g, '').trim();
 
                         if (!author || !message) continue;
 
                         const heroNick = getHeroNick();
-                        // Pomiń wiadomości które MY wysłaliśmy (porównanie case-insensitive i trim)
-                        if (author.toLowerCase() === heroNick.toLowerCase()) { 
-                            msgEl.setAttribute('data-ai-done', '1'); 
-                            continue; 
-                        }
+                        // Pomiń wiadomości które MY wysłaliśmy
+                        if (author === heroNick) { msgEl.setAttribute('data-ai-done', '1'); continue; }
+                        // Upewnij się że wiadomość jest DO NAS (lub brak receivera = do nas)
+                        if (receiver && receiver !== heroNick) { msgEl.setAttribute('data-ai-done', '1'); continue; }
 
                         // Deduplikacja na poziomie treści w krótkim oknie czasowym (15 sekund)
                         const now = Date.now();
-                        const isDup = _aiRecentMessages.some(m => 
-                            m.author === author && 
-                            m.message === message && 
+                        const isDup = _aiRecentMessages.some(m =>
+                            m.author === author &&
+                            m.message === message &&
                             (now - m.time) < 15000
                         );
                         if (isDup) {
                             msgEl.setAttribute('data-ai-done', '1');
                             continue;
                         }
-                        
+
                         _aiRecentMessages.push({ author, message, time: now });
                         if (_aiRecentMessages.length > 50) _aiRecentMessages.shift();
 
@@ -3336,24 +3303,27 @@ function sendPrivateMessage(nick, text) {
         // Szuka wiadomości BEZ data-ai-done (nieprzetworzone)
         setInterval(() => {
             if (!cfg.aiEnabled) return;
-            const freshMsgs = chatContainer.querySelectorAll('.chat-PRIVATE-message:not([data-ai-done])');
+            const freshMsgs = chatContainer.querySelectorAll('.chat-PRIVATE-message:not([data-ai-done]):not(.expired-message)');
             freshMsgs.forEach(msgEl => {
                 const authorEl = msgEl.querySelector('.author-section');
                 const messageEl = msgEl.querySelector('.message-section');
+                const receiverEl = msgEl.querySelector('.receiver-section');
                 if (!authorEl || !messageEl) { msgEl.setAttribute('data-ai-done', '1'); return; }
 
-                const author = (authorEl.textContent || '').replace(/\s+/g, ' ').replace(/[«»:\s]+$/g, '').trim();
+                const author = (authorEl.textContent || '').replace(/[«»:\s]+$/g, '').trim();
                 const message = (messageEl.textContent || '').trim();
+                const receiver = (receiverEl?.textContent || '').replace(/[:\s]+$/g, '').trim();
                 if (!author || !message) { msgEl.setAttribute('data-ai-done', '1'); return; }
 
                 const heroNick = getHeroNick();
-                if (author.toLowerCase() === heroNick.toLowerCase()) { msgEl.setAttribute('data-ai-done', '1'); return; }
+                if (author === heroNick) { msgEl.setAttribute('data-ai-done', '1'); return; }
+                if (receiver && receiver !== heroNick) { msgEl.setAttribute('data-ai-done', '1'); return; }
 
                 // Deduplikacja na poziomie treści
                 const now = Date.now();
-                const isDup = _aiRecentMessages.some(m => 
-                    m.author === author && 
-                    m.message === message && 
+                const isDup = _aiRecentMessages.some(m =>
+                    m.author === author &&
+                    m.message === message &&
                     (now - m.time) < 15000
                 );
                 if (isDup) {
