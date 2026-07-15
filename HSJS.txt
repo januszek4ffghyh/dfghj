@@ -1,0 +1,4538 @@
+// ==UserScript==
+// @name         @@Nie tot - Map & Range (ClanHub Zone Mode)
+// @version      5.5-clanhub
+// @description  Mob picker + ClanHub server-backed zone routing
+// @author       xD
+// @match        https://zorza.margonem.pl/
+// @match        https://margonem.pl/
+// @match        https://www.margonem.pl/
+// @grant        none
+// ==/UserScript==
+
+window.xDLocalZone = new (function () {
+    "use strict";
+
+    // =========================================================
+    // STORAGE KEYS
+    // =========================================================
+    const LS_POSITION = "xD_local_position";
+    const SEEN_META_LS = "xD_local_seen_mob_meta_v1_min";
+
+    const WATCHER_STATE_LS = "xD_local_watcher_state_v1";
+    const LS_ACCOUNT_DEPOSIT_GOLD = "xD_local_account_deposit_gold_v1";
+
+    // =========================================================
+    // SERVER STORAGE
+    // =========================================================
+    const SERVER_BASE_URL = "https://clanhub.eu";
+    const SERVER_STATE_URL = `${SERVER_BASE_URL}/api/margonem/state`;
+    const SERVER_HEARTBEAT_URL = `${SERVER_BASE_URL}/api/margonem/heartbeat`;
+    const SERVER_SETTINGS_URL = `${SERVER_BASE_URL}/api/margonem/settings`;
+    const SERVER_NEXT_STEP_URL = `${SERVER_BASE_URL}/api/margonem/next-step`;
+    const SERVER_GO_TO_MAP_COMPLETE_URL = `${SERVER_BASE_URL}/api/margonem/go-to-map/complete`;
+    const SERVER_HUNT_CHECKPOINT_URL = `${SERVER_BASE_URL}/api/margonem/hunt/checkpoint`;
+    const SERVER_MOB_SPAWNS_URL = `${SERVER_BASE_URL}/api/margonem/mob-spawns`;
+    const SERVER_SEEN_PLAYERS_URL = `${SERVER_BASE_URL}/api/margonem/seen-players`;
+    const SERVER_EXTERNAL_DATA_URL = `${SERVER_BASE_URL}/api/margonem/external-data`;
+    const SERVER_BLOCKED_GATEWAY_URL = `${SERVER_BASE_URL}/api/margonem/blocked-gateway`;
+    const SERVER_MOVEMENT_TEST_EVENT_URL = `${SERVER_BASE_URL}/api/margonem/movement-test-event`;
+    // Must match CLANHUB_API_TOKEN on the VPS.
+    const SERVER_API_TOKEN = "replace-with-api-token";
+    const SERVER_SYNC_DEBOUNCE_MS = 350;
+    const SERVER_HEARTBEAT_MS = 1_000;
+    const SERVER_SETTINGS_PULL_MS = 15_000;
+    const MOB_SPAWN_REPORT_MS = 10_000;
+    const SEEN_PLAYERS_REPORT_MS = 10_000;
+    const EXTERNAL_DATA_REPORT_MS = 15_000;
+    const WORKFLOW_TRAVEL_TICK_MS = 350;
+    const WATCHER_EXPIRED_GRACE_MS = 60_000;
+    const WATCHER_GROUP_INVITE_COOLDOWN_MS = 3_000;
+    const WATCHER_GROUP_SCATTER_MS = 8_000;
+    const WATCHER_PATROL_IDLE_TRIGGERS = [50, 100, 150, 250];
+    const WATCHER_PATROL_IDLE_RESET_TRIGGER = 50;
+    const MARGONEM_CHARLIST_HS3 = "UgU";
+
+    let storageVault = {};
+    let storageHydrated = false;
+    let storagePushTimer = 0;
+    let storagePushInFlight = false;
+    let storagePushRequested = false;
+    let storagePushPromise = null;
+    let serverFetchBackoffUntil = 0;
+    let lastServerFetchErrorLogAt = 0;
+    let lastServerFetchSuccessAt = 0;
+    let lastMobSpawnReportAt = 0;
+    let lastSeenPlayersReportAt = 0;
+    let lastExternalDataReportAt = 0;
+    let externalDataInFlight = false;
+    let lastAccountCharacters = [];
+    let lastLootlogTimers = [];
+    let lastAccountSettings = {};
+    let lastWatcherSettings = null;
+    let serverLevelRange = "";
+    let lastWatcherRelogKey = "";
+    let lastWatcherRelogAt = 0;
+    let watcherActiveKey = "";
+    let watcherActiveMinSpawnTime = "";
+    let watcherActiveTargetMap = "";
+    let watcherAttackStarted = false;
+    let watcherGroupInviteLastAt = {};
+    let watcherPatrolTarget = null;
+    let watcherPatrolIdleArmed = true;
+    let watcherPatrolIdleTrigger = chooseWatcherPatrolIdleTrigger();
+    let heartbeatInFlight = false;
+    let movementTestActive = false;
+    let movementTestEventBuffer = [];
+    let movementTestFlushInFlight = false;
+    let lastMovementTestPos = "";
+    let playerPolicies = {};
+    let playerClanPolicies = {};
+    let workflowTestOverride = null;
+
+    function normalizeStorageVault(value) {
+        return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    }
+
+    function getServerHeaders(extra = {}) {
+        const headers = { ...extra };
+        if (SERVER_API_TOKEN) headers.Authorization = `Bearer ${SERVER_API_TOKEN}`;
+        return headers;
+    }
+
+    function markServerFetchFailure(label, error) {
+        const tNow = nowMs();
+        serverFetchBackoffUntil = Math.max(serverFetchBackoffUntil, tNow + 5_000);
+        if (tNow - lastServerFetchErrorLogAt >= 10_000) {
+            lastServerFetchErrorLogAt = tNow;
+            console.error(label, error);
+        }
+        updateServerConnectionStatus(false, String(error?.message || error || label));
+    }
+
+    function markServerFetchSuccess() {
+        lastServerFetchSuccessAt = nowMs();
+        serverFetchBackoffUntil = 0;
+        updateServerConnectionStatus(true);
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 6_000) {
+        if (typeof AbortController !== "function") return fetch(url, options);
+
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } finally {
+            window.clearTimeout(timer);
+        }
+    }
+
+    function updateServerConnectionStatus(connected, message = "") {
+        const dot = document.querySelector("#xD_server_dot");
+        const text = document.querySelector("#xD_server_text");
+        if (dot) {
+            dot.style.background = connected ? "#22c55e" : "#ef4444";
+            dot.style.boxShadow = connected ? "0 0 8px rgba(34,197,94,0.85)" : "0 0 8px rgba(239,68,68,0.85)";
+        }
+        if (text) {
+            text.innerText = connected ? "connected" : "offline";
+            text.style.color = connected ? "#22c55e" : "#ef4444";
+            if (message) text.title = message;
+        }
+    }
+
+    function applyRealtimePayload(data) {
+        if (!data || typeof data !== "object") return;
+        updateServerConnectionStatus(true);
+        movementTestActive = data?.movementTest?.active === true;
+        lastAccountSettings = data?.accountSettings && typeof data.accountSettings === "object" ? data.accountSettings : lastAccountSettings;
+        applyPlayerPolicies(data?.playerPolicies);
+        applyPlayerClanPolicies(data?.playerClanPolicies);
+        applyServerSettings(data?.settings);
+    }
+
+    function movementTestEvent(type, detail = "", extra = {}) {
+        if (!movementTestActive || !window.hero) return;
+        movementTestEventBuffer.push({
+            at: new Date().toISOString(),
+            type,
+            map: String(window.map?.name || ""),
+            x: Number(hero.x) || 0,
+            y: Number(hero.y) || 0,
+            mode: routeMode || "",
+            status: lastStatusText || "",
+            detail: String(detail || ""),
+            mobs: getMovementDebugMobs(),
+            ...extra,
+        });
+        if (movementTestEventBuffer.length >= 20) flushMovementTestEvents();
+    }
+
+    function getMovementDebugMobs() {
+        if (!window.g || !g.npc || !window.map) return [];
+        return Object.entries(g.npc)
+            .map(([id, n]) => {
+                if (!n) return null;
+                const x = Number(n.x);
+                const y = Number(n.y);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+                const wtInfo = classifyMobWt(n.wt);
+                return {
+                    id: String(id),
+                    name: String(n.nick || n.name || ""),
+                    type: Number(n.type) || 0,
+                    wt: Number(n.wt) || 0,
+                    mobType: wtInfo.type,
+                    lvl: Number(n.lvl) || 0,
+                    x,
+                    y,
+                    blocksPath: isNpcBlockingTile(x, y),
+                };
+            })
+            .filter(Boolean)
+            .slice(0, 250);
+    }
+
+    async function flushMovementTestEvents() {
+        if (movementTestFlushInFlight || !movementTestEventBuffer.length) return;
+        const heroSnapshot = getHeroSnapshot();
+        const clientId = getClientId(heroSnapshot);
+        if (!clientId) return;
+        const events = movementTestEventBuffer.splice(0, 100);
+        movementTestFlushInFlight = true;
+        try {
+            const res = await fetch(SERVER_MOVEMENT_TEST_EVENT_URL, {
+                method: "PUT",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify({ clientId, events }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            movementTestActive = data?.active === true;
+        } catch (e) {
+            movementTestEventBuffer = events.concat(movementTestEventBuffer).slice(-200);
+            console.error("ClanHub movement test report failed:", e);
+        } finally {
+            movementTestFlushInFlight = false;
+        }
+    }
+
+    function recordMovementPosition() {
+        if (!movementTestActive || !window.hero || !window.map) return;
+        const key = `${map.name}|${hero.x},${hero.y}`;
+        if (key === lastMovementTestPos) return;
+        lastMovementTestPos = key;
+        movementTestEvent("position", "", {
+            targetX: window.road?.[0]?.x ?? null,
+            targetY: window.road?.[0]?.y ?? null,
+        });
+    }
+
+    function readStorageVault() {
+        return storageVault;
+    }
+
+    async function pullStorageVault() {
+        try {
+            const res = await fetchWithTimeout(SERVER_STATE_URL, {
+                method: "GET",
+                headers: getServerHeaders({ "Accept": "application/json" }),
+                cache: "no-store",
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            storageVault = normalizeStorageVault(data?.state || data);
+            storageHydrated = true;
+            markServerFetchSuccess();
+            return true;
+        } catch (e) {
+            storageHydrated = true;
+            markServerFetchFailure("ClanHub storage pull failed", e);
+            return false;
+        }
+    }
+
+    async function pushStorageVaultNow() {
+        if (storagePushInFlight) {
+            storagePushRequested = true;
+            return storagePushPromise;
+        }
+
+        storagePushInFlight = true;
+        storagePushPromise = (async () => {
+            try {
+                do {
+                    storagePushRequested = false;
+                    const res = await fetchWithTimeout(SERVER_STATE_URL, {
+                        method: "PUT",
+                        headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                        body: JSON.stringify({ state: storageVault }),
+                    });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    markServerFetchSuccess();
+                } while (storagePushRequested);
+            } catch (e) {
+                markServerFetchFailure("ClanHub storage push failed", e);
+            } finally {
+                storagePushInFlight = false;
+                storagePushPromise = null;
+            }
+        })();
+        return storagePushPromise;
+    }
+
+    function scheduleStoragePush() {
+        if (storagePushTimer) window.clearTimeout(storagePushTimer);
+        storagePushTimer = window.setTimeout(() => {
+            storagePushTimer = 0;
+            pushStorageVaultNow();
+        }, SERVER_SYNC_DEBOUNCE_MS);
+    }
+
+    function writeStorageVault(vault) {
+        storageVault = normalizeStorageVault(vault);
+        if (storageHydrated) scheduleStoragePush();
+    }
+
+    function getClientId(heroSnapshot = null) {
+        const source = heroSnapshot || getHeroSnapshot();
+        const account = String(source?.account || "").trim();
+        const heroId = String(source?.id || "").trim();
+        if (!account || account === "0" || !heroId || heroId === "0") return "";
+        return `hero_${account}_${heroId}`;
+    }
+
+    function getHeroSnapshot() {
+        if (!window.hero) return null;
+        const depositGold = getKnownPersonalDepositGold();
+        return {
+            id: String(hero.id || hero.pid || ""),
+            account: String(hero.account || ""),
+            nick: String(hero.nick || (typeof hero.getNick === "function" ? hero.getNick() : "") || ""),
+            lvl: Number(hero.lvl || (typeof hero.getLevel === "function" ? hero.getLevel() : 0)) || 0,
+            prof: String(hero.prof || (typeof hero.getProf === "function" ? hero.getProf() : "") || ""),
+            clan: hero.clan && typeof hero.clan === "object"
+                ? { id: String(hero.clan.id || ""), name: String(hero.clan.name || "") }
+                : null,
+            x: Number(hero.x) || 0,
+            y: Number(hero.y) || 0,
+            hp: Number(hero.hp) || 0,
+            maxhp: Number(hero.maxhp) || 0,
+            bag: hero.bag === null || hero.bag === undefined || hero.bag === "" ? null : Number(hero.bag),
+            freeSlots: window.g?.freeSlots === null || window.g?.freeSlots === undefined || window.g?.freeSlots === "" ? null : Number(window.g.freeSlots),
+            gold: getCurrentGoldValue(),
+            depositGold,
+            isBlessed: Number(hero.is_blessed) === 1,
+            icon: String(hero.icon || hero.img || ""),
+        };
+    }
+
+    function workflowTestOverrideKey() {
+        if (!workflowTestOverride?.active) return "";
+        return [workflowTestOverride.mode || "", workflowTestOverride.startedAt || "", workflowTestOverride.label || ""].join(":");
+    }
+
+    function clearWorkflowTestOverride(reason = "") {
+        if (!workflowTestOverride?.active) return;
+        const label = workflowTestOverride.label || workflowTestOverride.mode || "workflow test";
+        workflowTestOverride = null;
+        if (reason) updateStatus(label + " stopped: " + reason, "#FFCC00");
+    }
+
+    function startWorkflowTestOverride(mode) {
+        const cleanMode = String(mode || "").trim();
+        if (!["sell", "heal", "hp"].includes(cleanMode)) throw new Error("Use sell, heal, or hp");
+        workflowTestOverride = {
+            active: true,
+            mode: cleanMode,
+            label: cleanMode === "sell" ? "fake full backpack" : cleanMode === "heal" ? "fake low heal items" : "fake 1 HP",
+            startedAt: String(Date.now()),
+        };
+        activeServerWorkflow = null;
+        lastWorkflowActionResult = null;
+        lastServerWorkflowDirective = null;
+        updateStatus("Workflow test: " + workflowTestOverride.label, "#e7b54a");
+        refreshResolvedTravelTarget(true);
+        return { ok: true, ...workflowTestOverride };
+    }
+
+    window.ClanHubWorkflowTest = {
+        fullBackpack() { return startWorkflowTestOverride("sell"); },
+        sell() { return startWorkflowTestOverride("sell"); },
+        lowHeals() { return startWorkflowTestOverride("heal"); },
+        buyHeals() { return startWorkflowTestOverride("heal"); },
+        hp1() { return startWorkflowTestOverride("hp"); },
+        stop() { clearWorkflowTestOverride("manual"); return { ok: true, active: false }; },
+        status() { return workflowTestOverride ? { ...workflowTestOverride } : { active: false }; },
+    };
+
+    function classifyMobWt(wt) {
+        const value = Number(wt);
+        if (!Number.isFinite(value)) return { type: "unknown", stable: false };
+        if (value >= 0 && value <= 9) return { type: "normal", stable: true };
+        if (value >= 10 && value <= 19) return { type: "elite", stable: true };
+        if (value >= 20 && value <= 29) return { type: "elite2", stable: false };
+        if (value >= 30 && value <= 79) return { type: "elite3", stable: true };
+        if (value >= 80 && value <= 89) return { type: "heros", stable: false };
+        if (value >= 90 && value <= 99) return { type: "colossus", stable: true };
+        if (value >= 100) return { type: "titan", stable: true };
+        return { type: "unknown", stable: false };
+    }
+
+    const DEFAULT_ZONE_MOB_TYPES = {
+        normal: "attack",
+        elite: "attack",
+        elite2: "avoid",
+        elite3: "avoid",
+        heros: "avoid",
+        colossus: "avoid",
+        titan: "avoid",
+    };
+
+    function normalizeZoneMobTypes(value) {
+        const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const out = { ...DEFAULT_ZONE_MOB_TYPES };
+        for (const key of Object.keys(DEFAULT_ZONE_MOB_TYPES)) {
+            const policy = String(raw[key] || "").trim();
+            if (policy === "attack" || policy === "avoid" || policy === "ignore") out[key] = policy;
+        }
+        return out;
+    }
+
+    function collectMobSpawnSightings() {
+        if (!window.g || !g.npc || !window.map) return [];
+
+        const sightings = [];
+        for (const id in g.npc) {
+            const n = g.npc[id];
+            if (!n || !(n.type === 2 || n.type === 3)) continue;
+
+            const wtInfo = classifyMobWt(n.wt);
+            if (wtInfo.type === "unknown") continue;
+
+            sightings.push({
+                npcId: String(id),
+                map: String(map.name || ""),
+                name: String(n.nick || n.name || ""),
+                lvl: Number(n.lvl) || 0,
+                wt: Number(n.wt) || 0,
+                mobType: wtInfo.type,
+                stableSpawn: !!wtInfo.stable,
+                x: Number(n.x) || 0,
+                y: Number(n.y) || 0,
+            });
+        }
+
+        return sightings;
+    }
+
+    function currentWorld() {
+        const hostMatch = String(window.location.hostname || "").match(/^([a-z0-9_-]+)\.margonem\.pl$/i);
+        return hostMatch ? hostMatch[1].toLowerCase() : "zorza";
+    }
+
+    function normalizeExternalCharacter(raw) {
+        const character = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+        const id = String(character.id || "").replace(/\D/g, "");
+        const world = String(character.world || "").trim().toLowerCase();
+        const nick = String(character.nick || "").trim();
+        if (!id || !world || !nick) return null;
+        return {
+            ...character,
+            id,
+            world,
+            nick,
+            lvl: Number(character.lvl) || 0,
+        };
+    }
+
+    function normalizeExternalTimer(raw) {
+        const timer = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+        const npc = timer.npc && typeof timer.npc === "object" && !Array.isArray(timer.npc) ? timer.npc : {};
+        const name = String(npc.name || timer.name || "").trim();
+        const world = String(timer.world || currentWorld()).trim().toLowerCase();
+        if (!name || !world) return null;
+        const wtInfo = classifyMobWt(npc.wt ?? timer.wt);
+        return {
+            ...timer,
+            world,
+            minSpawnTime: String(timer.minSpawnTime || ""),
+            maxSpawnTime: String(timer.maxSpawnTime || ""),
+            npc: {
+                ...npc,
+                name,
+                lvl: Number(npc.lvl ?? timer.lvl) || 0,
+                wt: Number(npc.wt ?? timer.wt) || 0,
+            },
+            mobType: wtInfo.type === "unknown" ? String(npc.type || timer.mobType || "").toLowerCase() : wtInfo.type,
+        };
+    }
+
+    function parseLevelRangeValue(value) {
+        const raw = String(value || "").trim();
+        if (!raw) return null;
+        const range = raw.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (range) {
+            const min = Number(range[1]);
+            const max = Number(range[2]);
+            return Number.isFinite(min) && Number.isFinite(max) && max >= min ? { min, max } : null;
+        }
+        const lvl = Number(raw);
+        return Number.isFinite(lvl) && lvl > 0 ? { min: lvl, max: lvl } : null;
+    }
+
+    function watcherTimerLevel(timer) {
+        return Number(timer?.npc?.lvl ?? timer?.lvl) || 0;
+    }
+
+    function watcherTimerName(timer) {
+        return String(timer?.npc?.name || timer?.name || "").trim();
+    }
+
+    function watcherTimerType(timer) {
+        const wtInfo = classifyMobWt(timer?.npc?.wt ?? timer?.wt);
+        return wtInfo.type === "unknown" ? String(timer?.npc?.type || timer?.mobType || "").trim().toLowerCase() : wtInfo.type;
+    }
+
+    function watcherTimerLocation(timer) {
+        return String(timer?.npc?.location || timer?.location || "").trim();
+    }
+
+    function watcherTimerKey(timer) {
+        return String(timer?.timerKey || timer?.key || watcherTimerName(timer)).toLowerCase();
+    }
+
+    function watcherTimerMinMs(timer) {
+        return Date.parse(timer?.minSpawnTime || "");
+    }
+
+    function watcherTimerMaxMs(timer) {
+        return Date.parse(timer?.maxSpawnTime || "");
+    }
+
+    function isWatcherTimerDue(timer, now = Date.now()) {
+        const minMs = watcherTimerMinMs(timer);
+        return Number.isFinite(minMs) && minMs <= now;
+    }
+
+    function chooseWatcherTimer(settings, world = currentWorld()) {
+        const now = Date.now();
+        const type = String(settings?.huntType || "elite2").trim().toLowerCase();
+        const selectedMob = String(settings?.huntMob || "").trim().toLowerCase();
+        const candidates = lastLootlogTimers
+            .map(normalizeExternalTimer)
+            .filter(Boolean)
+            .filter((timer) => String(timer.world || "").toLowerCase() === world)
+            .filter((timer) => {
+                const timerType = watcherTimerType(timer);
+                if (type && timerType !== type) return false;
+                if (selectedMob && watcherTimerName(timer).toLowerCase() !== selectedMob) return false;
+                return !!watcherTimerName(timer);
+            })
+            .map((timer) => {
+                const minMs = watcherTimerMinMs(timer);
+                const active = isWatcherTimerDue(timer, now);
+                const nextTime = Number.isFinite(minMs) ? minMs : Number.MAX_SAFE_INTEGER;
+                return { timer, active, nextTime };
+            })
+            .sort((a, b) => Number(b.active) - Number(a.active) || a.nextTime - b.nextTime);
+        return candidates[0]?.timer || null;
+    }
+
+    function parseWatcherClientId(clientId) {
+        const match = String(clientId || "").match(/^hero_(\d+)_(\d+)$/);
+        return match ? { accountId: match[1], heroId: match[2] } : null;
+    }
+
+    function findCharacterByHeroId(heroId) {
+        const id = String(heroId || "").replace(/\D/g, "");
+        return lastAccountCharacters
+            .map(normalizeExternalCharacter)
+            .filter(Boolean)
+            .find((character) => String(character.id || "") === id) || null;
+    }
+
+    function relogToCharacter(character, timer, reason = "") {
+        const targetHeroId = String(character?.id || "").replace(/\D/g, "");
+        const world = String(character?.world || currentWorld()).replace(/[^a-z0-9_-]/gi, "").toLowerCase();
+        if (!targetHeroId || !world) return false;
+        const key = `${targetHeroId}|${watcherTimerName(timer)}|${timer?.minSpawnTime || ""}|${reason}`;
+        const now = nowMs();
+        if (lastWatcherRelogKey === key && now - lastWatcherRelogAt < 30_000) return false;
+        lastWatcherRelogKey = key;
+        lastWatcherRelogAt = now;
+        updateStatus(`Watcher relog: ${character.nick || targetHeroId}${reason ? ` ${reason}` : ""}`, "#66d9ff");
+        document.cookie = `mchar_id=${targetHeroId}; domain=.margonem.pl; path=/`;
+        window.location.href = `https://${world}.margonem.pl`;
+        return true;
+    }
+
+    function clientIdForCharacter(character) {
+        const account = String(getHeroSnapshot()?.account || character?.accountId || character?.account || "").replace(/\D/g, "");
+        const heroId = String(character?.id || "").replace(/\D/g, "");
+        return account && heroId ? `hero_${account}_${heroId}` : "";
+    }
+
+    function readWatcherState() {
+        const state = storageGet(WATCHER_STATE_LS, {});
+        return state && typeof state === "object" && !Array.isArray(state) ? state : {};
+    }
+
+    function writeWatcherState(state) {
+        storageSet(WATCHER_STATE_LS, state && typeof state === "object" ? state : {});
+    }
+
+    function clearWatcherState() {
+        storageRemove(WATCHER_STATE_LS);
+        watcherActiveKey = "";
+        watcherActiveMinSpawnTime = "";
+        watcherActiveTargetMap = "";
+        watcherAttackStarted = false;
+        watcherGroupInviteLastAt = {};
+        clearWatcherPatrol();
+    }
+
+    function chooseFallbackCharacter(returnClientId = "") {
+        const returnHeroId = parseWatcherClientId(returnClientId)?.heroId || "";
+        if (returnHeroId) {
+            const exact = findCharacterByHeroId(returnHeroId);
+            if (exact) return exact;
+        }
+        return lastAccountCharacters
+            .map(normalizeExternalCharacter)
+            .filter(Boolean)
+            .filter((character) => character.world === currentWorld())
+            .find((character) => {
+                const settings = lastAccountSettings[clientIdForCharacter(character)];
+                if (!settings || settings.enabled !== true || settings.running !== true) return false;
+                return settings.mode === "zone" || settings.mode === "hunt";
+            }) || null;
+    }
+
+    function watcherTaskFromSettings(clientId, settings) {
+        const identity = parseWatcherClientId(clientId);
+        if (!identity || !settings || settings.enabled !== true || settings.running !== true || settings.mode !== "watcher") return null;
+        const character = findCharacterByHeroId(identity.heroId);
+        if (!character) return null;
+        const timer = chooseWatcherTimer(settings, character.world);
+        return {
+            clientId,
+            heroId: identity.heroId,
+            character,
+            settings,
+            timer,
+        };
+    }
+
+    function allWatcherTasks() {
+        return Object.entries(lastAccountSettings || {})
+            .map(([clientId, settings]) => watcherTaskFromSettings(clientId, settings))
+            .filter(Boolean);
+    }
+
+    function currentClientId() {
+        return getClientId(getHeroSnapshot());
+    }
+
+    function isReturnableCurrentMode() {
+        const settings = lastAccountSettings[currentClientId()] || lastWatcherSettings;
+        return !!settings && settings.enabled === true && settings.running === true && (settings.mode === "zone" || settings.mode === "hunt");
+    }
+
+    function findNextDueWatcherTask(tasks, excludeClientId = "", now = Date.now()) {
+        return (Array.isArray(tasks) ? tasks : [])
+            .filter((task) => task?.timer && String(task.clientId || "") !== String(excludeClientId || ""))
+            .map((task) => ({
+                task,
+                minMs: watcherTimerMinMs(task.timer),
+                maxMs: watcherTimerMaxMs(task.timer),
+            }))
+            .filter((entry) => Number.isFinite(entry.minMs) && entry.minMs <= now)
+            .sort((a, b) => {
+                const aMax = Number.isFinite(a.maxMs) ? a.maxMs : Number.MAX_SAFE_INTEGER;
+                const bMax = Number.isFinite(b.maxMs) ? b.maxMs : Number.MAX_SAFE_INTEGER;
+                return a.minMs - b.minMs || aMax - bMax || String(a.task.clientId || "").localeCompare(String(b.task.clientId || ""));
+            })[0]?.task || null;
+    }
+
+    function watcherFinishNeedsScatter(reason) {
+        const text = String(reason || "").toLowerCase();
+        return text.includes("killed") || text.includes("visible done");
+    }
+
+    function startWatcherGroupScatter(reason, state = readWatcherState()) {
+        const now = Date.now();
+        if (window.g && g.party && typeof g.party === "object") {
+            if (isCurrentHeroPartyLeader()) disbandCurrentWatcherGroup("Watcher group disband");
+            else leaveCurrentWatcherGroup("Watcher group leave");
+        }
+
+        watcherAttackStarted = false;
+        B = undefined;
+        A = false;
+        z = false;
+        window.road = [];
+        writeWatcherState({
+            ...state,
+            cleanupAfterKill: true,
+            cleanupReason: String(reason || "killed").slice(0, 120),
+            groupCleanedAt: now,
+            attackStarted: false,
+            updatedAt: new Date().toISOString(),
+        });
+        refreshResolvedTravelTarget(true);
+        moveToWatcherWaitSpot("Watcher scatter");
+        return true;
+    }
+
+    function handleWatcherScatterState(task, state = readWatcherState(), tasks = allWatcherTasks()) {
+        if (!state.cleanupAfterKill) return false;
+        const reason = String(state.cleanupReason || "killed");
+        const targetName = task?.timer ? watcherTimerName(task.timer) : String(task?.settings?.huntMob || huntMobTarget || "").trim();
+        const targetType = task?.timer ? watcherTimerType(task.timer) : String(task?.settings?.huntType || huntTypeTarget || "elite2").trim().toLowerCase();
+        routeMode = "watcher";
+        huntMobTarget = targetName;
+        huntTypeTarget = targetType;
+        watcherAttackStarted = false;
+        refreshResolvedTravelTarget(false);
+
+        const cleanedAt = Number(state.groupCleanedAt) || 0;
+        if (Date.now() - cleanedAt < WATCHER_GROUP_SCATTER_MS) {
+            moveToWatcherWaitSpot("Watcher scatter");
+            return true;
+        }
+
+        return finishWatcherTask(reason, { ...state, cleanupAfterKill: false, scatterDone: true }, tasks);
+    }
+
+    function finishWatcherTask(reason, state = readWatcherState(), tasks = allWatcherTasks()) {
+        if (watcherFinishNeedsScatter(reason) && !state.scatterDone && !state.cleanupAfterKill) {
+            return startWatcherGroupScatter(reason, state);
+        }
+
+        const activeClientId = String(state.watcherClientId || "");
+        watcherAttackStarted = false;
+        clearWatcherState();
+        resetServerRouteState();
+        clearMovementState();
+        huntMobTarget = "";
+        huntTypeTarget = "";
+        huntSpawnKey = "";
+
+        const nextTask = findNextDueWatcherTask(tasks, activeClientId);
+        if (nextTask) {
+            updateStatus(`Watcher next: ${watcherTimerName(nextTask.timer)}`, "#66d9ff");
+            return runWatcherTask(nextTask, { returnClientId: state.returnClientId || "" }, tasks);
+        }
+
+        const fallback = chooseFallbackCharacter(state.returnClientId || "");
+        if (fallback && String(getHeroSnapshot()?.id || "") !== String(fallback.id || "")) {
+            updateStatus(`Watcher done: ${reason}`, "#66d9ff");
+            return relogToCharacter(fallback, { name: reason, minSpawnTime: `fallback:${Date.now()}` }, "back");
+        }
+        updateStatus(`Watcher done: ${reason}`, "#66d9ff");
+        return true;
+    }
+
+    function findVisibleWatcherMob(name, type = "elite2") {
+        const target = String(name || "").trim().toLowerCase();
+        if (!target || !window.g || !g.npc) return null;
+        for (const id in g.npc) {
+            const n = g.npc[id];
+            if (!n || !(n.type === 2 || n.type === 3)) continue;
+            const npcName = String(n.nick || n.name || "").trim().toLowerCase();
+            if (npcName !== target) continue;
+            const wtInfo = classifyMobWt(n.wt);
+            if (type && wtInfo.type !== type) continue;
+            return { id: String(id), npc: n };
+        }
+        return null;
+    }
+
+    function visibleMobWaitReady(task) {
+        const targetName = String(task?.settings?.huntMob || "").trim();
+        const targetType = String(task?.settings?.huntType || "elite2").trim().toLowerCase();
+        const visible = findVisibleWatcherMob(targetName, targetType);
+        if (!visible) {
+            const state = readWatcherState();
+            if (state.visibleMobName === targetName) {
+                delete state.visibleMobName;
+                delete state.visibleMobFirstSeenAt;
+                writeWatcherState(state);
+            }
+            return false;
+        }
+
+        const state = readWatcherState();
+        const now = nowMs();
+        if (state.visibleMobName !== targetName || !Number.isFinite(Number(state.visibleMobFirstSeenAt))) {
+            writeWatcherState({ ...state, visibleMobName: targetName, visibleMobFirstSeenAt: now });
+            updateStatus(`Watcher sees ${targetName}: wait 45s`, "#e7b54a");
+            return false;
+        }
+
+        const age = now - Number(state.visibleMobFirstSeenAt);
+        if (age < 45_000) {
+            updateStatus(`Watcher sees ${targetName}: wait ${Math.ceil((45_000 - age) / 1000)}s`, "#e7b54a");
+            return false;
+        }
+        return true;
+    }
+
+    function runWatcherTask(task, state = readWatcherState(), tasks = allWatcherTasks()) {
+        const timer = task.timer;
+        const character = task.character;
+        const timerKey = watcherTimerKey(timer);
+        const minSpawnTime = String(timer.minSpawnTime || "");
+        const attackStarted = state.attackStarted === true || watcherAttackStarted;
+        if (state.active && String(state.watcherClientId || "") === String(task.clientId || "") && state.minSpawnTime && minSpawnTime && state.minSpawnTime !== minSpawnTime) {
+            return finishWatcherTask(`killed: ${watcherTimerName(timer)}`, state, tasks);
+        }
+
+        const now = Date.now();
+        const minMs = watcherTimerMinMs(timer);
+        const maxMs = watcherTimerMaxMs(timer);
+        const attackAt = minMs;
+        const targetMap = watcherTimerLocation(timer);
+
+        const heroSnapshot = getHeroSnapshot();
+        if (String(heroSnapshot?.id || "") !== String(character.id || "")) {
+            writeWatcherState({
+                active: true,
+                watcherClientId: task.clientId,
+                returnClientId: state.returnClientId || (isReturnableCurrentMode() ? currentClientId() : ""),
+                timerKey,
+                minSpawnTime,
+                targetMap,
+                attackStarted: false,
+                updatedAt: new Date().toISOString(),
+            });
+            return relogToCharacter(character, timer, "to-watch");
+        }
+
+        watcherActiveKey = timerKey;
+        watcherActiveMinSpawnTime = minSpawnTime;
+        const targetName = watcherTimerName(timer);
+        const targetType = watcherTimerType(timer);
+        const previousTargetMap = watcherActiveTargetMap;
+        watcherActiveTargetMap = targetMap;
+        if (attackStarted && Number.isFinite(maxMs) && now >= maxMs + WATCHER_EXPIRED_GRACE_MS && !findVisibleWatcherMob(targetName, targetType)) {
+            return finishWatcherTask(`timer expired: ${targetName}`, state, tasks);
+        }
+
+        const changed = routeMode !== "watcher" || huntMobTarget !== targetName || huntTypeTarget !== targetType || previousTargetMap !== targetMap;
+        routeMode = "watcher";
+        huntMobTarget = targetName;
+        huntTypeTarget = targetType;
+        if (changed) {
+            huntSpawnKey = "";
+            resetServerRouteState();
+            clearMovementState();
+        }
+        if (handleWatcherScatterState(task, state, tasks)) return true;
+        const waitingForAttack = Number.isFinite(attackAt) && now < attackAt;
+
+        writeWatcherState({
+            ...state,
+            active: true,
+            watcherClientId: task.clientId,
+            timerKey,
+            minSpawnTime,
+            targetMap,
+            attackStarted: waitingForAttack ? false : watcherAttackStarted || state.attackStarted === true,
+            updatedAt: new Date().toISOString(),
+        });
+
+        if (waitingForAttack) {
+            huntSpawnKey = "";
+            watcherAttackStarted = false;
+            updateStatus(`Watcher waits min: ${watcherTimerName(timer)}`, "#e7b54a");
+            refreshResolvedTravelTarget(true);
+            updateRouteInfo();
+            return true;
+        }
+
+        watcherAttackStarted = true;
+        writeWatcherState({ ...readWatcherState(), attackStarted: true, updatedAt: new Date().toISOString() });
+        updateStatus(`Watcher hunt: ${targetName}`, "#66d9ff");
+        updateRouteInfo();
+        return true;
+    }
+
+    function applyWatcherAutomation() {
+        const state = readWatcherState();
+        const tasks = allWatcherTasks();
+        const currentHeroId = String(getHeroSnapshot()?.id || "");
+        const currentTask = tasks.find((task) => task.heroId === currentHeroId);
+
+        if (state.active && state.watcherClientId) {
+            const activeTask = tasks.find((task) => task.clientId === state.watcherClientId);
+            if (activeTask && state.cleanupAfterKill) {
+                return handleWatcherScatterState(activeTask, state, tasks);
+            }
+            if (activeTask && String(state.timerKey || "").startsWith("visible:") && state.attackStarted === true) {
+                if (handleWatcherScatterState(activeTask, state, tasks)) return true;
+                const targetName = String(activeTask.settings.huntMob || "").trim();
+                const targetType = String(activeTask.settings.huntType || "elite2").trim().toLowerCase();
+                if (activeTask.timer) {
+                    const nextMinSpawnTime = String(activeTask.timer.minSpawnTime || "");
+                    return finishWatcherTask(
+                        nextMinSpawnTime ? `killed: ${watcherTimerName(activeTask.timer)}` : `new timer: ${watcherTimerName(activeTask.timer)}`,
+                        state,
+                        tasks,
+                    );
+                }
+                if (!findVisibleWatcherMob(targetName, targetType)) {
+                    return finishWatcherTask(`visible done: ${targetName}`, state, tasks);
+                }
+                updateStatus(`Watcher hunt visible: ${targetName}`, "#66d9ff");
+                return true;
+            }
+            if (activeTask?.timer) return runWatcherTask(activeTask, state, tasks);
+            if (activeTask) {
+                return finishWatcherTask(`timer missing: ${activeTask.settings?.huntMob || "watcher"}`, state, tasks);
+            }
+            return finishWatcherTask("watcher disabled", state, tasks);
+        }
+
+        if (currentTask && !currentTask.timer && visibleMobWaitReady(currentTask)) {
+            const targetName = String(currentTask.settings.huntMob || "").trim();
+            const targetType = String(currentTask.settings.huntType || "elite2").trim().toLowerCase();
+            routeMode = "watcher";
+            huntMobTarget = targetName;
+            huntTypeTarget = targetType;
+            watcherAttackStarted = true;
+            writeWatcherState({
+                active: true,
+                watcherClientId: currentTask.clientId,
+                returnClientId: state.returnClientId || (isReturnableCurrentMode() ? currentClientId() : ""),
+                timerKey: `visible:${targetName.toLowerCase()}`,
+                minSpawnTime: "",
+                attackStarted: true,
+                updatedAt: new Date().toISOString(),
+            });
+            updateStatus(`Watcher hunt visible: ${targetName}`, "#66d9ff");
+            return true;
+        }
+
+        const dueTask = findNextDueWatcherTask(tasks);
+        if (dueTask) return runWatcherTask(dueTask, state, tasks);
+
+        if (currentTask?.timer) return runWatcherTask(currentTask, state, tasks);
+        return false;
+    }
+
+    async function fetchJson(url) {
+        const res = await fetch(url, {
+            method: "GET",
+            headers: { "Accept": "application/json" },
+            cache: "no-store",
+            credentials: "include",
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    }
+
+    async function reportExternalData(tNow = nowMs(), force = false) {
+        if (externalDataInFlight || (!force && tNow - lastExternalDataReportAt < EXTERNAL_DATA_REPORT_MS)) return;
+        lastExternalDataReportAt = tNow;
+        const heroSnapshot = getHeroSnapshot();
+        const clientId = getClientId(heroSnapshot);
+        const world = currentWorld();
+        externalDataInFlight = true;
+
+        try {
+            const [charactersResult, timersResult] = await Promise.allSettled([
+                fetchJson(`https://public-api.margonem.pl/account/charlist?hs3=${encodeURIComponent(MARGONEM_CHARLIST_HS3)}`),
+                fetchJson(`https://api.lootlog.pl/timers?world=${encodeURIComponent(world)}`),
+            ]);
+
+            if (charactersResult.status === "fulfilled" && Array.isArray(charactersResult.value)) {
+                lastAccountCharacters = charactersResult.value;
+            }
+            if (timersResult.status === "fulfilled" && Array.isArray(timersResult.value)) {
+                lastLootlogTimers = timersResult.value;
+            }
+
+            const payload = {
+                ...(clientId ? { clientId } : {}),
+                world,
+                accountCharacters: lastAccountCharacters,
+                lootlogTimers: lastLootlogTimers,
+            };
+
+            const res = await fetch(SERVER_EXTERNAL_DATA_URL, {
+                method: "PUT",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await res.json().catch(() => null);
+            applyWatcherAutomation();
+        } catch (e) {
+            console.error("ClanHub external data report failed:", e);
+        } finally {
+            externalDataInFlight = false;
+        }
+    }
+
+    async function reportMobSpawns(tNow = nowMs()) {
+        if (tNow - lastMobSpawnReportAt < MOB_SPAWN_REPORT_MS) return;
+        lastMobSpawnReportAt = tNow;
+
+        const sightings = collectMobSpawnSightings();
+        if (!sightings.length) return;
+        const clientId = getClientId();
+
+        try {
+            const res = await fetch(SERVER_MOB_SPAWNS_URL, {
+                method: "PUT",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify({
+                    ...(clientId ? { clientId } : {}),
+                    map: String(window.map?.name || ""),
+                    sightings,
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await res.json().catch(() => null);
+        } catch (e) {
+            console.error("ClanHub mob spawn report failed:", e);
+        }
+    }
+
+    function collectSeenPlayers() {
+        if (!window.g || !g.other || typeof g.other !== "object") return [];
+        return Object.values(g.other)
+            .filter((player) => player && typeof player === "object")
+            .map((player) => ({
+                id: String(player.id || "").replace(/\D/g, ""),
+                account: String(player.account || "").replace(/\D/g, ""),
+                nick: String(player.nick || ""),
+                lvl: Number(player.lvl || player.oplvl) || 0,
+                prof: String(player.prof || ""),
+                relation: Number.isFinite(Number(player.relation)) ? Number(player.relation) : null,
+                clan: player.clan && typeof player.clan === "object"
+                    ? { id: String(player.clan.id || ""), name: String(player.clan.name || "") }
+                    : null,
+                x: Number(player.x),
+                y: Number(player.y),
+            }))
+            .filter((player) => player.id && Number.isFinite(player.x) && Number.isFinite(player.y));
+    }
+
+    async function reportSeenPlayers(tNow = nowMs()) {
+        if (tNow - lastSeenPlayersReportAt < SEEN_PLAYERS_REPORT_MS) return;
+        lastSeenPlayersReportAt = tNow;
+        const players = collectSeenPlayers();
+        if (!players.length || !window.map?.name) return;
+        const clientId = getClientId();
+
+        try {
+            const res = await fetch(SERVER_SEEN_PLAYERS_URL, {
+                method: "PUT",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify({
+                    ...(clientId ? { clientId } : {}),
+                    map: String(window.map.name || ""),
+                    players,
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await res.json().catch(() => null);
+        } catch (e) {
+            console.error("ClanHub seen players report failed:", e);
+        }
+    }
+
+    async function sendHeartbeat() {
+        if (heartbeatInFlight) return;
+        const heroSnapshot = getHeroSnapshot();
+        if (!heroSnapshot) return;
+        const clientId = getClientId(heroSnapshot);
+        if (!clientId) return;
+
+        const payload = {
+            clientId,
+            hero: heroSnapshot,
+            map: {
+                name: String(window.map?.name || ""),
+                x: Number(window.map?.x) || 0,
+                y: Number(window.map?.y) || 0,
+            },
+            script: {
+                running: !!RUNNING,
+                mode: routeMode,
+                goToMap: goToMapTarget || "",
+                goToMapX: goToTargetX,
+                goToMapY: goToTargetY,
+                huntType: huntTypeTarget || "",
+                huntMob: huntMobTarget || "",
+                huntSpawnKey: huntSpawnKey || "",
+                resolvedTarget: resolvedTarget || "",
+                resolvedNextMap: resolvedNextMap || "",
+                status: lastStatusText || "",
+            },
+        };
+
+        heartbeatInFlight = true;
+        try {
+            const res = await fetchWithTimeout(SERVER_HEARTBEAT_URL, {
+                method: "PUT",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify(payload),
+            }, 4_000);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            markServerFetchSuccess();
+            applyRealtimePayload(data);
+        } catch (e) {
+            markServerFetchFailure("ClanHub heartbeat failed", e);
+        } finally {
+            heartbeatInFlight = false;
+        }
+    }
+
+    function applyPlayerPolicies(policies) {
+        playerPolicies = policies && typeof policies === "object" && !Array.isArray(policies) ? policies : {};
+    }
+
+    function applyPlayerClanPolicies(policies) {
+        playerClanPolicies = policies && typeof policies === "object" && !Array.isArray(policies) ? policies : {};
+    }
+
+    function normalizeServerSettings(settings) {
+        return settings && typeof settings === "object" && settings.enabled ? settings : null;
+    }
+
+    async function pullServerSettings() {
+        const heroSnapshot = getHeroSnapshot();
+        if (!heroSnapshot) return;
+        const clientId = getClientId(heroSnapshot);
+        if (!clientId) return;
+
+        try {
+            const url = `${SERVER_SETTINGS_URL}?clientId=${encodeURIComponent(clientId)}&heroId=${encodeURIComponent(heroSnapshot.id)}&account=${encodeURIComponent(heroSnapshot.account)}`;
+            const res = await fetchWithTimeout(url, {
+                method: "GET",
+                headers: getServerHeaders({ "Accept": "application/json" }),
+                cache: "no-store",
+            }, 5_000);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            markServerFetchSuccess();
+            applyRealtimePayload(data);
+        } catch (e) {
+            markServerFetchFailure("ClanHub settings pull failed", e);
+        }
+    }
+
+    function applyServerSettings(settings) {
+        const next = normalizeServerSettings(settings);
+        if (!next) return;
+        const rawMode = String(next.mode || "zone");
+        const nextMode = rawMode === "goToMap" || rawMode === "hunt" || rawMode === "explorer" || rawMode === "watcher" ? rawMode : "zone";
+        const nextGoToMap = String(next.goToMap || "").trim();
+        const nextHuntType = String(next.huntType || "").trim();
+        const nextHuntMob = String(next.huntMob || "").trim();
+        const nextExplorerTarget = String(next.explorerTarget || "").trim();
+        const nextZoneMobTypes = normalizeZoneMobTypes(next.zoneMobTypes);
+        const hasGoToX = next.goToMapX !== null && next.goToMapX !== undefined && next.goToMapX !== "";
+        const hasGoToY = next.goToMapY !== null && next.goToMapY !== undefined && next.goToMapY !== "";
+        const nextGoToX = Number(next.goToMapX);
+        const nextGoToY = Number(next.goToMapY);
+        const normalizedGoToX = hasGoToX && Number.isFinite(nextGoToX) ? Math.trunc(nextGoToX) : null;
+        const normalizedGoToY = hasGoToY && Number.isFinite(nextGoToY) ? Math.trunc(nextGoToY) : null;
+        const zoneMobTypesChanged = JSON.stringify(zoneMobTypes) !== JSON.stringify(nextZoneMobTypes);
+        const routeChanged =
+            lastWatcherSettings?.mode !== nextMode ||
+            (nextMode === "watcher" && String(lastWatcherSettings?.huntMob || "") !== nextHuntMob) ||
+            (nextMode === "watcher" && String(lastWatcherSettings?.huntType || "") !== nextHuntType) ||
+            (nextMode === "watcher" && String(lastWatcherSettings?.levelRange || "") !== String(next.levelRange || "").trim()) ||
+            (nextMode !== "watcher" && routeMode !== nextMode) ||
+            goToMapTarget !== nextGoToMap ||
+            (nextMode !== "watcher" && huntTypeTarget !== nextHuntType) ||
+            (nextMode !== "watcher" && huntMobTarget !== nextHuntMob) ||
+            explorerTarget !== nextExplorerTarget ||
+            zoneMobTypesChanged ||
+            goToTargetX !== normalizedGoToX ||
+            goToTargetY !== normalizedGoToY;
+
+        if (routeChanged) {
+            routeMode = nextMode;
+            goToMapTarget = nextGoToMap;
+            huntTypeTarget = nextHuntType;
+            huntMobTarget = nextHuntMob;
+            explorerTarget = nextExplorerTarget;
+            zoneMobTypes = nextZoneMobTypes;
+            huntSpawnKey = "";
+            goToTargetX = normalizedGoToX;
+            goToTargetY = normalizedGoToY;
+            watcherActiveKey = "";
+            watcherActiveMinSpawnTime = "";
+            watcherActiveTargetMap = "";
+            watcherAttackStarted = false;
+            watcherGroupInviteLastAt = {};
+            resetServerRouteState();
+            clearMovementState();
+        }
+
+        lastWatcherSettings = {
+            ...next,
+            mode: nextMode,
+            levelRange: String(next.levelRange || "").trim(),
+            huntType: nextHuntType,
+            huntMob: nextHuntMob,
+        };
+
+        if (typeof next.running === "boolean" && RUNNING !== next.running) {
+            setRunning(next.running, next.running ? "Started from ClanHub" : "Stopped from ClanHub");
+        }
+
+        const levelRange = String(next.levelRange || "").trim();
+        if (serverLevelRange !== levelRange) {
+            serverLevelRange = levelRange;
+            zoneTravelTargetMap = "";
+            lastLvlFilter = "__changed__";
+            clearMovementState();
+            resetSeenMeta();
+            seenMobMeta = loadSeenMeta();
+            resetPickerState();
+        }
+
+        const watcherHandled = applyWatcherAutomation();
+        if (routeMode === "goToMap" || routeMode === "hunt" || routeMode === "explorer") {
+            updateRouteInfo();
+            if (watcherHandled) return;
+        }
+    }
+
+    function storageGet(key, fallback = "") {
+        const vault = readStorageVault();
+        if (Object.prototype.hasOwnProperty.call(vault, key)) {
+            return vault[key];
+        }
+        return fallback;
+    }
+
+    function storageSet(key, value) {
+        const vault = readStorageVault();
+        vault[key] = value;
+        writeStorageVault(vault);
+    }
+
+    function storageRemove(key) {
+        const vault = readStorageVault();
+        delete vault[key];
+        writeStorageVault(vault);
+    }
+
+    function storageGetJson(key, fallback = {}) {
+        const value = storageGet(key, fallback);
+        return value && typeof value === "object" ? value : fallback;
+    }
+
+    function storageSetJson(key, value) {
+        storageSet(key, value || {});
+    }
+
+    let persistentDB = {};
+    let lastMapName = "";
+    let lastMapChangedAt = 0;
+    let RUNNING = false;
+    let lastLvlFilter = "";
+
+    let v = this,
+        z = false,
+        A = false,
+        B,
+        F = false,
+        G = false,
+        I = {};
+
+    let seenMobMeta = {};
+
+    // perf
+    const DB_SYNC_THROTTLE_MS = 450;
+    const PICK_THROTTLE_MS = 300;
+    const BFS_CACHE_MS = 1200;
+    const MAP_SETTLE_AFTER_CHANGE_MS = 900;
+    const SEEN_META_SAVE_THROTTLE_MS = 5000;
+    const LOCAL_MAP_SCAN_INTERVAL_MS = 10_000;
+    const MAX_EVAL = 40;
+    const UNREACHABLE_IGNORE_MS = 25_000;
+    const PATH_BUILD_COOLDOWN_MS = 150;
+    const HIGH_LEVEL_MOB_AVOID_RADIUS = 3;
+
+    // picker
+    const UNREACHABLE_DIST = 999999;
+    const IGNORE_RECOVERY_COOLDOWN_MS = 5000;
+    const SOFT_FAIL_PENALTY_STEP = 1.5;
+    const SOFT_FAIL_PENALTY_CAP = 6;
+    const CURRENT_TARGET_BIAS = 10;
+    // movement memory
+    let lastHeroX = null, lastHeroY = null, lastMoveDir = null;
+    let backpackFullNotified = false;
+    let blessingNotifySent = false;
+
+    // bfs
+    let bfsCache = null;
+    let lastBfsAt = 0;
+
+    // region map
+    let regionCache = null;
+    let regionKey = null;
+
+    // unstuck
+    let stuckSince = 0;
+    let lastPosX = null, lastPosY = null;
+    let lastUnstuckTry = 0;
+    let targetStuckTries = 0;
+
+    // failure model
+    let unreachableCount = {};
+    let failurePenalty = {};
+    let lastIgnoreRecoveryAt = 0;
+    let lastPathBuildAt = 0;
+    let lastStoredPathMap = "";
+    let lastStoredPathRequestX = null;
+    let lastStoredPathRequestY = null;
+    let lastStoredPathRegion = -1;
+    let lastSeenMetaSaveAt = 0;
+    // hooks
+    let parseInputHooked = false;
+    let uiInitialized = false;
+    let bootStarted = false;
+
+    // gateway enter lock
+    let pendingGatewayKey = "";
+    let pendingGatewayUntil = 0;
+    let pendingGatewayFromMap = "";
+    let pendingGatewayRequiresKey = false;
+    let lastGatewayUseAt = 0;
+    let gatewayStandingKey = "";
+    let gatewayStandingSince = 0;
+    let blockedGatewayUntil = {};
+    let gatewayFailedAttempts = {};
+
+    const GATEWAY_USE_COOLDOWN_MS = 1200;
+    const PENDING_GATEWAY_MS = 2500;
+    const GATEWAY_STANDING_BLOCK_MS = 6500;
+    const KEY_GATEWAY_MAX_FAILED_ATTEMPTS = 1;
+    const GATEWAY_MAX_FAILED_ATTEMPTS = 3;
+    const BLOCKED_GATEWAY_MS = 15 * 1000;
+
+    // =========================================================
+    const NEXT_STEP_REFRESH_MS = 1500;
+    const STATUS_EVENTS_MAX = 30;
+    const LOCAL_MAPS_DB_LS = "xD_local_zone_maps_db_v1";
+    const LOCAL_ZONE_VISIT_STATE_LS = "xD_local_zone_visit_state_v1";
+    const SELL_SCROLL_NAME = "Zwój teleportacji na Kwieciste Przejście";
+    const SELL_SCROLL_NAME_ALIASES = [SELL_SCROLL_NAME, "Zwￃﾳj teleportacji na Kwieciste Przejￅﾛcie"];
+    const SELL_TELEPORT_SAFE_MAP_IDS = [344, 353];
+    const SELL_ENTRY_MAP = "Kwieciste Przejście";
+    const SELL_TARGET_MAP = "Dom Tunii";
+    const SELL_NPC_ID = 16366;
+    const SELL_NPC_X = 8;
+    const SELL_NPC_Y = 9;
+    const ITHAN_SELL_TARGET_MAP = "Ithan";
+    const ITHAN_SELL_NPC_ID = 66;
+    const ITHAN_SELL_NPC_X = 38;
+    const ITHAN_SELL_NPC_Y = 51;
+    const ITHAN_SELL_MAX_LEVEL = 63;
+    const SELL_ACTION_GAP_MS = 650;
+    const SELL_GOLD_SETTLE_MS = 900;
+    const SELL_MAX_CYCLES = 40;
+    const SELL_TELEPORT_MIN_USES = 5;
+    const SELL_TELEPORT_BARTER_ITEM_ID = "item1471";
+    const HEAL_TARGET_MAP = "Ithan";
+    const HEAL_NPC_ID = 1;
+    const HEAL_X = 17;
+    const HEAL_Y = 15;
+    const HEAL_ACTION_GAP_MS = 650;
+    const HEAL_BUY_SETTLE_MS = 900;
+    const HEAL_LOW_ITEM_ID = "item41880";
+    const HEAL_LOW_ITEM_NAME = "Piramidka odnowy";
+    const HEAL_HIGH_ITEM_ID = "item41882";
+    const HEAL_HIGH_ITEM_NAME = "Łyk Odrodzenia";
+    const HEAL_HIGH_ITEM_NAME_ALIASES = [HEAL_HIGH_ITEM_NAME, "ￅﾁyk Odrodzenia"];
+    const HEAL_MIN_USES = 5;
+    const HEAL_TARGET_USES = 75;
+    const HEAL_MAX_BUY_CYCLES = 20;
+
+    let routeMode = "zone";
+    let goToMapTarget = "";
+    let goToTargetX = null;
+    let goToTargetY = null;
+    let huntTypeTarget = "";
+    let huntMobTarget = "";
+    let explorerTarget = "";
+    let zoneMobTypes = normalizeZoneMobTypes({});
+    let huntTargetX = null;
+    let huntTargetY = null;
+    let huntSpawnKey = "";
+    let huntCheckpointInFlight = false;
+    let goToCompleteInFlight = false;
+
+    let zoneVisitState = {};
+    let lastLevelZoneClearKey = "";
+    let zoneTravelTargetMap = "";
+
+    // locally resolved next step
+    let resolvedMode = "";
+    let resolvedPath = [];
+    let resolvedTarget = "";
+    let resolvedNextMap = "";
+    let resolvedGateway = null;
+    let resolvedInsideZone = false;
+    let lastNextStepFetchAt = 0;
+    let lastNextStepKey = "";
+    let nextStepRefreshInFlight = false;
+    let routeFetchPending = false;
+    let lastStatusText = "";
+    let statusEvents = [];
+    let statusEventLastSeenAt = {};
+    let localIntervalsStarted = false;
+    let refreshRunUiFn = null;
+    let sellWorkflowState = null;
+    let sellWorkflowCooldownUntil = 0;
+    let healWorkflowState = null;
+    let healWorkflowCooldownUntil = 0;
+    let activeServerWorkflow = null;
+    let lastWorkflowActionResult = null;
+    let lastServerWorkflowDirective = null;
+    let executedWorkflowActionKeys = {};
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+    function nowMs() { return Date.now(); }
+
+    function hasGameReady() {
+        return (
+            typeof window.g !== "undefined" &&
+            typeof window.hero !== "undefined" &&
+            typeof window.map !== "undefined" &&
+            typeof window.parseInput === "function"
+        );
+    }
+
+    function toPositiveInt(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        const i = Math.trunc(n);
+        return i > 0 ? i : null;
+    }
+
+    function getWorkerRef() {
+        const accountId = toPositiveInt(window.hero?.account);
+        const heroId = toPositiveInt(window.hero?.id);
+        return { accountId, heroId };
+    }
+
+    function getBlessingState() {
+        if (!window.hero) return null;
+
+        const rawState = typeof window.hero.is_blessed?.toFixed === "function"
+            ? window.hero.is_blessed.toFixed()
+            : window.hero.is_blessed;
+        const state = Number(rawState);
+        if (state === 0 || state === 1) return state;
+        return null;
+    }
+
+    function refreshBlessingStatusUI() {
+        const blessingEl = document.querySelector("#xD_blessing_status");
+        if (!blessingEl) return;
+
+        const blessingState = getBlessingState();
+        if (blessingState === 1) {
+            blessingEl.textContent = "BLESSING: equipped";
+            blessingEl.style.color = "#6eff6e";
+        } else if (blessingState === 0) {
+            blessingEl.textContent = "BLESSING: missing";
+            blessingEl.style.color = "#ff8f4d";
+        } else {
+            blessingEl.textContent = "BLESSING: unknown";
+            blessingEl.style.color = "#ff8";
+        }
+    }
+
+    function loadSeenMeta() {
+        return storageGetJson(SEEN_META_LS, {});
+    }
+
+    function saveSeenMeta(obj) {
+        storageSetJson(SEEN_META_LS, obj || {});
+    }
+
+    function saveSeenMetaThrottled(obj, tNow = nowMs()) {
+        if (tNow - lastSeenMetaSaveAt < SEEN_META_SAVE_THROTTLE_MS) return;
+        lastSeenMetaSaveAt = tNow;
+        saveSeenMeta(obj);
+    }
+
+    function resetSeenMeta() {
+        seenMobMeta = {};
+        lastSeenMetaSaveAt = 0;
+        storageRemove(SEEN_META_LS);
+    }
+
+    function resetPickerState() {
+        I = {};
+        unreachableCount = {};
+        failurePenalty = {};
+        bfsCache = null;
+        lastBfsAt = 0;
+        lastIgnoreRecoveryAt = 0;
+        lastPathBuildAt = 0;
+        lastSeenMetaSaveAt = 0;
+    }
+
+    function resetRegionState() {
+        regionCache = null;
+        regionKey = null;
+    }
+
+    function clearPendingGatewayLock() {
+        pendingGatewayKey = "";
+        pendingGatewayUntil = 0;
+        pendingGatewayFromMap = "";
+        pendingGatewayRequiresKey = false;
+    }
+
+    function clearGatewayStandingWatch() {
+        gatewayStandingKey = "";
+        gatewayStandingSince = 0;
+    }
+
+    function hasPendingGatewayLock() {
+        return !!pendingGatewayKey && nowMs() < pendingGatewayUntil;
+    }
+
+    function getResolvedGatewayKey() {
+        if (!window.map || !resolvedGateway) return "";
+        const gx = Number(resolvedGateway.x);
+        const gy = Number(resolvedGateway.y);
+        const targetMap = String(resolvedGateway.targetMap || "");
+        return `${map.name}|${gx},${gy}|${targetMap}`;
+    }
+
+    function getGatewayUseTarget(gateway = resolvedGateway) {
+        const x = Number(gateway?.x);
+        const y = Number(gateway?.y);
+        const standX = Number(gateway?.standX);
+        const standY = Number(gateway?.standY);
+        return {
+            x: Number.isFinite(standX) ? standX : x,
+            y: Number.isFinite(standY) ? standY : y,
+        };
+    }
+
+    function isHeroAtGatewayUseTile(gateway = resolvedGateway) {
+        if (!window.hero || !gateway) return false;
+        const target = getGatewayUseTarget(gateway);
+        return Number.isFinite(target.x) && Number.isFinite(target.y) && Number(hero.x) === target.x && Number(hero.y) === target.y;
+    }
+
+    function reportBlockedGatewayForCurrentHero(gatewayKey, reason) {
+        const heroSnapshot = getHeroSnapshot();
+        const clientId = getClientId(heroSnapshot);
+        if (!clientId || !gatewayKey) return;
+
+        fetch(SERVER_BLOCKED_GATEWAY_URL, {
+            method: "PUT",
+            headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+            body: JSON.stringify({
+                clientId,
+                key: gatewayKey,
+                reason: String(reason || "").slice(0, 180),
+            }),
+        }).catch((err) => {
+            console.error("ClanHub blocked gateway report failed:", err);
+        });
+    }
+
+    function blockGatewayForCurrentHero(gatewayKey, reason = "Gateway blocked for this hero -> trying another route") {
+        if (!gatewayKey) return false;
+        blockedGatewayUntil[gatewayKey] = nowMs() + BLOCKED_GATEWAY_MS;
+        gatewayFailedAttempts[gatewayKey] = 0;
+        updateStatus(reason, "#FFAA00");
+        reportBlockedGatewayForCurrentHero(gatewayKey, reason);
+        clearPendingGatewayLock();
+        clearGatewayStandingWatch();
+        resetServerRouteState();
+        clearMovementState();
+        refreshResolvedTravelTarget(true);
+        return true;
+    }
+
+    function watchGatewayStanding(gatewayKey) {
+        if (!gatewayKey || !window.map || !resolvedGateway || !window.hero) {
+            clearGatewayStandingWatch();
+            return false;
+        }
+
+        const { x: gx, y: gy } = getGatewayUseTarget(resolvedGateway);
+        if (!Number.isFinite(gx) || !Number.isFinite(gy) || hero.x !== gx || hero.y !== gy) {
+            clearGatewayStandingWatch();
+            return false;
+        }
+
+        const tNow = nowMs();
+        if (gatewayStandingKey !== gatewayKey) {
+            gatewayStandingKey = gatewayKey;
+            gatewayStandingSince = tNow;
+            return false;
+        }
+
+        if (tNow - gatewayStandingSince >= GATEWAY_STANDING_BLOCK_MS) {
+            return blockGatewayForCurrentHero(gatewayKey, "Standing on blocked gateway -> trying another route");
+        }
+
+        return false;
+    }
+
+    function cleanupBlockedGateways() {
+        const tNow = nowMs();
+        for (const [key, until] of Object.entries(blockedGatewayUntil)) {
+            if (!until || tNow >= until) delete blockedGatewayUntil[key];
+        }
+    }
+
+    function getBlockedGatewayKeys() {
+        cleanupBlockedGateways();
+        return Object.keys(blockedGatewayUntil);
+    }
+
+    function dismissBlockingAlert() {
+        const ok = document.querySelector("#alert #a_ok");
+        if (ok && typeof ok.click === "function") ok.click();
+    }
+
+    function getBlockingGatewayAlertText() {
+        const alert = document.querySelector("#alert");
+        if (!alert) return "";
+        const style = window.getComputedStyle ? window.getComputedStyle(alert) : null;
+        if (style && style.display === "none") return "";
+        const text = String(alert.textContent || "").toLowerCase();
+        const looksLikeGatewayBlock =
+            text.includes("przej") ||
+            text.includes("poziom") ||
+            text.includes("klucz") ||
+            text.includes("key") ||
+            text.includes("level");
+        return looksLikeGatewayBlock ? text : "";
+    }
+
+    function handleBlockedGatewayAlert() {
+        if (!pendingGatewayKey) return false;
+        const text = getBlockingGatewayAlertText();
+        if (!text) return false;
+
+        dismissBlockingAlert();
+        return blockGatewayForCurrentHero(
+            pendingGatewayKey,
+            pendingGatewayRequiresKey ? "Key gateway blocked -> trying another route" : "Gateway blocked -> trying another route",
+        );
+    }
+
+    function handlePendingGatewayTimeout() {
+        if (!pendingGatewayKey) return false;
+
+        if (pendingGatewayFromMap && window.map?.name && map.name !== pendingGatewayFromMap) {
+            gatewayFailedAttempts[pendingGatewayKey] = 0;
+            clearPendingGatewayLock();
+            return false;
+        }
+
+        if (nowMs() < pendingGatewayUntil) return false;
+
+        const key = pendingGatewayKey;
+        const requiresKey = pendingGatewayRequiresKey;
+        clearPendingGatewayLock();
+
+        gatewayFailedAttempts[key] = (gatewayFailedAttempts[key] || 0) + 1;
+        const maxAttempts = requiresKey ? KEY_GATEWAY_MAX_FAILED_ATTEMPTS : GATEWAY_MAX_FAILED_ATTEMPTS;
+        if (gatewayFailedAttempts[key] >= maxAttempts) {
+            return blockGatewayForCurrentHero(
+                key,
+                requiresKey ? "Key gateway failed -> trying another route" : "Gateway did not pass -> trying another route",
+            );
+        }
+
+        updateStatus(requiresKey ? "Key gateway did not pass -> retry once" : "Gateway did not pass -> retrying", "#FFAA00");
+        return false;
+    }
+
+    function resetServerRouteState() {
+        resolvedMode = "";
+        resolvedPath = [];
+        resolvedTarget = "";
+        resolvedNextMap = "";
+        resolvedGateway = null;
+        resolvedInsideZone = false;
+        huntTargetX = null;
+        huntTargetY = null;
+        huntSpawnKey = "";
+        lastNextStepKey = "";
+        lastNextStepFetchAt = 0;
+        routeFetchPending = false;
+        clearPendingGatewayLock();
+    }
+
+    function clearMovementState() {
+        B = undefined;
+        A = false;
+        z = false;
+        window.road = [];
+        clearStoredPathRequest();
+    }
+
+    function saveCurrentRouteState() {
+        return {
+            routeMode,
+            goToMapTarget,
+            goToTargetX,
+            goToTargetY,
+            huntTypeTarget,
+            huntMobTarget,
+            explorerTarget,
+            zoneMobTypes: { ...zoneMobTypes },
+        };
+    }
+
+    function restoreRouteState(saved) {
+        if (!saved || typeof saved !== "object") return;
+        routeMode = saved.routeMode || "zone";
+        goToMapTarget = saved.goToMapTarget || "";
+        goToTargetX = saved.goToTargetX === null || saved.goToTargetX === undefined ? null : Number(saved.goToTargetX);
+        goToTargetY = saved.goToTargetY === null || saved.goToTargetY === undefined ? null : Number(saved.goToTargetY);
+        huntTypeTarget = saved.huntTypeTarget || "";
+        huntMobTarget = saved.huntMobTarget || "";
+        explorerTarget = saved.explorerTarget || "";
+        zoneMobTypes = normalizeZoneMobTypes(saved.zoneMobTypes);
+        resetServerRouteState();
+        clearMovementState();
+        updateRouteInfo();
+    }
+
+    function itemNameMatches(item, expectedNames) {
+        const names = Array.isArray(expectedNames) ? expectedNames : [expectedNames];
+        const itemName = String(item?.name || "").trim();
+        return names.some((name) => itemName === String(name || "").trim());
+    }
+
+    function findSellTeleportScrollId() {
+        if (!window.g || !g.item || typeof g.item !== "object") return "";
+        const found = Object.entries(g.item).find(([, item]) => itemNameMatches(item, SELL_SCROLL_NAME_ALIASES));
+        return found ? String(found[0]) : "";
+    }
+
+    function makeSellProfile(kind) {
+        if (kind === "ithan") {
+            return {
+                kind: "ithan",
+                label: "Ithan Roan",
+                entryMap: ITHAN_SELL_TARGET_MAP,
+                targetMap: ITHAN_SELL_TARGET_MAP,
+                targetX: ITHAN_SELL_NPC_X,
+                targetY: ITHAN_SELL_NPC_Y,
+                npcId: ITHAN_SELL_NPC_ID,
+                talkC: "20.1",
+                needsTeleport: false,
+                refillTeleports: false,
+            };
+        }
+
+        return {
+            kind: "tunia",
+            label: "Tunia",
+            entryMap: SELL_ENTRY_MAP,
+            targetMap: SELL_TARGET_MAP,
+            targetX: SELL_NPC_X,
+            targetY: SELL_NPC_Y,
+            npcId: SELL_NPC_ID,
+            talkC: "30.1",
+            needsTeleport: true,
+            refillTeleports: true,
+        };
+    }
+
+    function chooseSellProfile() {
+        const hasScroll = !!findSellTeleportScrollId();
+        if (hasScroll) return makeSellProfile("tunia");
+
+        const heroLevel = getHeroLevel();
+        if (heroLevel > 0 && heroLevel <= ITHAN_SELL_MAX_LEVEL) return makeSellProfile("ithan");
+
+        const mapName = String(window.map?.name || "");
+        if (mapName === SELL_ENTRY_MAP || mapName === SELL_TARGET_MAP) return makeSellProfile("tunia");
+        if (mapName === ITHAN_SELL_TARGET_MAP) return makeSellProfile("ithan");
+        return null;
+    }
+
+    function sellTeleportUsesLeft() {
+        if (!window.g || !g.item || typeof g.item !== "object") return 0;
+        return Object.values(g.item).reduce((sum, item) => {
+            if (!itemNameMatches(item, SELL_SCROLL_NAME_ALIASES)) return sum;
+            const stat = String(item.stat || "");
+            const amountMatch = stat.match(/(?:^|;)amount=(\d+)/);
+            const usedMatch = stat.match(/(?:^|;)used=(\d+)/);
+            const amount = amountMatch ? Number.parseInt(amountMatch[1], 10) : 0;
+            const used = usedMatch ? Number.parseInt(usedMatch[1], 10) : 0;
+            return sum + Math.max(0, amount - used);
+        }, 0);
+    }
+
+    function updateTeleportUsesLeftDisplay(usesLeft = sellTeleportUsesLeft()) {
+        const el = document.querySelector("#xD_teleport_uses_left");
+        if (!el) return;
+        el.textContent = String(usesLeft);
+        el.style.color = usesLeft < SELL_TELEPORT_MIN_USES ? "#ff8f4d" : "#6eff6e";
+    }
+
+    function parseGoldValue(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const numeric = Number(String(value).replace(/[^\d.-]/g, ""));
+        return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : null;
+    }
+
+    function getInventoryGoldValue() {
+        const candidates = [window.g?.gold, window.g?.credits, window.hero?.gold, window.hero?.credits, window.hero?.money];
+        for (const value of candidates) {
+            const numeric = parseGoldValue(value);
+            if (numeric !== null) return numeric;
+        }
+        return null;
+    }
+
+    function getAccountDepositGoldMap() {
+        return storageGetJson(LS_ACCOUNT_DEPOSIT_GOLD, {});
+    }
+
+    function accountDepositStorageKey(account = window.hero?.account) {
+        return String(account || "").replace(/\D/g, "");
+    }
+
+    function isPersonalDepositVisible() {
+        const depo = window.g?.depo;
+        if (!depo || typeof depo !== "object") return false;
+        const clan = depo.clan;
+        const visible = depo.vis === true || depo.vis === 1 || String(depo.vis).toLowerCase() === "true" || String(depo.vis) === "1";
+        return visible && clan !== true && String(clan).toLowerCase() !== "true" && Number(clan) !== 1;
+    }
+
+    function getKnownPersonalDepositGold(account = window.hero?.account) {
+        const accountKey = accountDepositStorageKey(account);
+        const visibleDepositGold = isPersonalDepositVisible() ? parseGoldValue(window.g?.depo?.gold) : null;
+        if (visibleDepositGold !== null && accountKey) {
+            const deposits = getAccountDepositGoldMap();
+            deposits[accountKey] = visibleDepositGold;
+            storageSetJson(LS_ACCOUNT_DEPOSIT_GOLD, deposits);
+            return visibleDepositGold;
+        }
+
+        const deposits = getAccountDepositGoldMap();
+        if (!accountKey || !Object.prototype.hasOwnProperty.call(deposits, accountKey)) return null;
+        return parseGoldValue(deposits[accountKey]);
+    }
+
+    function getCurrentGoldValue() {
+        return getInventoryGoldValue();
+    }
+
+    function setSellRouteOverride(profile = sellWorkflowState?.profile || makeSellProfile("tunia")) {
+        routeMode = "goToMap";
+        goToMapTarget = profile.targetMap;
+        goToTargetX = profile.targetX;
+        goToTargetY = profile.targetY;
+        huntTypeTarget = "";
+        huntMobTarget = "";
+        explorerTarget = "";
+    }
+
+    function closeShopDialog() {
+        const closeShop = typeof window.shop_close === "function"
+            ? window.shop_close
+            : (typeof shop_close === "function" ? shop_close : null);
+        if (closeShop) {
+            closeShop();
+            return true;
+        }
+        return false;
+    }
+
+    function closeShopDialogAfterWorkflow() {
+        closeShopDialog();
+        [150, 450, 900].forEach((delay) => {
+            window.setTimeout(() => closeShopDialog(), delay);
+        });
+    }
+
+    function getPreShopAccept() {
+        return typeof window.pre_shop_accept === "function"
+            ? window.pre_shop_accept
+            : (typeof pre_shop_accept === "function" ? pre_shop_accept : null);
+    }
+
+    function findTeleportBarterItemElement() {
+        const byId = document.getElementById(SELL_TELEPORT_BARTER_ITEM_ID);
+        if (byId && typeof byId.click === "function") return byId;
+        return Array.from(document.querySelectorAll(".item[data-type='t_item'], .item"))
+            .find((el) => {
+                const text = String(el.getAttribute("tip") || el.textContent || "");
+                return SELL_SCROLL_NAME_ALIASES.some((name) => text.includes(name)) && typeof el.click === "function";
+            }) || null;
+    }
+
+    function setTemporaryRouteOverride(targetMap, targetX, targetY) {
+        routeMode = "goToMap";
+        goToMapTarget = targetMap;
+        goToTargetX = targetX;
+        goToTargetY = targetY;
+        huntTypeTarget = "";
+        huntMobTarget = "";
+        explorerTarget = "";
+    }
+
+    function findShopItemElement(itemId, itemName) {
+        const byId = document.getElementById(itemId);
+        if (byId && typeof byId.click === "function") return byId;
+        const names = Array.isArray(itemName) ? itemName : [itemName];
+        return Array.from(document.querySelectorAll(".item[data-type='t_item'], .item"))
+            .find((el) => {
+                const text = String(el.getAttribute("tip") || el.textContent || "");
+                return names.some((name) => text.includes(name)) && typeof el.click === "function";
+            }) || null;
+    }
+
+    function getHeroLevel() {
+        return Number(window.hero?.lvl || (typeof window.hero?.getLevel === "function" ? window.hero.getLevel() : 0)) || 0;
+    }
+
+    function healShopItemChoice() {
+        return getHeroLevel() > 100
+            ? { id: HEAL_HIGH_ITEM_ID, name: HEAL_HIGH_ITEM_NAME, aliases: HEAL_HIGH_ITEM_NAME_ALIASES }
+            : { id: HEAL_LOW_ITEM_ID, name: HEAL_LOW_ITEM_NAME };
+    }
+
+    function itemUsesLeftByName(itemName) {
+        if (!window.g || !g.item || typeof g.item !== "object") return null;
+        let found = false;
+        const usesLeft = Object.values(g.item).reduce((sum, item) => {
+            if (!itemNameMatches(item, itemName)) return sum;
+            found = true;
+            const stat = String(item.stat || "");
+            const amountMatch = stat.match(/(?:^|;)amount=(\d+)/);
+            const usedMatch = stat.match(/(?:^|;)used=(\d+)/);
+            const amount = amountMatch ? Number.parseInt(amountMatch[1], 10) : 1;
+            const used = usedMatch ? Number.parseInt(usedMatch[1], 10) : 0;
+            return sum + Math.max(0, amount - used);
+        }, 0);
+        return found ? usesLeft : 0;
+    }
+
+    function healItemUsesLeft(choice = healShopItemChoice()) {
+        return itemUsesLeftByName(choice.aliases || choice.name);
+    }
+
+    function needsHealItemRestock() {
+        const usesLeft = healItemUsesLeft();
+        return usesLeft !== null && usesLeft < HEAL_MIN_USES;
+    }
+
+    function getWorkflowInventorySnapshot() {
+        const choice = healShopItemChoice();
+        const teleportUses = sellTeleportUsesLeft();
+        updateTeleportUsesLeftDisplay(teleportUses);
+        const snapshot = {
+            freeSlots: window.g?.freeSlots === undefined || window.g?.freeSlots === null ? null : Number(window.g.freeSlots),
+            dead: Number(window.g?.dead) || 0,
+            hp: Number(window.hero?.hp) || 0,
+            lvl: getHeroLevel(),
+            gold: getCurrentGoldValue(),
+            hasTeleportScroll: !!findSellTeleportScrollId(),
+            teleportUses,
+            healUses: healItemUsesLeft(choice),
+            healItemId: choice.id,
+            healItemName: choice.name,
+        };
+        if (workflowTestOverride?.active) {
+            if (workflowTestOverride.mode === "sell") snapshot.freeSlots = 0;
+            if (workflowTestOverride.mode === "heal") snapshot.healUses = 0;
+            if (workflowTestOverride.mode === "hp") snapshot.hp = 1;
+            snapshot.workflowTest = workflowTestOverride.mode;
+        }
+        return snapshot;
+    }
+
+    function rememberWorkflowResult(workflow, result) {
+        if (!workflow?.key) return;
+        lastWorkflowActionResult = {
+            key: workflow.key,
+            type: workflow.action || "",
+            ok: result?.ok === true,
+            reason: String(result?.reason || "").slice(0, 160),
+            goldBefore: result?.goldBefore ?? null,
+            goldAfter: getCurrentGoldValue(),
+            healUses: healItemUsesLeft(),
+            teleportUses: sellTeleportUsesLeft(),
+        };
+    }
+
+    function hasExecutedWorkflowAction(workflow) {
+        return !!workflow?.key && executedWorkflowActionKeys[workflow.key] === true;
+    }
+
+    function markWorkflowActionExecuted(workflow) {
+        if (!workflow?.key) return;
+        executedWorkflowActionKeys[workflow.key] = true;
+        const keys = Object.keys(executedWorkflowActionKeys);
+        if (keys.length > 80) {
+            executedWorkflowActionKeys = keys.slice(-40).reduce((out, key) => {
+                out[key] = true;
+                return out;
+            }, {});
+        }
+    }
+
+    function finishServerWorkflowLocally(workflow) {
+        closeShopDialogAfterWorkflow();
+        clearWorkflowTestOverride("complete");
+        activeServerWorkflow = null;
+        lastServerWorkflowDirective = null;
+        clearMovementState();
+        resetServerRouteState();
+        backpackFullNotified = false;
+        updateStatus(workflow?.status || "Workflow complete", "#00ff00");
+        rememberWorkflowResult(workflow, { ok: true, reason: "finished" });
+        markWorkflowActionExecuted(workflow);
+        refreshResolvedTravelTarget(true);
+        return true;
+    }
+
+    function executeWorkflowTalk(workflow) {
+        if (hasExecutedWorkflowAction(workflow)) return true;
+        if (typeof window._g !== "function") return true;
+        const npcId = String(workflow.npcId || "").replace(/\D/g, "");
+        const c = String(workflow.c || "");
+        if (!npcId || !c) {
+            rememberWorkflowResult(workflow, { ok: false, reason: "missing talk command" });
+            markWorkflowActionExecuted(workflow);
+            return true;
+        }
+        _g(`talk&id=${npcId}&c=${encodeURIComponent(c)}`);
+        updateStatus(workflow.status || "Workflow: talk", "#e7b54a");
+        rememberWorkflowResult(workflow, { ok: true });
+        markWorkflowActionExecuted(workflow);
+        return true;
+    }
+
+    function executeWorkflowTeleport(workflow) {
+        if (hasExecutedWorkflowAction(workflow)) return true;
+        const scrollId = findSellTeleportScrollId();
+        if (!scrollId || typeof window._g !== "function") {
+            rememberWorkflowResult(workflow, { ok: false, reason: "no teleport scroll" });
+            markWorkflowActionExecuted(workflow);
+            return true;
+        }
+        _g(`moveitem&id=${encodeURIComponent(scrollId)}&st=1`);
+        updateStatus(workflow.status || "Workflow: teleporting", "#e7b54a");
+        rememberWorkflowResult(workflow, { ok: true });
+        markWorkflowActionExecuted(workflow);
+        clearMovementState();
+        resetServerRouteState();
+        return true;
+    }
+
+    function executeWorkflowQuickSell(workflow) {
+        if (hasExecutedWorkflowAction(workflow)) return true;
+        const goldBefore = getCurrentGoldValue();
+        const clicked = clickQuickSellButtons();
+        const acceptShop = getPreShopAccept();
+        if (!clicked || !acceptShop) {
+            updateStatus(workflow.status || "Workflow: waiting quick sell", "#FFCC00");
+            return true;
+        }
+        acceptShop();
+        updateStatus(workflow.status || "Workflow: quick sell", "#e7b54a");
+        rememberWorkflowResult(workflow, { ok: true, goldBefore });
+        markWorkflowActionExecuted(workflow);
+        refreshResolvedTravelTarget(true);
+        return true;
+    }
+
+    function executeWorkflowBuyHeal(workflow) {
+        if (hasExecutedWorkflowAction(workflow)) return true;
+        const choice = healShopItemChoice();
+        const item = findShopItemElement(choice.id, choice.aliases || choice.name);
+        const acceptShop = getPreShopAccept();
+        if (!item || !acceptShop) {
+            updateStatus(workflow.status || `Workflow: waiting ${choice.name}`, "#FFCC00");
+            rememberWorkflowResult(workflow, { ok: false, reason: !item ? "heal item missing" : "shop accept missing" });
+            markWorkflowActionExecuted(workflow);
+            return true;
+        }
+        item.click();
+        window.setTimeout(() => {
+            try {
+                acceptShop();
+            } catch (e) {
+                console.error("Workflow heal accept failed:", e);
+            }
+        }, 120);
+        updateStatus(workflow.status || `Workflow: buying ${choice.name}`, "#e7b54a");
+        rememberWorkflowResult(workflow, { ok: true });
+        markWorkflowActionExecuted(workflow);
+        return true;
+    }
+
+    function executeWorkflowBuyTeleport(workflow) {
+        if (hasExecutedWorkflowAction(workflow)) return true;
+        const barterItem = findTeleportBarterItemElement();
+        const acceptShop = getPreShopAccept();
+        if (!barterItem || !acceptShop) {
+            rememberWorkflowResult(workflow, { ok: false, reason: !barterItem ? "teleport barter item missing" : "shop accept missing" });
+            markWorkflowActionExecuted(workflow);
+            updateStatus(workflow.status || "Workflow: waiting teleport barter", "#FFCC00");
+            refreshResolvedTravelTarget(true);
+            return true;
+        }
+        barterItem.click();
+        window.setTimeout(() => {
+            try {
+                acceptShop();
+            } catch (e) {
+                console.error("Workflow teleport barter accept failed:", e);
+            }
+        }, 120);
+        updateStatus(workflow.status || "Workflow: buying teleports", "#e7b54a");
+        rememberWorkflowResult(workflow, { ok: true });
+        markWorkflowActionExecuted(workflow);
+        return true;
+    }
+
+    function isHeroWorkflowInteractReady(workflow) {
+        const targetX = Number(workflow?.targetX);
+        const targetY = Number(workflow?.targetY);
+        if (!Number.isFinite(targetX) || !Number.isFinite(targetY) || !window.hero) return false;
+        return Math.abs(Number(hero.x) - targetX) + Math.abs(Number(hero.y) - targetY) <= 1;
+    }
+
+    function canReachWorkflowInteractSpot(workflow) {
+        const targetX = Number(workflow?.targetX);
+        const targetY = Number(workflow?.targetY);
+        if (!Number.isFinite(targetX) || !Number.isFinite(targetY)) return false;
+        return getStandTilesForPoint(targetX, targetY).some((tile) => canReachMapPointFromHeroRegion(tile.x, tile.y));
+    }
+
+    function handleServerWorkflowTravel(workflow) {
+        if (!workflow?.targetMap || !window.map || !window.hero) return true;
+
+        if (String(map.name || "") === String(workflow.targetMap || "") && canReachWorkflowInteractSpot(workflow)) {
+            if (isHeroWorkflowInteractReady(workflow)) {
+                rememberWorkflowResult(workflow, { ok: true, reason: "arrived" });
+                updateStatus(workflow.status || "Workflow: arrived", "#e7b54a");
+                refreshResolvedTravelTarget(true);
+                return true;
+            }
+            B = undefined;
+            A = false;
+            z = false;
+            updateStatus(`${workflow.status || "Workflow travel"} ${workflow.targetX},${workflow.targetY}`, "#00FFFF");
+            if (!hasStoredPathFor(Number(workflow.targetX), Number(workflow.targetY))) {
+                window.road = [];
+                storePath(Number(workflow.targetX), Number(workflow.targetY));
+            }
+            return true;
+        }
+
+        const gw = v.findBestGw();
+        if (!gw) {
+            clearMovementState();
+            updateStatus(`Workflow: routing to ${workflow.targetMap}`, "#FFCC00");
+            return true;
+        }
+
+        if (isMapSettling()) {
+            clearMovementState();
+            updateStatus("Workflow: waiting map", "#FFCC00");
+            return true;
+        }
+
+        const { x: goX, y: goY } = getGatewayUseTarget(gw);
+        const gatewayKey = getResolvedGatewayKey();
+        updateStatus(`Workflow: ${resolvedGateway?.targetMap || resolvedNextMap || workflow.targetMap}`, "#00FFFF");
+
+        if (watchGatewayStanding(gatewayKey)) return true;
+
+        if (isHeroAtGatewayUseTile(gw)) {
+            const tNow = nowMs();
+            if (tNow - lastGatewayUseAt >= GATEWAY_USE_COOLDOWN_MS) {
+                lastGatewayUseAt = tNow;
+                pendingGatewayKey = gatewayKey;
+                pendingGatewayUntil = tNow + PENDING_GATEWAY_MS;
+                pendingGatewayFromMap = String(map.name || "");
+                pendingGatewayRequiresKey = !!resolvedGateway?.requiresKey;
+                window.road = [];
+                if (typeof window._g === "function") _g("walk");
+            }
+            return true;
+        }
+
+        if (!hasPendingGatewayLock() || pendingGatewayKey !== gatewayKey) {
+            if (!hasStoredPathFor(goX, goY)) {
+                storeGatewayPathOrTryAlternative(gatewayKey, goX, goY, "Workflow");
+            }
+        }
+
+        return true;
+    }
+
+    function shouldCloseShopAfterGoldCheck(previous, current) {
+        if (!previous || !current) return false;
+        const previousPhase = String(previous.phase || "");
+        const currentAction = String(current.action || "");
+        if (!["sellWait", "preSellWait", "lootSellWait"].includes(previousPhase)) return false;
+        if (currentAction === "wait") return false;
+        return current.finished === true || currentAction === "travel" || currentAction === "teleport" || currentAction === "finish";
+    }
+
+    function handleServerWorkflow() {
+        const workflow = activeServerWorkflow;
+        if (!workflow?.active) {
+            lastServerWorkflowDirective = null;
+            return false;
+        }
+        if (shouldCloseShopAfterGoldCheck(lastServerWorkflowDirective, workflow)) {
+            closeShopDialogAfterWorkflow();
+        }
+        lastServerWorkflowDirective = {
+            action: String(workflow.action || ""),
+            phase: String(workflow.phase || ""),
+            key: String(workflow.key || ""),
+            finished: workflow.finished === true,
+        };
+        B = undefined;
+        A = false;
+        z = false;
+
+        if (workflow.finished || workflow.action === "finish") return finishServerWorkflowLocally(workflow);
+        if (workflow.action === "wait") {
+            updateStatus(workflow.status || "Workflow: waiting", "#e7b54a");
+            return true;
+        }
+        if (workflow.action === "travel") return handleServerWorkflowTravel(workflow);
+        if (workflow.action === "talk") return executeWorkflowTalk(workflow);
+        if (workflow.action === "teleport") return executeWorkflowTeleport(workflow);
+        if (workflow.action === "quickSell") return executeWorkflowQuickSell(workflow);
+        if (workflow.action === "buyHeal") return executeWorkflowBuyHeal(workflow);
+        if (workflow.action === "buyTeleport") return executeWorkflowBuyTeleport(workflow);
+
+        updateStatus(workflow.status || "Workflow: waiting", "#e7b54a");
+        return true;
+    }
+
+    function clickQuickSellButtons() {
+        const wrapper = document.querySelector(".gargonem-quick-sell-wrapper");
+        const buttons = wrapper ? Array.from(wrapper.querySelectorAll("button")) : [];
+        let clicked = 0;
+        for (const label of ["1", "2", "3"]) {
+            const target = buttons.find((button) => String(button.textContent || "").trim() === label);
+            if (target && typeof target.click === "function") {
+                target.click();
+                clicked++;
+            }
+        }
+        return clicked === 3;
+    }
+
+    function tickActiveWorkflowTravel() {
+        if (!RUNNING || !G || !window.g || g.battle || g.dead || !window.hero) return;
+        if (activeServerWorkflow?.active) handleServerWorkflow();
+    }
+
+    function getLevelRange() {
+        const raw = serverLevelRange.trim();
+        if (!raw) return null;
+
+        const rangeMatch = raw.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (rangeMatch) {
+            const min = parseInt(rangeMatch[1], 10);
+            const max = parseInt(rangeMatch[2], 10);
+            if (Number.isFinite(min) && Number.isFinite(max) && min > 0 && max >= min) {
+                return { min, max, raw: min === max ? String(min) : `${min}-${max}` };
+            }
+            return null;
+        }
+
+        if (!/^\d+$/.test(raw)) return null;
+        const n = parseInt(raw, 10);
+        if (Number.isFinite(n) && n > 0) return { min: n, max: n, raw: String(n) };
+        return null;
+    }
+
+    function addStatusEvent(message) {
+        const text = String(message || "").trim();
+        if (!text) return;
+
+        const key = text.toLowerCase();
+        const tNow = nowMs();
+        const busyLike =
+            key.includes("walking") ||
+            key.includes("traveling") ||
+            key.includes("target") ||
+            key.includes("pathing") ||
+            key.includes("going");
+        const minGapMs = busyLike ? 8000 : 1800;
+        const lastAt = Number(statusEventLastSeenAt[key] || 0);
+        if (tNow - lastAt < minGapMs) return;
+        statusEventLastSeenAt[key] = tNow;
+
+        statusEvents.unshift(`${new Date().toISOString().replace("T", " ").replace(/\.\d+Z$/, "Z")} | ${text}`);
+        if (statusEvents.length > STATUS_EVENTS_MAX) {
+            statusEvents = statusEvents.slice(0, STATUS_EVENTS_MAX);
+        }
+    }
+
+    function updateStatus(text, color = "#00ff00") {
+        const nextText = String(text || "").trim();
+        if (nextText && nextText !== lastStatusText) {
+            lastStatusText = nextText;
+            addStatusEvent(nextText);
+        }
+        const el = document.querySelector("#xD_status_text");
+        if (el) {
+            el.innerText = nextText;
+            el.style.color = color;
+        }
+    }
+
+    function setRunning(nextRunning, statusMessage = "") {
+        RUNNING = !!nextRunning;
+        if (!RUNNING) clearMovementState();
+
+        if (typeof refreshRunUiFn === "function") {
+            refreshRunUiFn();
+        }
+        if (statusMessage) {
+            updateStatus(statusMessage, RUNNING ? "#00ff00" : "#ff5555");
+        }
+    }
+
+    function updateRouteInfo() {
+        const el = document.querySelector("#xD_route_info");
+        if (!el) return;
+
+        if (routeMode === "goToMap") {
+            const fromMap = window.map?.name || "?";
+            const coord = goToTargetX !== null && goToTargetY !== null ? `${goToTargetX},${goToTargetY}` : "map only";
+            const nextHop = resolvedGateway?.targetMap || resolvedNextMap || "-";
+            const fullPath = resolvedPath.length ? resolvedPath.join(" -> ") : "-";
+            el.innerHTML = `
+        <div>MODE: go to map</div>
+        <div>FROM: ${fromMap}</div>
+        <div>TARGET: ${goToMapTarget || "-"} (${coord})</div>
+        <div>NEXT: ${nextHop}</div>
+        <div>PATH: ${fullPath}</div>
+        `;
+            return;
+        }
+
+        if (routeMode === "hunt") {
+            const fromMap = window.map?.name || "?";
+            const coord = huntTargetX !== null && huntTargetY !== null ? `${huntTargetX},${huntTargetY}` : "-";
+            const nextHop = resolvedGateway?.targetMap || resolvedNextMap || "-";
+            const fullPath = resolvedPath.length ? resolvedPath.join(" -> ") : "-";
+            el.innerHTML = `
+        <div>MODE: hunt</div>
+        <div>TYPE: ${huntTypeTarget || "any"}</div>
+        <div>MOB: ${huntMobTarget || "-"}</div>
+        <div>FROM: ${fromMap}</div>
+        <div>TARGET: ${resolvedTarget || "-"} (${coord})</div>
+        <div>NEXT: ${nextHop}</div>
+        <div>PATH: ${fullPath}</div>
+        `;
+            return;
+        }
+
+        if (routeMode === "explorer") {
+            const fromMap = window.map?.name || "?";
+            const nextHop = resolvedGateway?.targetMap || resolvedNextMap || "-";
+            const fullPath = resolvedPath.length ? resolvedPath.join(" -> ") : "-";
+            const gatewayTxt = resolvedGateway
+                ? `${resolvedGateway.x},${resolvedGateway.y} | stand ${resolvedGateway.standX},${resolvedGateway.standY} | region ${resolvedGateway.region} | acc ${resolvedGateway.accessible ? "yes" : "no"}`
+                : "-";
+            el.innerHTML = `
+        <div>MODE: explorer</div>
+        <div>FROM: ${fromMap}</div>
+        <div>NEXT: ${nextHop}</div>
+        <div>TARGET: ${resolvedTarget || "-"}${explorerTarget ? ` (steered: ${explorerTarget})` : ""}</div>
+        <div>GW TILE: ${gatewayTxt}</div>
+        <div style="margin-top:4px;color:#9fdcff;">PATH: ${fullPath}</div>
+        `;
+            return;
+        }
+
+        const fromMap = window.map?.name || "?";
+        const mode = resolvedMode || "-";
+        const nextHop = resolvedGateway?.targetMap || resolvedNextMap || "-";
+        const finalTarget = resolvedTarget || "-";
+        const fullPath = resolvedPath.length ? resolvedPath.join(" -> ") : "-";
+        const levelRange = serverLevelRange.trim();
+        const zoneLabel = levelRange ? `level ${levelRange}` : "none";
+        if (!levelRange) {
+            el.innerText = "ZONE: none";
+            return;
+        }
+        const gatewayTxt = resolvedGateway
+            ? `${resolvedGateway.x},${resolvedGateway.y} | stand ${resolvedGateway.standX},${resolvedGateway.standY} | region ${resolvedGateway.region} | acc ${resolvedGateway.accessible ? "yes" : "no"}`
+            : "-";
+
+        el.innerHTML = `
+        <div>ZONE: ${zoneLabel}</div>
+        <div>MODE: ${mode}</div>
+        <div>FROM: ${fromMap}</div>
+        <div>NEXT: ${nextHop}</div>
+        <div>TARGET: ${finalTarget}</div>
+        <div>GW TILE: ${gatewayTxt}</div>
+        <div style="margin-top:4px;color:#9fdcff;">PATH: ${fullPath}</div>
+    `;
+    }
+
+    function setTarget(id) {
+        if (B !== id) {
+            targetStuckTries = 0;
+            stuckSince = nowMs();
+            A = false;
+            z = false;
+        }
+        B = id;
+    }
+
+    function attackTarget(id) {
+        const targetId = String(id || "").replace(/\D/g, "");
+        if (!targetId || typeof window._g !== "function") return false;
+        _g(`fight&a=attack&id=-${targetId}&ff=1`);
+        return true;
+    }
+
+    function addFailurePenalty(id, amount = SOFT_FAIL_PENALTY_STEP) {
+        failurePenalty[id] = Math.min(
+            SOFT_FAIL_PENALTY_CAP,
+            (failurePenalty[id] || 0) + amount
+        );
+    }
+
+    function reduceFailurePenalty(id, amount = 0.5) {
+        if (!failurePenalty[id]) return;
+        failurePenalty[id] -= amount;
+        if (failurePenalty[id] <= 0) delete failurePenalty[id];
+    }
+
+    function cleanupTransientState(tNow) {
+        for (let id in I) {
+            if (I[id] <= tNow) {
+                delete I[id];
+                delete unreachableCount[id];
+            }
+        }
+
+        for (let id in unreachableCount) {
+            if (!persistentDB[id] && (!g.npc || !g.npc[id])) delete unreachableCount[id];
+        }
+
+        for (let id in failurePenalty) {
+            if (!persistentDB[id] && (!g.npc || !g.npc[id])) delete failurePenalty[id];
+        }
+    }
+
+    // =========================================================
+
+    // =========================================================
+    // LOCAL ZONE / NEXT-STEP LOGIC
+    // =========================================================
+    function readJsonLs(key, fallback) {
+        return storageGetJson(key, fallback);
+    }
+
+    function writeJsonLs(key, value) {
+        storageSetJson(key, value || {});
+    }
+
+    function loadAllVisitState() {
+        return readJsonLs(LOCAL_ZONE_VISIT_STATE_LS, {});
+    }
+
+    function saveAllVisitState(state) {
+        writeJsonLs(LOCAL_ZONE_VISIT_STATE_LS, state);
+    }
+
+    function getLevelZoneVisitName() {
+        const range = getLevelRange();
+        if (!range) return "";
+        return `Level range ${range.min}-${range.max}`;
+    }
+
+    function markCurrentZoneMapVisited() {
+        const levelZoneName = getLevelZoneVisitName();
+        const zoneName = levelZoneName;
+        if (!zoneName || !window.map?.name) return false;
+
+        const allState = loadAllVisitState();
+        const state = allState[zoneName] && typeof allState[zoneName] === "object"
+            ? allState[zoneName]
+            : {};
+
+        state[map.name] = { lastVisitedAt: new Date().toISOString() };
+        allState[zoneName] = state;
+        saveAllVisitState(allState);
+        zoneVisitState = state;
+        if (zoneTravelTargetMap === map.name) zoneTravelTargetMap = "";
+        return true;
+    }
+
+    function readLocalMapsDb() {
+        return readJsonLs(LOCAL_MAPS_DB_LS, {});
+    }
+
+    function saveLocalMapsDb(db) {
+        writeJsonLs(LOCAL_MAPS_DB_LS, db);
+    }
+
+    function parseGatewayCoord(value) {
+        if (typeof value !== "string") return null;
+        const parts = value.split(".");
+        const x = parseInt(parts[0], 10);
+        const y = parseInt(parts[1], 10);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { x, y };
+    }
+
+    function findGatewayStandTile(x, y) {
+        if (inBounds2(x, y) && isWalkable(x, y)) {
+            return { x, y, region: getRegionAt(x, y) };
+        }
+
+        const dirs = [
+            { dx: -1, dy: 0 },
+            { dx: 1, dy: 0 },
+            { dx: 0, dy: -1 },
+            { dx: 0, dy: 1 },
+        ];
+
+        for (let i = 0; i < dirs.length; i++) {
+            const nx = x + dirs[i].dx;
+            const ny = y + dirs[i].dy;
+            if (!inBounds2(nx, ny)) continue;
+            if (!isWalkable(nx, ny)) continue;
+            return { x: nx, y: ny, region: getRegionAt(nx, ny) };
+        }
+
+        return { x: null, y: null, region: null };
+    }
+
+    function getGatewayTip(id) {
+        const el = document.getElementById(`gw${String(id)}`);
+        return String(el?.getAttribute("tip") || el?.getAttribute("data-tip") || "");
+    }
+
+    function gatewayTipRequiresKey(tip) {
+        const text = String(tip || "").toLowerCase();
+        return text.includes("wymaga klucza") || text.includes("klucz") || text.includes("key");
+    }
+
+    function scanCurrentMapToLocalDb() {
+        if (!window.map || !window.g || !map.name || !map.col) return false;
+
+        const db = readLocalMapsDb();
+        const gateways = {};
+        const gwIds = g.gwIds || {};
+        const townname = g.townname || {};
+
+        for (const id in gwIds) {
+            const coord = parseGatewayCoord(gwIds[id]);
+            if (!coord) continue;
+            if (coord.x < 0 || coord.y < 0 || coord.x >= map.x || coord.y >= map.y) continue;
+
+            const targetMap = String(townname[id] || "").trim();
+            if (!targetMap) continue;
+
+            const stand = findGatewayStandTile(coord.x, coord.y);
+            const tip = getGatewayTip(id);
+            gateways[String(id)] = {
+                id: String(id),
+                x: coord.x,
+                y: coord.y,
+                targetMap,
+                standX: stand.x,
+                standY: stand.y,
+                region: stand.region,
+                requiresKey: gatewayTipRequiresKey(tip),
+                tip,
+            };
+        }
+
+        const nextMapRecord = {
+            map: map.name,
+            width: Number(map.x) || 0,
+            height: Number(map.y) || 0,
+            col: String(map.col || ""),
+            gateways,
+            scannedAt: new Date().toISOString(),
+        };
+
+        const previous = db[map.name] || {};
+        const changed = JSON.stringify({
+            width: previous.width,
+            height: previous.height,
+            col: previous.col,
+            gateways: previous.gateways || {},
+        }) !== JSON.stringify({
+            width: nextMapRecord.width,
+            height: nextMapRecord.height,
+            col: nextMapRecord.col,
+            gateways: nextMapRecord.gateways,
+        });
+
+        db[map.name] = nextMapRecord;
+        saveLocalMapsDb(db);
+        return changed;
+    }
+
+    async function fetchServerNextStep() {
+        const heroSnapshot = getHeroSnapshot();
+        if (!heroSnapshot || !window.map) return null;
+        const clientId = getClientId(heroSnapshot);
+        if (!clientId) return null;
+
+        const payload = {
+            clientId,
+            mode: routeMode,
+            goToMap: goToMapTarget,
+            goToMapX: goToTargetX,
+            goToMapY: goToTargetY,
+            huntType: huntTypeTarget,
+            huntMob: huntMobTarget,
+            explorerTarget,
+            levelRange: serverLevelRange.trim(),
+            zoneMobTypes,
+            zoneTargetMap: routeMode === "zone" ? zoneTravelTargetMap : "",
+            blockedGatewayKeys: getBlockedGatewayKeys(),
+            currentMap: String(map.name || ""),
+            mapId: Number(map.id) || 0,
+            hero: {
+                x: Number(hero.x) || 0,
+                y: Number(hero.y) || 0,
+                lvl: Number(hero.lvl || (typeof hero.getLevel === "function" ? hero.getLevel() : 0)) || 0,
+                hp: Number(hero.hp) || 0,
+                freeSlots: window.g?.freeSlots === undefined || window.g?.freeSlots === null ? null : Number(window.g.freeSlots),
+            },
+            inventory: getWorkflowInventorySnapshot(),
+            workflowActionResult: lastWorkflowActionResult,
+            heroRegion: getHeroRegion(),
+        };
+        if (routeMode === "watcher") {
+            const watcherState = readWatcherState();
+            payload.watcherTargetMap = String(watcherState.targetMap || watcherActiveTargetMap || "");
+        }
+
+        const res = await fetchWithTimeout(SERVER_NEXT_STEP_URL, {
+            method: "POST",
+            headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+            body: JSON.stringify(payload),
+        }, 5_000);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        markServerFetchSuccess();
+        return res.json();
+    }
+
+    async function refreshResolvedTravelTarget(force = false) {
+        if (nextStepRefreshInFlight) {
+            routeFetchPending = true;
+            updateRouteInfo();
+            return;
+        }
+
+        const tNow = nowMs();
+        if (!force && tNow < serverFetchBackoffUntil) {
+            routeFetchPending = false;
+            updateRouteInfo();
+            return;
+        }
+
+        const needsZone = routeMode !== "goToMap" && routeMode !== "hunt" && routeMode !== "explorer" && routeMode !== "watcher";
+        const zoneLevelRange = serverLevelRange.trim();
+        const workflowFacts = window.map && window.hero ? getWorkflowInventorySnapshot() : {};
+        const teleportRestockPossible = Number(workflowFacts.teleportUses) < SELL_TELEPORT_MIN_USES
+            && (workflowFacts.hasTeleportScroll || String(window.map?.name || "") === SELL_ENTRY_MAP || String(window.map?.name || "") === SELL_TARGET_MAP);
+        const workflowNeedsServer = workflowTestOverride?.active
+            || activeServerWorkflow?.active
+            || workflowFacts.freeSlots === 0
+            || Number(workflowFacts.hp) === 1
+            || (workflowFacts.healUses !== null && workflowFacts.healUses !== undefined && Number(workflowFacts.healUses) < HEAL_MIN_USES)
+            || teleportRestockPossible;
+        if (((needsZone && !zoneLevelRange && !workflowNeedsServer) || (routeMode === "goToMap" && !goToMapTarget) || ((routeMode === "hunt" || routeMode === "watcher") && !huntMobTarget)) || !window.map || !window.hero) {
+            resetServerRouteState();
+            updateRouteInfo();
+            return;
+        }
+
+        if (!force && needsZone && isMapSettling()) {
+            resetServerRouteState();
+            updateRouteInfo();
+            return;
+        }
+
+        if (!force && hasPendingGatewayLock()) {
+            updateRouteInfo();
+            return;
+        }
+
+        const currentMap = map.name;
+        const routeKey = routeMode === "goToMap"
+            ? `${routeMode}|${goToMapTarget}|${goToTargetX ?? ""}|${goToTargetY ?? ""}`
+            : routeMode === "hunt"
+                ? `${routeMode}|${huntTypeTarget}|${huntMobTarget}`
+                : routeMode === "watcher"
+                    ? `${routeMode}|${huntTypeTarget}|${huntMobTarget}`
+                    : routeMode === "explorer"
+                        ? `${routeMode}|${explorerTarget}`
+                        : `${routeMode}|${zoneLevelRange}|${JSON.stringify(zoneMobTypes)}`;
+        const workflowKey = [
+            workflowTestOverrideKey(),
+            activeServerWorkflow?.key || "",
+            lastWorkflowActionResult?.key || "",
+            workflowFacts.freeSlots ?? "",
+            workflowFacts.hp ?? "",
+            workflowFacts.gold ?? "",
+            workflowFacts.healUses ?? "",
+            workflowFacts.teleportUses ?? "",
+        ].join("|");
+        const key = `${routeKey}|${workflowKey}|${currentMap}|${hero.x}|${hero.y}`;
+
+        if (!force && lastNextStepKey === key && (tNow - lastNextStepFetchAt) < NEXT_STEP_REFRESH_MS) {
+            updateRouteInfo();
+            return;
+        }
+
+        lastNextStepKey = key;
+        lastNextStepFetchAt = tNow;
+        nextStepRefreshInFlight = true;
+        routeFetchPending = true;
+
+        try {
+            scanCurrentMapToLocalDb();
+            await pushStorageVaultNow();
+            let data = null;
+            try {
+                data = await fetchServerNextStep();
+            } catch (serverErr) {
+                markServerFetchFailure("ClanHub next-step failed", serverErr);
+            }
+
+            if (data?.ok) {
+                activeServerWorkflow = data.workflow && data.workflow.active ? data.workflow : null;
+                if (workflowTestOverride?.active && activeServerWorkflow?.active) {
+                    workflowTestOverride = null;
+                }
+                lastWorkflowActionResult = null;
+                resolvedMode = data.mode || "";
+                resolvedPath = Array.isArray(data.path) ? data.path.slice() : [];
+                resolvedTarget = data.targetMap || "";
+                if (routeMode === "zone") zoneTravelTargetMap = resolvedTarget || zoneTravelTargetMap;
+                resolvedNextMap = data.nextMap || "";
+                resolvedGateway = data.gateway || null;
+                resolvedInsideZone = !!data.insideZone;
+                huntTargetX = data.targetX === null || data.targetX === undefined ? null : Number(data.targetX);
+                huntTargetY = data.targetY === null || data.targetY === undefined ? null : Number(data.targetY);
+                huntSpawnKey = String(data.spawnKey || "");
+                routeFetchPending = false;
+            } else {
+                activeServerWorkflow = null;
+                resetServerRouteState();
+                routeFetchPending = false;
+                if (data) {
+                    resolvedMode = data.mode || "";
+                    resolvedPath = Array.isArray(data.path) ? data.path.slice() : [];
+                    resolvedTarget = data.targetMap || "";
+                    resolvedNextMap = data.nextMap || "";
+                    resolvedInsideZone = !!data.insideZone;
+                }
+            }
+        } catch (e) {
+            console.error("Zone next-step resolution failed:", e);
+            activeServerWorkflow = null;
+            resetServerRouteState();
+            routeFetchPending = false;
+        } finally {
+            nextStepRefreshInFlight = false;
+        }
+
+        updateRouteInfo();
+    }
+
+    function isGoToMapMode() {
+        return routeMode === "goToMap" && !!goToMapTarget;
+    }
+
+    function isHuntMode() {
+        return routeMode === "hunt" && !!huntMobTarget;
+    }
+
+    function isWatcherRouteMode() {
+        return routeMode === "watcher" && !!huntMobTarget;
+    }
+
+    function isExplorerMode() {
+        return routeMode === "explorer";
+    }
+
+    function shouldTreatNormalMobsAsCollision() {
+        return isGoToMapMode() || isHuntMode() || isWatcherRouteMode() || isExplorerMode();
+    }
+
+    async function completeGoToMapMode() {
+        if (goToCompleteInFlight) return;
+        const clientId = getClientId();
+        if (!clientId) return;
+
+        goToCompleteInFlight = true;
+        try {
+            const res = await fetch(SERVER_GO_TO_MAP_COMPLETE_URL, {
+                method: "POST",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify({ clientId }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            lastAccountSettings = data?.accountSettings && typeof data.accountSettings === "object" ? data.accountSettings : lastAccountSettings;
+            applyServerSettings(data?.settings);
+        } catch (e) {
+            console.error("ClanHub go-to-map completion failed:", e);
+        } finally {
+            goToCompleteInFlight = false;
+        }
+    }
+
+    function handleGoToMapCoordinate() {
+        if (!isGoToMapMode() || !window.map || !window.hero) return false;
+        if (String(map.name || "") !== goToMapTarget) return false;
+
+        const hasCoords = goToTargetX !== null && goToTargetY !== null;
+        if (!hasCoords || (Number(hero.x) === goToTargetX && Number(hero.y) === goToTargetY)) {
+            updateStatus("GO TO MAP COMPLETE", "#00ff00");
+            setRunning(false, "Go to map complete");
+            completeGoToMapMode();
+            return true;
+        }
+
+        B = undefined;
+        A = false;
+        z = false;
+        updateStatus(`Go to ${goToMapTarget}: ${goToTargetX},${goToTargetY}`, "#00FFFF");
+
+        const needsNewRoad =
+            !hasStoredPathFor(goToTargetX, goToTargetY);
+
+        if (needsNewRoad) {
+            window.road = [];
+            storePath(goToTargetX, goToTargetY);
+        }
+
+        return true;
+    }
+
+    function findActiveHuntMob() {
+        if ((!isHuntMode() && !isWatcherRouteMode()) || !window.g || !g.npc) return null;
+        const target = huntMobTarget.trim().toLowerCase();
+        if (!target) return null;
+
+        for (const id in g.npc) {
+            const n = g.npc[id];
+            if (!n || !(n.type === 2 || n.type === 3)) continue;
+            const name = String(n.nick || n.name || "").trim().toLowerCase();
+            if (name !== target) continue;
+            if (huntTypeTarget) {
+                const wtInfo = classifyMobWt(n.wt);
+                if (wtInfo.type !== huntTypeTarget) continue;
+            }
+            return String(id);
+        }
+
+        return null;
+    }
+
+    function currentHeroPartyId() {
+        return String(window.hero?.id || window.hero?.pid || "").replace(/\D/g, "");
+    }
+
+    function getPartyRecord(playerId) {
+        const id = String(playerId || "").replace(/\D/g, "");
+        if (!id || !window.g || !g.party || typeof g.party !== "object") return null;
+        return g.party[id] || null;
+    }
+
+    function isPartyMember(playerId) {
+        return !!getPartyRecord(playerId);
+    }
+
+    function currentPartyMemberIds() {
+        if (!window.g || !g.party || typeof g.party !== "object") return [];
+        return Object.keys(g.party).map((id) => String(id || "").replace(/\D/g, "")).filter(Boolean);
+    }
+
+    function isCurrentHeroPartyLeader() {
+        if (!window.g || !g.party || typeof g.party !== "object") return true;
+        const own = getPartyRecord(currentHeroPartyId());
+        return !own || Number(own.r) === 1;
+    }
+
+    function isCurrentHeroPartyNonLeader() {
+        if (!window.g || !g.party || typeof g.party !== "object") return false;
+        const own = getPartyRecord(currentHeroPartyId());
+        return !!own && Number(own.r) !== 1;
+    }
+
+    function leaveCurrentWatcherGroup(status = "Watcher group leave") {
+        const ownId = currentHeroPartyId();
+        if (!ownId || typeof window._g !== "function") return false;
+        _g(`party&a=rm&id=${encodeURIComponent(ownId)}`);
+        updateStatus(status, "#e7b54a");
+        return true;
+    }
+
+    function disbandCurrentWatcherGroup(status = "Watcher group disband") {
+        if (typeof window._g !== "function") return false;
+        _g("party&a=disband");
+        updateStatus(status, "#e7b54a");
+        return true;
+    }
+
+    function watcherGroupEligiblePlayers() {
+        if (!window.g || !g.other || typeof g.other !== "object") return [];
+        const selfId = currentHeroPartyId();
+        const players = [];
+        const policyKey = (value) => String(value || "").trim().toLowerCase();
+        for (const raw of Object.values(g.other)) {
+            if (!raw || typeof raw !== "object") continue;
+            const id = String(raw.id || "").replace(/\D/g, "");
+            if (!id || id === selfId) continue;
+            const relation = Number(raw.relation);
+            const playerClanId = String(raw.clan?.id || "").replace(/\D/g, "");
+            const playerNick = String(raw.nick || "");
+            const playerClanName = String(raw.clan?.name || "");
+            const noClan = !playerClanId && !playerClanName.trim();
+            const policy = noClan ? String(playerPolicies[id] || playerPolicies[policyKey(playerNick)] || "") : "";
+            const clanPolicy = String(playerClanPolicies[policyKey(playerClanName)] || (playerClanId ? playerClanPolicies[playerClanId] : "") || "");
+            if (policy === "ignore" || clanPolicy === "ignore") continue;
+            const friend = relation === 2;
+            const clanMember = clanPolicy === "add";
+            if (policy !== "add" && clanPolicy !== "add" && !friend) continue;
+            players.push({
+                id,
+                nick: String(raw.nick || id),
+                x: Math.trunc(Number(raw.x) || 0),
+                y: Math.trunc(Number(raw.y) || 0),
+                relation,
+                friend,
+                clanMember,
+            });
+        }
+        return players;
+    }
+
+    function inviteWatcherGroupPlayer(player) {
+        if (!player?.id || typeof window._g !== "function") return false;
+        const tNow = nowMs();
+        const lastAt = Number(watcherGroupInviteLastAt[player.id] || 0);
+        if (tNow - lastAt < WATCHER_GROUP_INVITE_COOLDOWN_MS) return false;
+        watcherGroupInviteLastAt[player.id] = tNow;
+        _g(`party&a=inv&id=${encodeURIComponent(player.id)}`);
+        return true;
+    }
+
+    function ensureOnlyWatcherGroupMembers(eligiblePlayers = watcherGroupEligiblePlayers()) {
+        const partyIds = currentPartyMemberIds();
+        if (!partyIds.length) return true;
+
+        const ownId = currentHeroPartyId();
+        const allowed = {};
+        if (ownId) allowed[ownId] = true;
+        for (const player of eligiblePlayers) {
+            if (player?.id) allowed[player.id] = true;
+        }
+        const hasOutsider = partyIds.some((id) => !allowed[id]);
+        if (!hasOutsider) return true;
+
+        leaveCurrentWatcherGroup("Watcher group outsider: leaving");
+        return false;
+    }
+
+    function moveToWatcherWaitSpot(statusPrefix = "Watcher wait") {
+        B = undefined;
+        A = false;
+        z = false;
+        window.road = [];
+        clearWatcherPatrol();
+        updateStatus(`${statusPrefix}: ${String(map?.name || resolvedTarget || "")} ${Number(hero?.x) || 0},${Number(hero?.y) || 0}`, "#e7b54a");
+        return true;
+    }
+
+    function clearWatcherPatrol() {
+        watcherPatrolTarget = null;
+    }
+
+    function chooseWatcherPatrolIdleTrigger() {
+        return WATCHER_PATROL_IDLE_TRIGGERS[Math.floor(Math.random() * WATCHER_PATROL_IDLE_TRIGGERS.length)] || 100;
+    }
+
+    function isWatcherPatrolTile(tile, region) {
+        if (!tile || !inBounds2(tile.x, tile.y) || !isWalkable(tile.x, tile.y)) return false;
+        if (getRegionAt(tile.x, tile.y) !== region) return false;
+        if (isNpcBlockingTile(tile.x, tile.y)) return false;
+        if (isGatewayTile(tile.x, tile.y)) return false;
+        return true;
+    }
+
+    function isGatewayTile(x, y) {
+        if (!window.g || !g.gwIds) return false;
+        for (const raw of Object.values(g.gwIds)) {
+            const coord = parseGatewayCoord(raw);
+            if (coord && coord.x === x && coord.y === y) return true;
+        }
+        return false;
+    }
+
+    function chooseWatcherPatrolTarget() {
+        if (!window.hero || !window.map) return null;
+        const anchor = { x: Number(hero.x) || 0, y: Number(hero.y) || 0 };
+        const region = getRegionAt(anchor.x, anchor.y);
+        if (region < 0) return null;
+
+        const candidates = [];
+        const radius = 5;
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (!dx && !dy) continue;
+                const tile = { x: anchor.x + dx, y: anchor.y + dy };
+                if (isWatcherPatrolTile(tile, region)) candidates.push(tile);
+            }
+        }
+        if (!candidates.length) return null;
+
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+
+        return candidates[0];
+    }
+
+    function handleWatcherPatrol() {
+        if (!window.hero || !window.map || B || z) return false;
+        const idleCounter = Number(window.g?.idleRequestCounter) || 0;
+
+        if (watcherPatrolTarget && Number(hero.x) === watcherPatrolTarget.x && Number(hero.y) === watcherPatrolTarget.y) {
+            clearWatcherPatrol();
+            updateStatus(`Watcher wait ${huntMobTarget}: ${map.name} ${hero.x},${hero.y}`, "#e7b54a");
+            return true;
+        }
+
+        if (!watcherPatrolIdleArmed && idleCounter <= WATCHER_PATROL_IDLE_RESET_TRIGGER) {
+            watcherPatrolIdleArmed = true;
+            clearWatcherPatrol();
+            watcherPatrolIdleTrigger = chooseWatcherPatrolIdleTrigger();
+            updateStatus(`Watcher patrol waits idle ${idleCounter}/${watcherPatrolIdleTrigger}`, "#e7b54a");
+            return true;
+        }
+
+        if (watcherPatrolIdleArmed && idleCounter <= watcherPatrolIdleTrigger) {
+            clearWatcherPatrol();
+            updateStatus(`Watcher patrol waits idle ${idleCounter}/${watcherPatrolIdleTrigger}`, "#e7b54a");
+            return true;
+        }
+
+        if (!watcherPatrolTarget) {
+            if (!watcherPatrolIdleArmed) {
+                updateStatus(`Watcher patrol waits idle reset ${idleCounter}`, "#e7b54a");
+                return true;
+            }
+            watcherPatrolTarget = chooseWatcherPatrolTarget();
+            watcherPatrolIdleArmed = false;
+        }
+
+        if (!watcherPatrolTarget) {
+            updateStatus(`Watcher patrol blocked idle ${idleCounter}`, "#e7b54a");
+            return true;
+        }
+
+        if (!hasStoredPathFor(watcherPatrolTarget.x, watcherPatrolTarget.y)) {
+            B = undefined;
+            A = false;
+            z = false;
+            window.road = [];
+            storePath(watcherPatrolTarget.x, watcherPatrolTarget.y);
+            if (!window.road || !window.road.length) {
+                const failedTarget = watcherPatrolTarget;
+                clearWatcherPatrol();
+                updateStatus(`Watcher patrol no path: ${failedTarget.x},${failedTarget.y}`, "#e7b54a");
+                return true;
+            }
+        }
+
+        updateStatus(`Watcher patrol idle ${idleCounter}: ${watcherPatrolTarget.x},${watcherPatrolTarget.y}`, "#e7b54a");
+        return true;
+    }
+
+    function ensureWatcherGroupReadyBeforeAttack() {
+        const players = watcherGroupEligiblePlayers();
+        if (!ensureOnlyWatcherGroupMembers(players)) return false;
+        if (!players.length) return true;
+
+        if (!isCurrentHeroPartyLeader()) {
+            updateStatus("Watcher group no leader: patrol", "#e7b54a");
+            return true;
+        }
+
+        let pending = false;
+        for (const player of players) {
+            if (isPartyMember(player.id)) continue;
+
+            pending = true;
+            const distance = Math.abs(Number(hero.x) - player.x) + Math.abs(Number(hero.y) - player.y);
+            if (player.friend || distance <= 1) {
+                inviteWatcherGroupPlayer(player);
+                updateStatus(`Watcher group invite: ${player.nick}`, "#e7b54a");
+                continue;
+            }
+
+            B = undefined;
+            A = false;
+            z = false;
+            updateStatus(`Watcher group go to: ${player.nick}`, "#00FFFF");
+            if (!hasStoredPathFor(player.x, player.y)) {
+                window.road = [];
+                storePath(player.x, player.y);
+            }
+            return false;
+        }
+
+        if (pending) {
+            B = undefined;
+            A = false;
+            z = false;
+            window.road = [];
+            updateStatus("Watcher group: waiting invites", "#e7b54a");
+            return false;
+        }
+
+        return true;
+    }
+
+    async function markHuntCheckpointChecked() {
+        if (huntCheckpointInFlight || !huntSpawnKey || !huntMobTarget) return;
+        const clientId = getClientId();
+        if (!clientId) return;
+
+        huntCheckpointInFlight = true;
+        try {
+            const res = await fetch(SERVER_HUNT_CHECKPOINT_URL, {
+                method: "POST",
+                headers: getServerHeaders({ "Content-Type": "application/json", "Accept": "application/json" }),
+                body: JSON.stringify({
+                    clientId,
+                    huntType: huntTypeTarget,
+                    huntMob: huntMobTarget,
+                    spawnKey: huntSpawnKey,
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            lastNextStepKey = "";
+            refreshResolvedTravelTarget(true);
+        } catch (e) {
+            console.error("ClanHub hunt checkpoint failed:", e);
+        } finally {
+            huntCheckpointInFlight = false;
+        }
+    }
+
+    function handleHuntMode() {
+        if (!isHuntMode() || !window.map || !window.hero) return false;
+
+        const activeMob = findActiveHuntMob();
+        if (activeMob) {
+            setTarget(activeMob);
+            window.road = [];
+            updateStatus(`Hunt found: ${huntMobTarget}`, "#ff66cc");
+            return false;
+        }
+
+        if (String(map.name || "") !== resolvedTarget || huntTargetX === null || huntTargetY === null) return false;
+
+        if (Number(hero.x) === huntTargetX && Number(hero.y) === huntTargetY) {
+            updateStatus(`Hunt checked: ${resolvedTarget} ${huntTargetX},${huntTargetY}`, "#e7b54a");
+            markHuntCheckpointChecked();
+            return true;
+        }
+
+        if (
+            Math.abs(Number(hero.x) - huntTargetX) + Math.abs(Number(hero.y) - huntTargetY) <= 1 &&
+            isNpcBlockingTile(huntTargetX, huntTargetY)
+        ) {
+            updateStatus(`Hunt checked nearby: ${resolvedTarget} ${huntTargetX},${huntTargetY}`, "#e7b54a");
+            markHuntCheckpointChecked();
+            return true;
+        }
+
+        B = undefined;
+        A = false;
+        z = false;
+        updateStatus(`Hunt ${huntMobTarget}: ${resolvedTarget} ${huntTargetX},${huntTargetY}`, "#00FFFF");
+
+        const needsNewRoad =
+            !hasStoredPathFor(huntTargetX, huntTargetY);
+
+        if (needsNewRoad) {
+            window.road = [];
+            storePath(huntTargetX, huntTargetY);
+        }
+
+        return true;
+    }
+
+    function handleWatcherRouteMode() {
+        if (!isWatcherRouteMode() || !window.map || !window.hero) return false;
+
+        const activeMob = findActiveHuntMob();
+        const watcherState = readWatcherState();
+        const watcherTargetMap = String(resolvedTarget || watcherState.targetMap || watcherActiveTargetMap || "");
+        const currentMapName = String(map.name || "");
+        const onWatcherSpawnMap = watcherTargetMap ? currentMapName === watcherTargetMap : !!activeMob;
+        if (!onWatcherSpawnMap) return false;
+
+        if (!ensureWatcherGroupReadyBeforeAttack()) return true;
+
+        if (activeMob && isCurrentHeroPartyNonLeader()) {
+            clearWatcherPatrol();
+            if (handleWatcherPatrol()) return true;
+            updateStatus("Watcher group no leader: patrol", "#e7b54a");
+            return true;
+        }
+
+        if (activeMob) {
+            clearWatcherPatrol();
+            if (!ensureWatcherGroupReadyBeforeAttack()) return true;
+            setTarget(activeMob);
+            window.road = [];
+            updateStatus(`Watcher found: ${huntMobTarget}`, "#ff66cc");
+            return false;
+        }
+
+        if (handleWatcherPatrol()) return true;
+
+        B = undefined;
+        A = false;
+        z = false;
+        window.road = [];
+        updateStatus(`Watcher wait ${huntMobTarget}: ${map.name} ${hero.x},${hero.y}`, "#e7b54a");
+        return true;
+    }
+
+    function getActiveTravelTarget() {
+        return resolvedTarget || "";
+    }
+
+    function applyLocalProgressReset() {
+        clearMovementState();
+        persistentDB = {};
+        resetSeenMeta();
+        seenMobMeta = loadSeenMeta();
+        resetPickerState();
+        resetRegionState();
+        resetServerRouteState();
+        lastLevelZoneClearKey = "";
+        updateStatus("Local progress reset", "#FFFF66");
+        refreshResolvedTravelTarget(true);
+    }
+
+    function startLocalSyncIntervals() {
+        if (localIntervalsStarted) return;
+        localIntervalsStarted = true;
+
+        scanCurrentMapToLocalDb();
+        sendHeartbeat();
+        reportExternalData(nowMs(), true);
+        window.setInterval(() => {
+            scanCurrentMapToLocalDb();
+            const zoneLevelRange = serverLevelRange.trim();
+            const workflowFacts = window.map && window.hero ? getWorkflowInventorySnapshot() : {};
+            const teleportRestockPossible = Number(workflowFacts.teleportUses) < SELL_TELEPORT_MIN_USES
+                && (workflowFacts.hasTeleportScroll || String(window.map?.name || "") === SELL_ENTRY_MAP || String(window.map?.name || "") === SELL_TARGET_MAP);
+            const workflowNeedsServer = workflowTestOverride?.active
+                || activeServerWorkflow?.active
+                || workflowFacts.freeSlots === 0
+                || Number(workflowFacts.hp) === 1
+                || (workflowFacts.healUses !== null && workflowFacts.healUses !== undefined && Number(workflowFacts.healUses) < HEAL_MIN_USES)
+                || teleportRestockPossible;
+            if (zoneLevelRange || isExplorerMode() || workflowNeedsServer) {
+                refreshResolvedTravelTarget(false);
+            }
+        }, LOCAL_MAP_SCAN_INTERVAL_MS);
+        window.setInterval(sendHeartbeat, SERVER_HEARTBEAT_MS);
+        window.setInterval(reportExternalData, EXTERNAL_DATA_REPORT_MS);
+        window.setInterval(flushMovementTestEvents, 1000);
+        window.setInterval(pullServerSettings, SERVER_SETTINGS_PULL_MS);
+        window.setInterval(tickActiveWorkflowTravel, WORKFLOW_TRAVEL_TICK_MS);
+    }
+
+    // =========================================================
+    // DB SYNC
+    // =========================================================
+    let lastDbSyncAt = 0;
+
+    function isMapSettling() {
+        return lastMapChangedAt > 0 && nowMs() - lastMapChangedAt < MAP_SETTLE_AFTER_CHANGE_MS;
+    }
+
+    function syncDatabase() {
+        if (typeof g === "undefined" || !g.npc || !window.map || !window.hero) return;
+
+        const t = nowMs();
+        const mapChanged = map.name !== lastMapName;
+        if (!mapChanged && t - lastDbSyncAt < DB_SYNC_THROTTLE_MS) return;
+        lastDbSyncAt = t;
+
+        if (mapChanged) {
+            clearPendingGatewayLock();
+            persistentDB = {};
+            lastMapName = map.name;
+            lastMapChangedAt = t;
+            lastLevelZoneClearKey = "";
+            resetSeenMeta();
+            seenMobMeta = loadSeenMeta();
+            resetPickerState();
+            resetRegionState();
+            resetServerRouteState();
+            clearMovementState();
+        }
+
+        reportMobSpawns(t);
+        reportSeenPlayers(t);
+
+        const range = getLevelRange();
+        if (!range) {
+            const dbCounter = document.querySelector("#xD_stat_db");
+            if (dbCounter) dbCounter.innerText = "0";
+            return;
+        }
+
+        if (range.raw !== lastLvlFilter) {
+            lastLvlFilter = range.raw;
+            persistentDB = {};
+            clearMovementState();
+            resetSeenMeta();
+            seenMobMeta = loadSeenMeta();
+            resetPickerState();
+        }
+
+        const minL = range.min, maxL = range.max;
+        if (!seenMobMeta || typeof seenMobMeta !== "object") seenMobMeta = loadSeenMeta();
+
+        for (let id in g.npc) {
+            const n = g.npc[id];
+            if (
+                n &&
+                (n.type === 2 || n.type === 3) &&
+                zoneMobTypes[classifyMobWt(n.wt).type] === "attack" &&
+                n.lvl >= minL &&
+                n.lvl <= maxL
+            ) {
+                persistentDB[id] = { id, x: n.x, y: n.y, lvl: n.lvl, name: n.nick || n.name };
+
+                const meta = seenMobMeta[id];
+                if (!meta) seenMobMeta[id] = { firstSeen: t, lastSeen: t };
+                else meta.lastSeen = t;
+            }
+        }
+
+        for (let id in persistentDB) {
+            const m = persistentDB[id];
+            if (!m || m.lvl < minL || m.lvl > maxL) {
+                delete persistentDB[id];
+                delete I[id];
+                delete unreachableCount[id];
+                delete failurePenalty[id];
+            }
+        }
+
+        for (let id in persistentDB) {
+            const m = persistentDB[id];
+            const dist = Math.abs(hero.x - m.x) + Math.abs(hero.y - m.y);
+            if (dist <= 10 && !g.npc[id]) {
+                delete persistentDB[id];
+                delete I[id];
+                delete unreachableCount[id];
+                delete failurePenalty[id];
+                if (B == id) {
+                    B = undefined;
+                    updateStatus("Target vanished, re-scanning", "yellow");
+                }
+            }
+        }
+
+        saveSeenMetaThrottled(seenMobMeta, t);
+
+        const dbCounter = document.querySelector("#xD_stat_db");
+        if (dbCounter) dbCounter.innerText = Object.keys(persistentDB).length;
+    }
+
+    // =========================================================
+    // NAVIGATION
+    // =========================================================
+    function calculateDistance(K, L) {
+        return Math.abs(K.x - L.x) + Math.abs(K.y - L.y);
+    }
+
+    function findPathToLocation(K, L) {
+        if (!window.map || !map.col || typeof Pathfinder !== "function") return undefined;
+
+        const start = { x: hero.x, y: hero.y };
+        const tryPath = (tx, ty) =>
+            new Pathfinder(map.col, map.x, map.y, start, { x: tx, y: ty }, g.npccol).findPath();
+
+        const candidates = [
+            { x: K, y: L },
+            { x: K + 1, y: L },
+            { x: K - 1, y: L },
+            { x: K, y: L + 1 },
+            { x: K, y: L - 1 },
+        ];
+
+        let best = null;
+        for (const c of candidates) {
+            if (c.x < 0 || c.y < 0 || c.x >= map.x || c.y >= map.y) continue;
+            const path = tryPath(c.x, c.y);
+            if (path && path.length) {
+                if (!best || path.length < best.length) best = path;
+            }
+        }
+
+        return best || undefined;
+    }
+
+    function clearStoredPathRequest() {
+        lastStoredPathMap = "";
+        lastStoredPathRequestX = null;
+        lastStoredPathRequestY = null;
+        lastStoredPathRegion = -1;
+    }
+
+    function hasStoredPathFor(K, L) {
+        return !!(
+            window.road &&
+            window.road.length &&
+            lastStoredPathMap === String(map?.name || "") &&
+            lastStoredPathRequestX === K &&
+            lastStoredPathRequestY === L &&
+            lastStoredPathRegion === getHeroRegion()
+        );
+    }
+
+    function isNpcBlockingTile(K, L) {
+        if (!window.g || !g.npc || !window.map) return false;
+        for (let id in g.npc) {
+            const n = g.npc[id];
+            if (!n) continue;
+            if (!shouldTreatNormalMobsAsCollision() && n.wt === 1) continue;
+            if (n.type === 4) continue;
+            if (n.wt === -2) continue;
+            if (Number(n.x) === K && Number(n.y) === L) return true;
+        }
+        return false;
+    }
+
+    function isHighLevelMobForZoneAvoidance(npc) {
+        if (!npc || (npc.type !== 2 && npc.type !== 3)) return false;
+        const range = getLevelRange();
+        if (!range || !Number.isFinite(Number(range.max))) return false;
+        return Number(npc.lvl) > Number(range.max);
+    }
+
+    function buildHighLevelMobAvoidSet(width, height, start) {
+        const set = new Set();
+        if (!window.g || !g.npc || !window.map) return set;
+        const startX = Number(start?.x);
+        const startY = Number(start?.y);
+
+        for (let id in g.npc) {
+            const n = g.npc[id];
+            if (!isHighLevelMobForZoneAvoidance(n)) continue;
+
+            const mobX = Number(n.x);
+            const mobY = Number(n.y);
+            if (!Number.isFinite(mobX) || !Number.isFinite(mobY)) continue;
+
+            const startDist = Number.isFinite(startX) && Number.isFinite(startY)
+                ? Math.abs(startX - mobX) + Math.abs(startY - mobY)
+                : Infinity;
+
+            for (let dx = -HIGH_LEVEL_MOB_AVOID_RADIUS; dx <= HIGH_LEVEL_MOB_AVOID_RADIUS; dx++) {
+                for (let dy = -HIGH_LEVEL_MOB_AVOID_RADIUS; dy <= HIGH_LEVEL_MOB_AVOID_RADIUS; dy++) {
+                    const dist = Math.abs(dx) + Math.abs(dy);
+                    if (dist > HIGH_LEVEL_MOB_AVOID_RADIUS) continue;
+
+                    const x = mobX + dx;
+                    const y = mobY + dy;
+                    if (x < 0 || y < 0 || x >= width || y >= height) continue;
+                    if (x === startX && y === startY) continue;
+
+                    const tileDistFromMob = Math.abs(x - mobX) + Math.abs(y - mobY);
+                    if (startDist <= HIGH_LEVEL_MOB_AVOID_RADIUS && tileDistFromMob > startDist) continue;
+
+                    const idx = x + y * width;
+                    if (map.col.charAt(idx) === "1") continue;
+                    set.add(idx);
+                }
+            }
+        }
+
+        return set;
+    }
+
+    function clearRoadIfHighLevelMobTooClose() {
+        if (!window.road || !window.road.length || !window.map || !window.hero) return false;
+        const avoided = buildHighLevelMobAvoidSet(map.x, map.y, { x: hero.x, y: hero.y });
+        if (!avoided.size) return false;
+
+        const touchesDanger = window.road.some((step) => {
+            const x = Number(step?.x);
+            const y = Number(step?.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+            return avoided.has(x + y * map.x);
+        });
+        if (!touchesDanger) return false;
+
+        window.road = [];
+        clearStoredPathRequest();
+        updateStatus(`Avoiding high-level mob (${HIGH_LEVEL_MOB_AVOID_RADIUS} tiles)`, "#FFAA00");
+        return true;
+    }
+
+    function storePath(K, L) {
+        const M = findPathToLocation(K, L);
+        if (Array.isArray(M)) {
+            window.road = M;
+            lastStoredPathMap = String(map?.name || "");
+            lastStoredPathRequestX = K;
+            lastStoredPathRequestY = L;
+            lastStoredPathRegion = getHeroRegion();
+            movementTestEvent("path", "set road", {
+                targetX: K,
+                targetY: L,
+            });
+            return true;
+        } else {
+            clearStoredPathRequest();
+            movementTestEvent("path", "no path", {
+                targetX: K,
+                targetY: L,
+            });
+            return false;
+        }
+    }
+
+    function storeGatewayPathOrTryAlternative(gatewayKey, K, L, reasonPrefix = "Gateway") {
+        window.road = [];
+        if (storePath(K, L)) return true;
+        if (!gatewayKey || !window.map || !window.hero) return false;
+
+        const avoided = buildHighLevelMobAvoidSet(map.x, map.y, { x: hero.x, y: hero.y });
+        if (!avoided.size) return false;
+
+        return blockGatewayForCurrentHero(
+            gatewayKey,
+            `${reasonPrefix}: high-level mob blocks path -> trying another route`,
+        );
+    }
+
+    // =========================================================
+    // A*
+    // =========================================================
+    class Pathfinder {
+        constructor(K, L, M, N, O, P) {
+            this.width = L;
+            this.height = M;
+            this.collisions = this.parseCollisions(K, L, M);
+            this.additionalCollisions = P || {};
+            this.npcBlocked = this.buildNpcBlockedSet();
+            this.highLevelMobAvoided = buildHighLevelMobAvoidSet(L, M, N);
+
+            this.start = this.collisions[N.x][N.y];
+            this.end = this.collisions[O.x][O.y];
+            this.start.g = 0;
+            this.openSet = [this.start];
+            this.closedSet = [];
+        }
+
+        buildNpcBlockedSet() {
+            const set = new Set();
+            if (!window.g || !g.npc || !window.map) return set;
+
+            for (let id in g.npc) {
+                const n = g.npc[id];
+                if (!n) continue;
+                if (!shouldTreatNormalMobsAsCollision() && n.wt === 1) continue;
+                if (n.type === 4) continue;
+                if (n.wt === -2) continue;
+
+                const x = n.x, y = n.y;
+                if (x < 0 || y < 0 || x >= map.x || y >= map.y) continue;
+
+                const idx = x + y * map.x;
+                if (map.col.charAt(idx) === "1") continue;
+
+                set.add(idx);
+            }
+            return set;
+        }
+
+        parseCollisions(K, L, M) {
+            const N = Array(L);
+            for (let O = 0; O < L; O++) {
+                N[O] = Array(M);
+                for (let P = 0; P < M; P++) {
+                    N[O][P] = new PathNode(O, P, K.charAt(O + P * L) === "1");
+                }
+            }
+            return N;
+        }
+
+        findPath() {
+            const TURN_PENALTY = 28;
+            const neighbors = [
+                { dx: 0, dy: 1, dir: 0 },
+                { dx: 0, dy: -1, dir: 1 },
+                { dx: 1, dy: 0, dir: 2 },
+                { dx: -1, dy: 0, dir: 3 },
+            ];
+
+            this.start.g = 0;
+            this.start.dir = -1;
+            this.start.turns = 0;
+            this.start.h = calculateDistance(this.start, this.end);
+            this.start.updateGroupMembers = this.start.h;
+
+            while (this.openSet.length > 0) {
+                let best = 0;
+                for (let i = 1; i < this.openSet.length; i++) {
+                    const candidate = this.openSet[i];
+                    const currentBest = this.openSet[best];
+                    if (
+                        candidate.updateGroupMembers < currentBest.updateGroupMembers ||
+                        (
+                            candidate.updateGroupMembers === currentBest.updateGroupMembers &&
+                            candidate.turns < currentBest.turns
+                        ) ||
+                        (
+                            candidate.updateGroupMembers === currentBest.updateGroupMembers &&
+                            candidate.turns === currentBest.turns &&
+                            candidate.h < currentBest.h
+                        )
+                    ) {
+                        best = i;
+                    }
+                }
+
+                const cur = this.openSet[best];
+                if (cur === this.end) return this.reconstructPath();
+
+                this.openSet.splice(best, 1);
+                this.closedSet.push(cur);
+
+                for (let nb of neighbors) {
+                    const nx = cur.x + nb.dx, ny = cur.y + nb.dy;
+                    if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+
+                    const node = this.collisions[nx][ny];
+                    if (node.collision) continue;
+
+                    const idx = nx + ny * this.width;
+                    if (this.npcBlocked.has(idx)) continue;
+                    if (this.highLevelMobAvoided.has(idx)) continue;
+
+                    if (this.closedSet.includes(node)) continue;
+
+                    const isTurn = cur.dir !== -1 && cur.dir !== nb.dir;
+                    const stepCost = 1 + (isTurn ? TURN_PENALTY : 0);
+                    const tentativeG = cur.g + stepCost;
+                    const tentativeTurns = cur.turns + (isTurn ? 1 : 0);
+
+                    const inOpen = this.openSet.includes(node);
+                    if (!inOpen) this.openSet.push(node);
+                    else if (tentativeG > node.g || (tentativeG === node.g && tentativeTurns >= node.turns)) continue;
+
+                    node.previous = cur;
+                    node.g = tentativeG;
+                    node.dir = nb.dir;
+                    node.turns = tentativeTurns;
+                    node.h = calculateDistance(node, this.end);
+                    node.updateGroupMembers = node.g + node.h;
+                }
+            }
+
+            return undefined;
+        }
+
+        reconstructPath() {
+            const K = [];
+            for (let L = this.end; L !== this.start; L = L.previous) K.push(L);
+            return K;
+        }
+    }
+
+    class PathNode {
+        constructor(K, L, M) {
+            this.x = K;
+            this.y = L;
+            this.collision = M;
+            this.g = 1e7;
+            this.turns = 1e7;
+            this.h = 1e7;
+            this.updateGroupMembers = 1e7;
+            this.previous = undefined;
+            this.dir = -1;
+        }
+    }
+
+    // =========================================================
+    // MAP HELPERS
+    // =========================================================
+    function idxOf(x, y) { return x + y * map.x; }
+    function inBounds2(x, y) { return x >= 0 && y >= 0 && x < map.x && y < map.y; }
+    function isWalkable(x, y) { return map.col.charAt(idxOf(x, y)) !== "1"; }
+
+    function ensureRegionMap() {
+        if (!window.map || !map.col) return null;
+
+        const key = `${map.name}_${map.x}x${map.y}_${map.col.length}`;
+        if (regionCache && regionKey === key) return regionCache;
+
+        regionKey = key;
+
+        const w = map.x, h = map.y;
+        const region = new Int32Array(w * h);
+        region.fill(-1);
+
+        const q = new Int32Array(w * h);
+        let regionId = 0;
+
+        for (let start = 0; start < w * h; start++) {
+            if (region[start] !== -1) continue;
+            if (map.col.charAt(start) === "1") continue;
+
+            let qs = 0, qe = 0;
+            q[qe++] = start;
+            region[start] = regionId;
+
+            while (qs < qe) {
+                const cur = q[qs++];
+                const cx = cur % w;
+                const cy = (cur / w) | 0;
+
+                if (cy > 0) {
+                    const ni = cur - w;
+                    if (region[ni] === -1 && map.col.charAt(ni) !== "1") {
+                        region[ni] = regionId;
+                        q[qe++] = ni;
+                    }
+                }
+                if (cy + 1 < h) {
+                    const ni = cur + w;
+                    if (region[ni] === -1 && map.col.charAt(ni) !== "1") {
+                        region[ni] = regionId;
+                        q[qe++] = ni;
+                    }
+                }
+                if (cx > 0) {
+                    const ni = cur - 1;
+                    if (region[ni] === -1 && map.col.charAt(ni) !== "1") {
+                        region[ni] = regionId;
+                        q[qe++] = ni;
+                    }
+                }
+                if (cx + 1 < w) {
+                    const ni = cur + 1;
+                    if (region[ni] === -1 && map.col.charAt(ni) !== "1") {
+                        region[ni] = regionId;
+                        q[qe++] = ni;
+                    }
+                }
+            }
+
+            regionId++;
+        }
+
+        regionCache = { key, region, w, h };
+        return regionCache;
+    }
+
+    function getRegionAt(x, y) {
+        const rc = ensureRegionMap();
+        if (!rc) return -1;
+        if (x < 0 || y < 0 || x >= rc.w || y >= rc.h) return -1;
+        return rc.region[x + y * rc.w];
+    }
+
+    function getHeroRegion() {
+        if (!window.hero) return -1;
+        return getRegionAt(hero.x, hero.y);
+    }
+
+    function getStandTilesForPoint(x, y) {
+        return [
+            { x, y },
+            { x: x + 1, y },
+            { x: x - 1, y },
+            { x, y: y + 1 },
+            { x, y: y - 1 },
+        ];
+    }
+
+    function isMobInHeroRegion(m) {
+        const heroRegion = getHeroRegion();
+        if (heroRegion < 0 || !m) return false;
+
+        const spots = getStandTilesForPoint(m.x, m.y);
+        for (let i = 0; i < spots.length; i++) {
+            const s = spots[i];
+            if (!inBounds2(s.x, s.y)) continue;
+            if (!isWalkable(s.x, s.y)) continue;
+            if (getRegionAt(s.x, s.y) === heroRegion) return true;
+        }
+
+        return false;
+    }
+
+    function canReachMapPointFromHeroRegion(x, y) {
+        const heroRegion = getHeroRegion();
+        if (heroRegion < 0) return false;
+
+        return inBounds2(x, y) && isWalkable(x, y) && getRegionAt(x, y) === heroRegion;
+    }
+
+    function isGatewayInHeroRegion(gw) {
+        if (!gw) return false;
+        const heroRegion = getHeroRegion();
+        if (heroRegion < 0) return false;
+
+        const sx = Number(gw.standX);
+        const sy = Number(gw.standY);
+
+        if (!Number.isFinite(sx) || !Number.isFinite(sy)) return false;
+        if (!inBounds2(sx, sy)) return false;
+        if (!isWalkable(sx, sy)) return false;
+
+        if (Number.isFinite(Number(gw.region)) && Number(gw.region) === heroRegion) {
+            return true;
+        }
+
+        return getRegionAt(sx, sy) === heroRegion;
+    }
+
+    // =========================================================
+    // BFS DISTANCE
+    // =========================================================
+    function buildNpcBlockedSetForBfs() {
+        const set = new Set();
+        try {
+            if (!window.g || !g.npc || !window.map) return set;
+            for (let id in g.npc) {
+                const n = g.npc[id];
+                if (!n) continue;
+                if (!shouldTreatNormalMobsAsCollision() && n.wt === 1) continue;
+                if (n.type === 4) continue;
+                if (n.wt === -2) continue;
+
+                const x = n.x, y = n.y;
+                if (x < 0 || y < 0 || x >= map.x || y >= map.y) continue;
+                const idx = x + y * map.x;
+                if (map.col.charAt(idx) === "1") continue;
+                set.add(idx);
+            }
+        } catch { }
+        return set;
+    }
+
+    function bfsKey(sx, sy) {
+        const npcCount = (window.g && g.npc) ? Object.keys(g.npc).length : 0;
+        return `${map.name}_${map.x}x${map.y}_S${sx},${sy}_N${npcCount}`;
+    }
+
+    function getBfsDistFromHero() {
+        const tNow = nowMs();
+        if (!window.map || !window.hero) return null;
+
+        const sx = hero.x, sy = hero.y;
+        const key = bfsKey(sx, sy);
+        if (bfsCache && bfsCache.key === key && (tNow - lastBfsAt) < BFS_CACHE_MS) return bfsCache;
+
+        lastBfsAt = tNow;
+
+        const w = map.x, h = map.y;
+        const npcBlocked = buildNpcBlockedSetForBfs();
+
+        const dist = new Int32Array(w * h);
+        dist.fill(-1);
+
+        const start = sx + sy * w;
+        dist[start] = 0;
+
+        const q = new Int32Array(w * h);
+        let qs = 0, qe = 0;
+        q[qe++] = start;
+
+        while (qs < qe) {
+            const cur = q[qs++];
+            const cx = cur % w;
+            const cy = (cur / w) | 0;
+            const cd = dist[cur];
+
+            if (cy > 0) {
+                const ni = cur - w;
+                if (dist[ni] === -1 && map.col.charAt(ni) !== "1" && !npcBlocked.has(ni)) {
+                    dist[ni] = cd + 1; q[qe++] = ni;
+                }
+            }
+            if (cy + 1 < h) {
+                const ni = cur + w;
+                if (dist[ni] === -1 && map.col.charAt(ni) !== "1" && !npcBlocked.has(ni)) {
+                    dist[ni] = cd + 1; q[qe++] = ni;
+                }
+            }
+            if (cx > 0) {
+                const ni = cur - 1;
+                if (dist[ni] === -1 && map.col.charAt(ni) !== "1" && !npcBlocked.has(ni)) {
+                    dist[ni] = cd + 1; q[qe++] = ni;
+                }
+            }
+            if (cx + 1 < w) {
+                const ni = cur + 1;
+                if (dist[ni] === -1 && map.col.charAt(ni) !== "1" && !npcBlocked.has(ni)) {
+                    dist[ni] = cd + 1; q[qe++] = ni;
+                }
+            }
+        }
+
+        bfsCache = { key, dist, w, h, sx, sy };
+        return bfsCache;
+    }
+
+    function dirToTarget(tx, ty) {
+        const dx = tx - hero.x;
+        const dy = ty - hero.y;
+        if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 2 : 3;
+        return dy >= 0 ? 0 : 1;
+    }
+
+    function turnBonusForTarget(tx, ty) {
+        if (lastMoveDir === null) return 0;
+        const d = dirToTarget(tx, ty);
+        if (d === lastMoveDir) return 12;
+        const isOpposite =
+            (lastMoveDir === 0 && d === 1) ||
+            (lastMoveDir === 1 && d === 0) ||
+            (lastMoveDir === 2 && d === 3) ||
+            (lastMoveDir === 3 && d === 2);
+        return isOpposite ? -10 : 0;
+    }
+
+    function getBestStandDistForMob(m, bfs) {
+        if (!m || !bfs) return UNREACHABLE_DIST;
+
+        const heroRegion = getHeroRegion();
+        let best = UNREACHABLE_DIST;
+
+        const spots = getStandTilesForPoint(m.x, m.y);
+        for (let i = 0; i < spots.length; i++) {
+            const s = spots[i];
+            if (!inBounds2(s.x, s.y)) continue;
+            if (!isWalkable(s.x, s.y)) continue;
+            if (getRegionAt(s.x, s.y) !== heroRegion) continue;
+
+            const d = bfs.dist[s.x + s.y * bfs.w];
+            if (d >= 0 && d < best) best = d;
+        }
+
+        return best;
+    }
+
+    function getCandidateDist(m, bfs) {
+        if (!m) return UNREACHABLE_DIST;
+        if (!bfs) return Math.abs(hero.x - m.x) + Math.abs(hero.y - m.y);
+        return getBestStandDistForMob(m, bfs);
+    }
+
+    // =========================================================
+    // TARGET PICK
+    // =========================================================
+    let lastPickAt = 0;
+    this.findBestMobEfficient = function () {
+        if (!hasGameReady()) return null;
+
+        const range = getLevelRange();
+        if (!range) return null;
+
+        syncDatabase();
+        ensureRegionMap();
+
+        const tNow = nowMs();
+        if (tNow - lastPickAt < PICK_THROTTLE_MS) return B || null;
+        lastPickAt = tNow;
+
+        const ids = Object.keys(persistentDB);
+        if (!ids.length) return null;
+
+        cleanupTransientState(tNow);
+
+        let bfs = getBfsDistFromHero();
+
+        let pre = [];
+        for (let i = 0; i < ids.length; i++) {
+            const id = ids[i];
+            if (I[id] && I[id] > tNow) continue;
+
+            const m = persistentDB[id];
+            if (!m) continue;
+            if (!isMobInHeroRegion(m)) continue;
+
+            pre.push({ id, d: getCandidateDist(m, bfs) });
+        }
+
+        if (pre.length === 0 && ids.length > 0) {
+            bfsCache = null;
+            lastBfsAt = 0;
+            bfs = getBfsDistFromHero();
+
+            for (let i = 0; i < ids.length; i++) {
+                const id = ids[i];
+                if (I[id] && I[id] > tNow) continue;
+
+                const m = persistentDB[id];
+                if (!m) continue;
+                if (!isMobInHeroRegion(m)) continue;
+
+                pre.push({ id, d: getCandidateDist(m, bfs) });
+            }
+        }
+
+        if (pre.length === 0 && ids.length > 0 && tNow - lastIgnoreRecoveryAt > IGNORE_RECOVERY_COOLDOWN_MS) {
+            lastIgnoreRecoveryAt = tNow;
+
+            I = {};
+            bfsCache = null;
+            lastBfsAt = 0;
+            bfs = getBfsDistFromHero();
+
+            pre = [];
+            for (let i = 0; i < ids.length; i++) {
+                const id = ids[i];
+                const m = persistentDB[id];
+                if (!m) continue;
+                if (!isMobInHeroRegion(m)) continue;
+                pre.push({ id, d: getCandidateDist(m, bfs) });
+            }
+        }
+
+        if (!pre.length) return null;
+
+        pre.sort((a, b) => a.d - b.d);
+        if (pre.length > MAX_EVAL) pre.length = MAX_EVAL;
+
+        let bestId = null;
+        let bestScore = Infinity;
+
+        for (let i = 0; i < pre.length; i++) {
+            const id = pre[i].id;
+            const m = persistentDB[id];
+            if (!m) continue;
+
+            if (pre[i].d >= UNREACHABLE_DIST) {
+                unreachableCount[id] = (unreachableCount[id] || 0) + 1;
+                addFailurePenalty(id, 1);
+
+                if (unreachableCount[id] >= 2) {
+                    I[id] = tNow + UNREACHABLE_IGNORE_MS;
+                    unreachableCount[id] = 0;
+                }
+                continue;
+            } else {
+                unreachableCount[id] = 0;
+                reduceFailurePenalty(id, 0.4);
+            }
+
+            const turnB = turnBonusForTarget(m.x, m.y);
+            const currentTargetBias = (id === B ? CURRENT_TARGET_BIAS : 0);
+            const softPenalty = failurePenalty[id] || 0;
+            const score =
+                pre[i].d * 10 -
+                turnB -
+                currentTargetBias +
+                softPenalty;
+
+            if (score < bestScore) {
+                bestScore = score;
+                bestId = id;
+            }
+        }
+
+        return bestId;
+    };
+
+    // =========================================================
+    // GATEWAY TARGET RESOLUTION
+    // =========================================================
+    this.findBestGw = function () {
+        if (!resolvedGateway) return null;
+        if (!Number.isFinite(Number(resolvedGateway.x)) || !Number.isFinite(Number(resolvedGateway.y))) return null;
+
+        const gw = {
+            x: Number(resolvedGateway.x),
+            y: Number(resolvedGateway.y),
+            standX: Number.isFinite(Number(resolvedGateway.standX)) ? Number(resolvedGateway.standX) : null,
+            standY: Number.isFinite(Number(resolvedGateway.standY)) ? Number(resolvedGateway.standY) : null,
+            targetMap: resolvedGateway.targetMap || "",
+            region: resolvedGateway.region ?? null,
+            accessible: !!resolvedGateway.accessible,
+        };
+
+        if (!gw.accessible) return null;
+        if (!isGatewayInHeroRegion(gw)) return null;
+        return gw;
+    };
+
+    // =========================================================
+    // UNSTUCK
+    // =========================================================
+    function handleStuckWithTarget() {
+        if (!RUNNING || !G || !window.g || g.battle || g.dead || !window.hero) return;
+        if (!B) return;
+
+        const now = nowMs();
+
+        if (lastPosX === null) {
+            lastPosX = hero.x;
+            lastPosY = hero.y;
+            stuckSince = now;
+            return;
+        }
+
+        const moved = hero.x !== lastPosX || hero.y !== lastPosY;
+        if (moved) {
+            lastPosX = hero.x;
+            lastPosY = hero.y;
+            stuckSince = now;
+            targetStuckTries = 0;
+            return;
+        }
+
+        if (now - stuckSince < 10_000) return;
+        if (now - lastUnstuckTry < 4_000) return;
+        lastUnstuckTry = now;
+
+        const M = g.npc[B] || persistentDB[B];
+        if (!M) { B = undefined; return; }
+
+        targetStuckTries++;
+
+        A = false;
+        window.road = [];
+        storePath(M.x, M.y);
+        addFailurePenalty(B, 1.5);
+        updateStatus(`STUCK -> re-path (${targetStuckTries})`, "#FFAA00");
+
+        if (targetStuckTries >= 3) {
+            const droppedId = B;
+            I[droppedId] = now + UNREACHABLE_IGNORE_MS;
+
+            B = undefined;
+            A = false;
+            z = false;
+            window.road = [];
+            targetStuckTries = 0;
+            stuckSince = now;
+        }
+    }
+
+    // =========================================================
+    // LAST MOVE DIR
+    // =========================================================
+    function updateLastMoveDir() {
+        if (!window.hero) return;
+
+        if (lastHeroX === null) {
+            lastHeroX = hero.x;
+            lastHeroY = hero.y;
+            return;
+        }
+
+        const dx = hero.x - lastHeroX;
+        const dy = hero.y - lastHeroY;
+
+        if (dx === 1 && dy === 0) lastMoveDir = 2;
+        else if (dx === -1 && dy === 0) lastMoveDir = 3;
+        else if (dx === 0 && dy === 1) lastMoveDir = 0;
+        else if (dx === 0 && dy === -1) lastMoveDir = 1;
+
+        lastHeroX = hero.x;
+        lastHeroY = hero.y;
+    }
+
+    // =========================================================
+    // MAIN OVERRIDE
+    // =========================================================
+    function hookParseInputOnce() {
+        if (parseInputHooked) return;
+        if (typeof window.parseInput !== "function") return;
+
+        v.PI = window.parseInput;
+        window.parseInput = function () {
+            const L = v.PI.apply(this, arguments);
+
+            if (RUNNING && window.g && !g.battle && !g.dead && G) {
+                syncDatabase();
+                updateLastMoveDir();
+                if (handleBlockedGatewayAlert()) {
+                    return L;
+                }
+                if (handlePendingGatewayTimeout()) {
+                    return L;
+                }
+                recordMovementPosition();
+                handleStuckWithTarget();
+                refreshResolvedTravelTarget(false);
+                clearRoadIfHighLevelMobTooClose();
+
+                if (handleServerWorkflow()) {
+                    return L;
+                }
+
+                refreshBlessingStatusUI();
+
+                if (handleGoToMapCoordinate()) {
+                    return L;
+                }
+
+                if (handleHuntMode()) {
+                    return L;
+                }
+
+                if (handleWatcherRouteMode()) {
+                    return L;
+                }
+
+                if (!B && !F) {
+                    const nextMob = (isGoToMapMode() || isHuntMode() || isWatcherRouteMode() || isExplorerMode()) ? null : v.findBestMobEfficient();
+
+                    if (!nextMob) {
+                        const levelZoneVisitName = getLevelZoneVisitName();
+                        const levelClearKey = levelZoneVisitName && window.map?.name
+                            ? `${levelZoneVisitName}|${map.name}`
+                            : "";
+                        if (
+                            levelClearKey &&
+                            resolvedInsideZone &&
+                            lastLevelZoneClearKey !== levelClearKey &&
+                            markCurrentZoneMapVisited()
+                        ) {
+                            lastLevelZoneClearKey = levelClearKey;
+                            resetServerRouteState();
+                            refreshResolvedTravelTarget(true);
+                            updateStatus(`Map clear: ${map.name}`, "#78DCE8");
+                            return L;
+                        }
+
+                        const gw = v.findBestGw();
+
+                        if (gw) {
+                            if (isMapSettling()) {
+                                clearMovementState();
+                                updateStatus("WAITING MAP", "#FFCC00");
+                                return L;
+                            }
+
+                            const nextHop = resolvedGateway?.targetMap || resolvedNextMap || "Gateway";
+                            const finalTarget = resolvedTarget || "-";
+                            updateStatus(`Going: ${nextHop} -> ${finalTarget}`, "#00FFFF");
+
+                            const { x: goX, y: goY } = getGatewayUseTarget(gw);
+                            const gatewayKey = getResolvedGatewayKey();
+
+                            if (watchGatewayStanding(gatewayKey)) {
+                                return L;
+                            }
+
+                            if (Number.isFinite(goX) && Number.isFinite(goY) && hero.x === goX && hero.y === goY) {
+                                const tNow = nowMs();
+
+                                if (tNow - lastGatewayUseAt >= GATEWAY_USE_COOLDOWN_MS) {
+                                    lastGatewayUseAt = tNow;
+                                    pendingGatewayKey = gatewayKey;
+                                    pendingGatewayUntil = tNow + PENDING_GATEWAY_MS;
+                                    pendingGatewayFromMap = String(map.name || "");
+                                    pendingGatewayRequiresKey = !!resolvedGateway?.requiresKey;
+                                    window.road = [];
+
+                                    if (typeof window._g === "function") {
+                                        movementTestEvent("gateway-walk", `walk to ${resolvedGateway?.targetMap || ""}`, {
+                                            targetX: goX,
+                                            targetY: goY,
+                                        });
+                                        _g("walk");
+                                    }
+                                }
+                            } else {
+                                const sameGatewayPending =
+                                    hasPendingGatewayLock() &&
+                                    pendingGatewayKey === gatewayKey;
+
+                                if (!sameGatewayPending) {
+                                    const needsNewRoad =
+                                        Number.isFinite(goX) &&
+                                        Number.isFinite(goY) &&
+                                        !hasStoredPathFor(goX, goY);
+
+                                    if (needsNewRoad) {
+                                        const foundGatewayPath = storeGatewayPathOrTryAlternative(
+                                            gatewayKey,
+                                            goX,
+                                            goY,
+                                            isExplorerMode() ? "Explorer gateway" : "Gateway",
+                                        );
+                                        if (isExplorerMode() && !foundGatewayPath && (!window.road || !window.road.length)) {
+                                            blockGatewayForCurrentHero(gatewayKey, "Explorer gateway path blocked -> trying another route");
+                                            return L;
+                                        }
+                                        if (!window.road || !window.road.length) return L;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (routeFetchPending || nextStepRefreshInFlight) {
+                                updateStatus("WAITING ROUTE", "#FFCC00");
+                                return L;
+                            }
+
+                            if (nowMs() < serverFetchBackoffUntil && lastServerFetchSuccessAt > 0) {
+                                updateStatus("WAITING SERVER", "#FFCC00");
+                                return L;
+                            }
+
+                            clearMovementState();
+                            updateStatus("IDLE", "#FFCC00");
+                        }
+                    } else {
+                        setTarget(nextMob);
+                        window.road = [];
+                        updateStatus(`Target: ${persistentDB[B]?.name || "mob"}`, "#FFA500");
+                    }
+                }
+
+                if (B) {
+                    if (isWatcherRouteMode() && isCurrentHeroPartyNonLeader()) {
+                        B = undefined;
+                        A = false;
+                        z = false;
+                        window.road = [];
+                        if (handleWatcherPatrol()) return L;
+                        updateStatus("Watcher group no leader: patrol", "#e7b54a");
+                        return L;
+                    }
+
+                    const M = g.npc[B] || persistentDB[B];
+                    if (!M) {
+                        B = undefined;
+                        return L;
+                    }
+
+                    const dist = calculateDistance(hero, M);
+                    if (dist < 2 && !z) {
+                        updateStatus("BATTLE", "#FF0000");
+                        z = true;
+                        attackTarget(B);
+                        reduceFailurePenalty(B, 2);
+                        setTimeout(() => { B = undefined; }, 1000);
+                    } else if ((!A || !window.road || window.road.length === 0) && !z) {
+                        if (nowMs() - lastPathBuildAt >= PATH_BUILD_COOLDOWN_MS) {
+                            lastPathBuildAt = nowMs();
+
+                            const path = findPathToLocation(M.x, M.y);
+                            if (!Array.isArray(path) || !path.length) {
+                                const droppedId = B;
+
+                                addFailurePenalty(droppedId, 2);
+                                unreachableCount[droppedId] = (unreachableCount[droppedId] || 0) + 1;
+
+                                if (unreachableCount[droppedId] >= 2) {
+                                    I[droppedId] = nowMs() + UNREACHABLE_IGNORE_MS;
+                                    unreachableCount[droppedId] = 0;
+                                }
+
+                                B = undefined;
+                                A = false;
+                                window.road = [];
+                            } else {
+                                window.road = path;
+                                A = true;
+                                reduceFailurePenalty(B, 1);
+                                unreachableCount[B] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return L;
+        };
+
+        parseInputHooked = true;
+    }
+
+    function registerLoadQueueOnce() {
+        if (!window.g) return;
+        g.loadQueue = g.loadQueue || [];
+        g.loadQueue.push({
+            fun: () => { G = true; }
+        });
+    }
+
+    // =========================================================
+    // UI
+    // =========================================================
+    this.initHTML = function () {
+        if (uiInitialized) return;
+        uiInitialized = true;
+
+        const K = storageGetJson(LS_POSITION, { x: 100, y: 100 });
+
+        const box = document.createElement("div");
+        box.id = "xD_box";
+        box.innerHTML = `
+      <div style="background: #222; border-bottom: 2px solid #00ff00; padding: 5px; font-weight: bold; font-size: 12px;">
+        xD ENGINE <span style="float:right; color:#555">v5.5 server</span>
+      </div>
+
+      <div style="padding: 8px; font-size: 11px;">
+        <div style="margin-bottom:4px">SERVER:
+          <span id="xD_server_dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.85); margin:0 4px 0 2px;"></span>
+          <span id="xD_server_text" style="color:#ef4444">offline</span>
+        </div>
+        <div style="margin-bottom:4px">STATUS: <span id="xD_status_text" style="color:#00ff00">READY</span></div>
+        <div>DB MEMORY: <span id="xD_stat_db" style="color:yellow">0</span></div>
+        <div>TELEPORTS: <span id="xD_teleport_uses_left" style="color:#ff8">?</span></div>
+        <div id="xD_route_info" style="margin-top:4px; color:#7fdcff;">ZONE: none</div>
+      </div>
+    `;
+        document.body.appendChild(box);
+        updateTeleportUsesLeftDisplay();
+
+        function refreshRunUI() {
+            if (RUNNING) updateStatus("RUNNING", "#00ff00");
+            else updateStatus("STOPPED", "#ff5555");
+        }
+        refreshRunUiFn = refreshRunUI;
+
+        refreshRunUI();
+
+        const style = document.createElement("style");
+        style.innerHTML = `
+      #xD_box {
+        position: absolute;
+        border: 1px solid #444;
+        background: #111;
+        left: ${K.x}px;
+        top: ${K.y}px;
+        z-index: 1000;
+        width: 270px;
+        color: #eee;
+        font-family: monospace;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      }
+    `;
+        document.head.appendChild(style);
+
+        if (window.$ && typeof window.$ === "function" && $("#xD_box").draggable) {
+            $("#xD_box").draggable({
+                stop: () => {
+                    const R = { x: parseInt(box.style.left, 10), y: parseInt(box.style.top, 10) };
+                    storageSetJson(LS_POSITION, R);
+                },
+            });
+        }
+    };
+
+    // =========================================================
+    // BOOT
+    // =========================================================
+    async function boot() {
+        if (bootStarted) return;
+        bootStarted = true;
+
+        await pullStorageVault();
+        RUNNING = false;
+
+        addStatusEvent("ClanHub zone script initialized");
+        seenMobMeta = loadSeenMeta();
+        v.initHTML();
+
+        function waitForGame() {
+            if (!hasGameReady()) {
+                setTimeout(waitForGame, 200);
+                return;
+            }
+
+            try {
+                registerLoadQueueOnce();
+            } catch (e) {
+                console.error("xD script: loadQueue hook failed", e);
+            }
+
+            try {
+                hookParseInputOnce();
+            } catch (e) {
+                console.error("xD script: parseInput hook failed", e);
+            }
+
+            updateStatus(RUNNING ? "RUNNING" : "READY", RUNNING ? "#00ff00" : "#ffff00");
+            startLocalSyncIntervals();
+        }
+
+        waitForGame();
+    }
+
+    window.xDLocalZoneDebug = {
+        refreshResolvedTravelTarget,
+        scanCurrentMapToLocalDb,
+        readLocalMapsDb,
+        resetServerRouteState,
+        clearPendingGatewayLock,
+        getState: () => ({
+            zoneVisitState,
+            resolvedMode,
+            resolvedPath,
+            resolvedTarget,
+            resolvedNextMap,
+            resolvedGateway,
+            resolvedInsideZone,
+            pendingGatewayKey,
+            pendingGatewayUntil,
+            lastGatewayUseAt,
+            currentMap: window.map?.name || null,
+            heroX: window.hero?.x ?? null,
+            heroY: window.hero?.y ?? null,
+        }),
+    };
+
+    boot();
+})();

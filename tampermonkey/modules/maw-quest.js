@@ -97,12 +97,126 @@
         //  Szuka NPC po nazwie, idzie do niego i rozmawia
         //  Engine.hero.sendRequestToTalk(id) z TAJNE.TXT
         // ══════════════════════════════════════════════════════
+        // ==========================================
+        // WBUDOWANY SYSTEM A* I SKANOWANIE ŚCIAN
+        // ==========================================
+        var cachedColMethod = null;
+        var skanerMapId = null;
+
+        function odnajdzUkrytaFunkcjeScian(w, h) {
+            var col = $w.Engine && $w.Engine.map ? $w.Engine.map.col : null;
+            if (!col) return null;
+            if (typeof col.check === 'function') return function(x, y) { return col.check(x, y); };
+            if (typeof col.checkCollision === 'function') return function(x, y) { return col.checkCollision(x, y); };
+            if (typeof col.get === 'function') return function(x, y) {
+                var val = col.get(x, y);
+                return val !== 0 && val !== '0' && val !== false && val !== undefined && val !== null;
+            };
+            for (var key in col) {
+                var ukryteDane = col[key];
+                if (ukryteDane && (typeof ukryteDane === 'string' || Array.isArray(ukryteDane))) {
+                    if (ukryteDane.length === w * h) {
+                        return function(x, y) {
+                            var v = ukryteDane[x + y * w];
+                            return v !== '0' && v !== 0 && v !== ' ';
+                        };
+                    }
+                }
+            }
+            if (typeof col === 'object') return function(x, y) { return col[x] && col[x][y]; };
+            return null;
+        }
+
+        function czyPoleZablokowane(x, y) {
+            if (typeof $w.Engine === 'undefined' || !$w.Engine.map || !$w.Engine.map.d) return true;
+            var w = $w.Engine.map.d.x;
+            var h = $w.Engine.map.d.y;
+
+            if (x < 0 || y < 0 || x >= w || y >= h) return true;
+
+            if (skanerMapId !== $w.Engine.map.d.id) {
+                cachedColMethod = odnajdzUkrytaFunkcjeScian(w, h);
+                skanerMapId = $w.Engine.map.d.id;
+            }
+
+            if (cachedColMethod) return cachedColMethod(x, y);
+
+            if ($w.Engine.map.d.col && typeof $w.Engine.map.d.col === 'string') {
+                return $w.Engine.map.d.col.charAt(x + y * w) !== '0';
+            }
+            return false;
+        }
+
+        function szukajDrogi(startX, startY, celX, celY, isBlockedFunc) {
+            if (startX === celX && startY === celY) return [];
+
+            var openSet = [{ x: startX, y: startY, g: 0, f: Math.abs(startX - celX) + Math.abs(startY - celY), parent: null }];
+            var closedSet = {};
+            var openMap = {};
+
+            function getId(x, y) { return x + "," + y; }
+            openMap[getId(startX, startY)] = openSet[0];
+
+            var iterations = 0;
+
+            while (openSet.length > 0) {
+                iterations++;
+                if (iterations > 1500) return null;
+
+                var minIndex = 0;
+                for (var i = 1; i < openSet.length; i++) {
+                    if (openSet[i].f < openSet[minIndex].f) minIndex = i;
+                }
+
+                var current = openSet[minIndex];
+                openSet.splice(minIndex, 1);
+                delete openMap[getId(current.x, current.y)];
+
+                if (current.x === celX && current.y === celY) {
+                    var path = [];
+                    var curr = current;
+                    while(curr.parent) { path.push({x: curr.x, y: curr.y}); curr = curr.parent; }
+                    return path.reverse();
+                }
+
+                closedSet[getId(current.x, current.y)] = true;
+
+                var sasiedzi = [
+                    {x: current.x, y: current.y - 1}, {x: current.x, y: current.y + 1},
+                    {x: current.x - 1, y: current.y}, {x: current.x + 1, y: current.y}
+                ];
+
+                for (var s = 0; s < sasiedzi.length; s++) {
+                    var ns = sasiedzi[s];
+                    if (isBlockedFunc(ns.x, ns.y) && !(ns.x === celX && ns.y === celY)) continue;
+
+                    var sId = getId(ns.x, ns.y);
+                    if (closedSet[sId]) continue;
+
+                    var g = current.g + 1;
+                    var existing = openMap[sId];
+
+                    if (!existing) {
+                        var newNode = { x: ns.x, y: ns.y, g: g, f: g + Math.abs(ns.x - celX) + Math.abs(ns.y - celY), parent: current };
+                        openSet.push(newNode);
+                        openMap[sId] = newNode;
+                    } else if (g < existing.g) {
+                        existing.g = g;
+                        existing.f = g + Math.abs(ns.x - celX) + Math.abs(ns.y - celY);
+                        existing.parent = current;
+                    }
+                }
+            }
+            return null;
+        }
+        // ==========================================
+
         function autoQuestNpcClick(npcName) {
             if (!npcName) return false;
             var norm = npcName.trim().toLowerCase().replace(/^\s+/, '');
 
             // NI: Engine.npcs.check() → obiekt {id: npcObj}
-            if ((IFACE === 'new' || hasNewEngine()) && $w.Engine && $w.Engine.npcs) {
+            if ((IFACE === 'new' || hasNewEngine()) && $w.Engine && $w.Engine.npcs && $w.Engine.hero) {
                 try {
                     var map = typeof $w.Engine.npcs.check === 'function'
                         ? $w.Engine.npcs.check()
@@ -111,33 +225,71 @@
                     var list = map instanceof Map ? Array.from(map.values()) :
                                Array.isArray(map) ? map : Object.values(map || {});
 
+                    var candidates = [];
+                    var graczX = $w.Engine.hero.d.x || 0;
+                    var graczY = $w.Engine.hero.d.y || 0;
+
                     for (var i = 0; i < list.length; i++) {
                         var npc = list[i];
                         if (!npc || !npc.d) continue;
                         var n = (npc.d.name || npc.d.nick || '').toLowerCase();
                         if (!n) continue;
                         if (n.indexOf(norm) >= 0 || (norm.indexOf(n) >= 0 && n.length > 3)) {
-                            var tx = npc.d.x || 0, ty = npc.d.y || 0;
-                            var nid = npc.d.id || npc.id;
-                            // Idź do NPC
-                            if (tx && ty) heroGoTo(tx, ty);
-                            // Po dojściu wyślij request rozmowy
-                            // (Engine.hero.waitForDialog blokuje duplikaty)
-                            var _nid = nid;
-                            setTimeout(function() {
-                                try {
-                                    if ($w.Engine && $w.Engine.hero && !$w.Engine.hero.waitForDialog) {
-                                        $w.Engine.hero.sendRequestToTalk(_nid);
-                                    } else {
-                                        var dom = document.getElementById('npc' + _nid);
-                                        if (dom) { dom.style.pointerEvents='auto'; click(dom); }
-                                    }
-                                } catch(e) {
-                                    var dom2 = document.getElementById('npc' + _nid);
-                                    if (dom2) { dom2.style.pointerEvents='auto'; click(dom2); }
+                            var prosta = Math.abs(graczX - (npc.d.x || 0)) + Math.abs(graczY - (npc.d.y || 0));
+                            candidates.push({ npc: npc, prosta: prosta });
+                        }
+                    }
+
+                    if (candidates.length > 0) {
+                        candidates.sort(function(a, b) { return a.prosta - b.prosta; });
+                        var tTarget = null;
+                        var minTalkDist = Infinity;
+
+                        for (var c = 0; c < candidates.length; c++) {
+                            var cand = candidates[c];
+                            if (cand.prosta >= minTalkDist) break;
+                            var sciezka = szukajDrogi(graczX, graczY, cand.npc.d.x, cand.npc.d.y, czyPoleZablokowane);
+                            if (sciezka !== null) {
+                                if (sciezka.length < minTalkDist) {
+                                    minTalkDist = sciezka.length;
+                                    tTarget = cand.npc;
                                 }
-                            }, 800);
-                            log('<span class="ok">📜 NPC [NI] idę do "' + npcName + '" id=' + nid + '</span>');
+                            }
+                        }
+
+                        // Jeśli z jakiegoś powodu A* nie znajdzie drogi, a my wiemy, że tam jest, spróbuj klasycznie (np. cel stoi w ścianie)
+                        if (!tTarget) tTarget = candidates[0].npc;
+
+                        if (tTarget) {
+                            var tx = tTarget.d.x || 0, ty = tTarget.d.y || 0;
+                            var nid = tTarget.d.id || tTarget.id;
+                            var dx = Math.abs(graczX - tx);
+                            var dy = Math.abs(graczY - ty);
+
+                            // Idź do NPC jeśli za daleko
+                            if (tx && ty && (dx > 1 || dy > 1)) {
+                                heroGoTo(tx, ty);
+                            }
+                            
+                            var _nid = nid;
+                            // Jeśli jesteśmy obok, gadamy. Jeśli nie, idziemy.
+                            if (dx <= 1 && dy <= 1) {
+                                setTimeout(function() {
+                                    try {
+                                        if ($w.Engine && $w.Engine.hero && !$w.Engine.hero.waitForDialog) {
+                                            $w.Engine.hero.sendRequestToTalk(_nid);
+                                        } else {
+                                            var dom = document.getElementById('npc' + _nid);
+                                            if (dom) { dom.style.pointerEvents='auto'; click(dom); }
+                                        }
+                                    } catch(e) {
+                                        var dom2 = document.getElementById('npc' + _nid);
+                                        if (dom2) { dom2.style.pointerEvents='auto'; click(dom2); }
+                                    }
+                                }, 200);
+                            } else {
+                                log('<span class="ok">📜 NPC [NI] idę do "' + npcName + '" id=' + nid + ' (Dystans: ' + (dx+dy) + ')</span>');
+                            }
                             return true;
                         }
                     }
@@ -246,7 +398,7 @@
         function handleQuestDialog() {
             if (!settings.questAutoEnabled) return;
             var now = Date.now();
-            if (now - lastDlg < 1400) return;
+            if (now - lastDlg < 300) return;
 
             // ── askAlert (Rozpocznij / OK / Tak) ──
             var aa = document.querySelector('.c-window.askAlert, .c-window.alert-window');
@@ -357,8 +509,23 @@
         //   Gwiazdka = PIERWSZA i OSTATNIA litera to "*"
         //   Potwierdzenie: .captcha__confirm .button
         // ══════════════════════════════════════════════════════
+        function simulateClick(element) {
+            if (!element) return;
+            var rect = element.getBoundingClientRect();
+            var x = rect.left + rect.width / 2;
+            var y = rect.top + rect.height / 2;
+
+            var mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: x, clientY: y });
+            var mouseup = new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: x, clientY: y });
+            var clk = new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y });
+
+            element.dispatchEvent(mousedown);
+            element.dispatchEvent(mouseup);
+            element.dispatchEvent(clk);
+        }
+
         function solveCaptchaNI() {
-            var cap = document.querySelector('.captcha');
+            var cap = document.querySelector('.captcha-window, .captcha');
             if (!cap) return false;
             // Sprawdź czy widoczna
             var cw = cap.closest('.captcha-window, .c-window');
@@ -371,29 +538,29 @@
             var toClick = [];
             allBtns.forEach(function(btn) {
                 var label = (btn.querySelector('.label') || btn).textContent.trim();
-                // Gwiazdka: tekst zaczyna się I kończy na '*' np. "*a*", "*abc*"
-                if (label.charAt(0) === '*' && label.charAt(label.length - 1) === '*') {
+                // Gwiazdka: w tekście znajduje się '*' np. "*a*", "*abc*", " * " - zgodne ze skryptem
+                if (label.indexOf('*') !== -1 && !btn.classList.contains('pressed')) {
                     toClick.push({ btn: btn, label: label });
                 }
             });
 
             if (!toClick.length) return false;
 
-            log('<span class="ok">🔑 CAPTCHA: ' + toClick.length + ' odpowiedzi z *gwiazdką*</span>');
+            log('<span class="ok">🔑 CAPTCHA: ' + toClick.length + ' odpowiedzi z *gwiazdką* (Tryb mechaniczny)</span>');
 
-            // Klikaj z opóźnieniem
+            // Klikaj mechanicznie symulując prawdziwą myszkę
             toClick.forEach(function(item, i) {
                 setTimeout(function() {
-                    click(item.btn);
+                    simulateClick(item.btn);
                     log('<span class="ok">🔑 Kliknięto: "' + item.label + '"</span>');
-                }, i * 450 + 150);
+                }, i * 350 + 150);
             });
 
             // Po kliknięciu wszystkich — Potwierdzam
             setTimeout(function() {
                 var conf = cap.querySelector('.captcha__confirm .button');
                 if (conf) {
-                    click(conf);
+                    simulateClick(conf);
                     log('<span class="ok">✅ CAPTCHA potwierdzona!</span>');
                 } else {
                     log('<span class="warn">⚠ CAPTCHA: brak przycisku Potwierdzam</span>');

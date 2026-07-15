@@ -1,0 +1,90 @@
+<div class="box-trnsp header-box header-box--unlogged" role="region" aria-label="Panel logowania">
+              <div id="js-login-box">
+                                  <div class="heading heading--left">Zaloguj się</div>
+<form class="login-form info-container" id="login-form" method="post">
+    <div class="form-group">
+        <label for="login-input">Wpisz swój Login</label>
+        <input autocomplete="username" id="login-input" type="text" name="login">
+    </div>
+    <div class="form-group">
+        <label for="login-password">Wpisz swoje hasło</label>
+        <input autocomplete="current-password" id="login-password" type="password" name="password">
+        <div class="invalid-info"></div>
+    </div>
+
+    <div class="form-group d-none" id="totp-input-container">
+      <label for="totp-input">Wpisz kod dwuskładnikowego logowania</label>
+      <input class="form-control" autocomplete="off" min="0" max="999999" id="totp-input" type="number" name="totp">
+    </div>
+
+
+    <script>
+      var recaptchaCallback = function() {
+            newMargonem.login(
+                $('#login-form').find('input[name="login"]').val(),
+                $('#login-form').find('input[name="password"]').val(),
+                $('#login-form').find('input[name="totp"]').val(),
+                grecaptcha.getResponse()
+            )
+          }
+          </script>
+      <button aria-label="Zaloguj się" id="js-login-btn" class="c-btn mt-20" type="submit">
+      <span class="btn__label">Zaloguj się</span>
+    </button>
+      <div class="text-divider social-login-divider"><span>lub zaloguj się przez</span></div>
+
+    <script>
+        const facebookAlert = (e) => {
+            newMargonem.popup.showAlert('Występują utrudnienia w logowaniu się do gry za pomocą Facebooka. Aby odintegrować konto Facebook należy zgłosić się na <a href="https://support.garmory.pl/s/margonem.pl/pl/43/przetwarzanie-danych-osobowych" target="_blank">Panel Kontaktowy</a> z nowo założonych kont.')
+            e.preventDefault();
+            return false;
+        }
+    </script>
+
+    <ul class="social-login">
+        <li class="social-login__item social-login__item--facebook" onclick="facebookAlert(event)" aria-label="Facebook login" tabindex="0">
+            <a href="/intro?facebooklogin=1" class="fa-brands fa-facebook"></a>
+        </li>
+        <li class="social-login__item social-login__item--google" aria-label="Google login" tabindex="0">
+            <a href="/intro?googlelogin=1" class="fa-brands fa-google"></a>
+        </li>
+                    </ul>
+    <div class="d-flex justify-content-between font-size-15 mt-4 login-option-container">
+      <a href="javascript:void(0)" id="totp-show">Logowanie 2FA</a>
+      <a href="javascript:void(0)" id="totp-hide" class="d-none">Domyślne logowanie</a>
+      <a href="javascript:void(0)" class="remind-password">Przypomnij hasło</a>
+      <a href="https://www.margonem.pl/intro/">Zarejestruj się</a>
+    </div>
+</form>
+
+<style>
+    .box-trnsp .form-group input[type=number] {
+        height: 37px;
+        width: 100%;
+        background: rgba(0, 0, 0, .5);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, .25);
+        box-shadow: inset 0 3px 6px #000;
+        padding: 0 10px;
+        display: block;
+        max-width: 100%;
+        border-radius: 3px;
+    }
+
+    @media only screen and (max-width: 720px) {
+        #login-form .login-option-container a{
+            margin-right: 10px;
+        }
+    }
+</style>                            </div>
+            <div class="ban-box" id="js-ban-box" style="display: none;" role="region" aria-label="Kod weryfikacyjny">
+              <div class="ban-box__info" id="js-ban-box-info">
+                Konto zostało zablokowane
+                <div class="c-btn mt-2" id="js-show-ban-details">Szczegóły blokady</div>
+              </div>
+              <div class="ban-box__bottom">
+                <p>W przypadku odwołania od blokady możesz skorzystać z kodu weryfikacyjnego.</p>
+                <div class="c-btn mt-2" id="js-show-ban-verification-code">Wyświetl</div>
+              </div>
+            </div>
+          </div>

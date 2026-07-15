@@ -1,0 +1,42 @@
+<div class="c-window border-window ui-draggable transparent elite-timer window-on-peak" style="position: absolute; z-index: 18; display: block; left: 433px; top: 476px;" data-opacity-lvl="3">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Minutnik">Minutnik</div>
+            </div>
+        </div>
+        <div class="content">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            <div class="inner-content"><div class="window-list elite-timer-wnd">
+        <div class="open-edit-panel"></div>
+        <div class="scroll-wrapper small-bar">
+            <div class="scroll-pane">
+                <div class="empty" style="display: none;">----</div>
+                <div class="list npc-list"><div class="row tw-list-item do-action-cursor long" style=""><div class="col"><div class="name cell" tip-id="1389"><div class="name-val">[E2] Szczęt alias Gładki</div></div></div><div class="col"><div class="time cell"><div class="btn btn-opt disabled" style="display: none;" tip-id="1388"></div><div class="btn btn-del ie-icon ie-icon-close" style="display: none;" tip-id="1387"></div><div class="time-val" tip-id="1390">00:01:59</div></div></div></div></div>
+            </div>
+        <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle"></div>
+        </div>
+    </div></div>
+    </div></div>
+            <div class="window-controlls" style="display: block;"><div class="row row-input tw-list-item" style="display: none;"></div>
+            <div class="row row-add tw-list-item"><div class="add do-action-cursor"><div class="btn-add">+</div></div></div></div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        </div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="1384"><div class="ie-icon ie-icon-close"></div></button>
+        </div>
+    <div class="border-image"></div><div class="transparent-window-buttons-menu"><div class="manage-hamburger-button"><div class="ie-icon ie-icon-menu"></div></div><div class="increase-opacity" tip-id="1385"></div><div class="manage-configuration-button settings-button" tip-id="1386"></div></div></div>

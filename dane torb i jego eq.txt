@@ -1,0 +1,606 @@
+<div class="inventory_wrapper">
+        <div class="bags-navigation-bg interface-element-grid-border">
+            <div class="interface-element-one-black-tile bag-1 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-2 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-3 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-4 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="bags-navigation ui-droppable">
+                <div class="tutorial-bag"></div>
+                <div class="bag-2-slot" data-trans="data-tip#bag_space" tip-id="71"></div>
+                <div class="bag-3-slot" data-trans="data-tip#bag_space" tip-id="72"></div>
+                <div class="bag-4-slot" data-trans="data-tip#keys_bag_space" tip-id="73"></div>
+            <div class="item item-id-1064958654 item-tpl-1456 bag inventory-item ui-draggable ui-draggable-handle bag-pos-0 ui-droppable active" tip-id="832" data-tip-type="t_item" data-item-type="t-norm" data-bag="20">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">11</div></div><div class="item item-id-1064958997 item-tpl-58337 bag inventory-item ui-draggable ui-draggable-handle bag-pos-1 ui-droppable" tip-id="833" data-tip-type="t_item" data-item-type="t-norm" data-bag="21">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">0</div></div><div class="item item-id-1066932623 item-tpl-1526 bag inventory-item ui-draggable ui-draggable-handle bag-pos-2 ui-droppable" tip-id="862" data-tip-type="t_item" data-item-type="t-norm" data-bag="22">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div></div>
+        </div>
+        <div class="inventory-grid-bg interface-element-grid-border">
+            <div class="interface-element-item-slot-grid-stretch"></div>
+            <div class="inventory-grid ui-droppable">
+                <div class="inner-grid">
+                    <div class="scroll-pane" style="top: 0px;" index-show-bag="0"><div class="item item-id-1061710209 item-tpl-46508 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="830" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 66px; left: 165px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1064971778 item-tpl-25612 inventory-item ui-draggable ui-draggable-handle" data-cl="11" tip-id="834" data-tip-type="t_item" data-item-type="t-her" bag-index="0" style="top: 99px; left: 33px;">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1064982021 item-tpl-25362 inventory-item ui-draggable ui-draggable-handle" data-cl="25" tip-id="835" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 66px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">4</div></div><div class="item item-id-1064982022 item-tpl-28889 inventory-item ui-draggable ui-draggable-handle" tip-id="836" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 66px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">7</div></div><div class="item item-id-1065020671 item-tpl-59324 inventory-item ui-draggable ui-draggable-handle" data-cl="25" tip-id="837" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 66px; left: 99px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065038873 item-tpl-56606 inventory-item ui-draggable ui-draggable-handle" tip-id="838" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 99px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065227940 item-tpl-57421 inventory-item ui-draggable ui-draggable-handle" tip-id="839" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 165px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065238150 item-tpl-41340 inventory-item ui-draggable ui-draggable-handle" tip-id="840" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 99px; left: 66px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065247317 item-tpl-28891 inventory-item ui-draggable ui-draggable-handle" tip-id="841" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 231px; left: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-1065276876 item-tpl-59509 inventory-item ui-draggable ui-draggable-handle" tip-id="842" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065280603 item-tpl-58926 inventory-item ui-draggable ui-draggable-handle" tip-id="843" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 231px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065295451 item-tpl-28895 inventory-item ui-draggable ui-draggable-handle" tip-id="844" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 66px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">3</div></div><div class="item item-id-1065309946 item-tpl-25689 inventory-item ui-draggable ui-draggable-handle" tip-id="845" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 0px; left: 165px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065322174 item-tpl-644 inventory-item ui-draggable ui-draggable-handle" tip-id="846" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 33px; left: 99px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065331826 item-tpl-59222 inventory-item ui-draggable ui-draggable-handle" tip-id="847" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 99px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065338762 item-tpl-502 inventory-item ui-draggable ui-draggable-handle" tip-id="849" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 99px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065349373 item-tpl-22331 inventory-item ui-draggable ui-draggable-handle" tip-id="850" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="1" style="top: 198px; left: 0px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">3</div></div><div class="item item-id-1065356884 item-tpl-37644 inventory-item ui-draggable ui-draggable-handle" tip-id="851" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065375090 item-tpl-41348 inventory-item ui-draggable ui-draggable-handle" tip-id="852" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 0px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065469517 item-tpl-6101 inventory-item ui-draggable ui-draggable-handle" tip-id="855" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066068587 item-tpl-41880 inventory-item ui-draggable ui-draggable-handle" tip-id="856" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 66px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">7</div></div><div class="item item-id-1066789444 item-tpl-25670 inventory-item ui-draggable ui-draggable-handle" tip-id="858" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 132px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div><div class="item item-id-1066916156 item-tpl-25670 inventory-item ui-draggable ui-draggable-handle" tip-id="859" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 165px; left: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">9</div></div><div class="item item-id-1066930206 item-tpl-43129 inventory-item ui-draggable ui-draggable-handle" tip-id="860" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 165px; left: 198px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066937582 item-tpl-62097 inventory-item ui-draggable ui-draggable-handle" tip-id="863" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="1" style="top: 198px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">11</div></div><div class="item item-id-1066942299 item-tpl-59846 inventory-item ui-draggable ui-draggable-handle" tip-id="864" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="1" style="top: 231px; left: 66px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066943919 item-tpl-36497 inventory-item ui-draggable ui-draggable-handle" tip-id="865" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 231px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">47</div></div><div class="item item-id-1066945511 item-tpl-60395 inventory-item ui-draggable ui-draggable-handle" tip-id="866" data-tip-type="t_item" data-item-type="t-leg" bag-index="0" style="top: 0px; left: 132px;">
+        <div class="highlight t-leg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066948835 item-tpl-33644 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" data-cl="13" tip-id="868" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 33px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1067058657 item-tpl-33406 inventory-item ui-draggable ui-draggable-handle" data-cl="8" tip-id="870" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1068038921 item-tpl-47145 inventory-item ui-draggable ui-draggable-handle" data-cl="14" tip-id="871" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 33px; left: 165px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069094493 item-tpl-45597 inventory-item ui-draggable ui-draggable-handle" tip-id="872" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 132px; left: 198px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-1069094494 item-tpl-45598 inventory-item ui-draggable ui-draggable-handle" tip-id="873" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 165px; left: 66px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div><div class="item item-id-1069094495 item-tpl-45600 inventory-item ui-draggable ui-draggable-handle" tip-id="874" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 165px; left: 99px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div><div class="item item-id-1069094496 item-tpl-45599 inventory-item ui-draggable ui-draggable-handle" tip-id="875" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 165px; left: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-1069099117 item-tpl-38287 inventory-item ui-draggable ui-draggable-handle" data-cl="14" tip-id="876" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069106256 item-tpl-38289 inventory-item ui-draggable ui-draggable-handle" data-cl="4" tip-id="877" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 165px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069118602 item-tpl-38285 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="878" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069123909 item-tpl-38283 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="879" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069137339 item-tpl-38283 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="880" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069139264 item-tpl-38284 inventory-item ui-draggable ui-draggable-handle" data-cl="5" tip-id="881" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 33px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069141237 item-tpl-16630 inventory-item ui-draggable ui-draggable-handle" data-cl="9" tip-id="882" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 33px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+                </div>
+            </div>
+        </div>
+    </div>   
+
+<div class="inner-wrapper">
+                <div class="right-main-column-wrapper" style="top: 0px;">
+                    <div class="bottom-wrapper"><div class="b_wrapper">
+        <div class="all-b" style="width: 16080px;"><div class="one-baner picture b" style="background: url(&quot;../img/gui/banners/pl/121b.png?v=1782285668062&quot;);"></div><div class="one-baner picture b" style="background: url(&quot;../img/gui/banners/pl/122b.png?v=1782285668062&quot;);"><div class="btns-wrapper"><div class="button purple small">
+        <div class="background"></div>
+        <div class="label">Sprawdź</div>
+    </div></div></div><div class="one-baner picture b" style="background: url(&quot;../img/gui/banners/pl/123b.png?v=1782285668062&quot;);"></div></div>
+        <div class="left"></div>
+        <div class="right"></div>
+    </div></div>
+                <div class="character_wrapper">
+        <div class="hero-name-light-mode">
+            <div class="hero-name" tip-id="773"><span class="hero-name-nick">Pani Prokuratorka</span><span class="hero-name-suffix">&nbsp;(53w)</span></div>
+        </div>
+<!--        <div class="location-wrapper-light-mode interface-element-grid-border">-->
+        <div class="location-wrapper-light-mode interface-element-grid-border-light">
+            <div class="location-wrapper-border interface-element-background-color-3 interface-element-box-shadow-2">
+                <div class="map-ball yellow" tip-id="791"></div>
+                <div class="location-name" tip-id="789">Stary Kupiecki Trakt</div>
+            </div>
+        </div>
+<!--        <div class="world-wrapper-light-mode interface-element-grid-border">-->
+        <div class="world-wrapper-light-mode interface-element-grid-border-light">
+            <div class="world-wrapper-border interface-element-background-color-3 interface-element-box-shadow-2">
+                <div class="world-name" tip-id="1383">Luvia</div>
+            </div>
+        </div>
+        <div class="location-cords-light-mode"><canvas width="40" height="13"></canvas></div>
+        <div class="progress-bars-light-mode interface-element-grid-border-light" tip-id="765">
+            <div class="hero-hp-progress-bar hero-progress-bar-light-mode interface-element-progress-bar-1">
+                <div class="inner" bar-horizontal="true" bar-percent="92"></div>
+                <div class="value">92%</div>
+            </div>
+            <div class="hero-exp-progress-bar hero-progress-bar-light-mode interface-element-progress-bar-1 green">
+                <div class="inner" bar-horizontal="true" bar-percent="12"></div>
+                <div class="value">11.67%</div>
+            </div>
+        </div>
+
+<!--        <div class="currency-light-mode interface-element-grid-border">-->
+<!--            <div class="currency-border interface-element-background-color-3 interface-element-box-shadow-2">-->
+<!--                <div class="gold-currency"></div>-->
+<!--                <div class="sl-currency"></div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        <div class="stats-light-mode interface-element-grid-border">-->
+        <div class="stats-light-mode interface-element-grid-border-light">
+            <div class="stats-border interface-element-background-color-3 interface-element-box-shadow-2">
+                <div class="stats-button"><div class="button stats-expand small green">
+        <div class="background"></div>
+        <div class="label">Rozwiń</div>
+    </div></div>
+                <div class="stats-list-line"></div>
+                <ul class="stats-list">
+                    <li class="gold-currency"><div class="cost-component gold small">
+            <div class="icon"></div>
+            <div class="amount">347 806</div>
+        </div></li>
+                    <li class="sl-currency"><div class="cost-component credits small" tip-id="764">
+            <div class="icon"></div>
+            <div class="amount">15</div>
+        </div></li>
+                    <li class="attack" data-trans="data-tip#attack#stats" tip-id="62"><span class="stat-icon"></span><span class="value"><span class="stat undefined">883</span></span></li>
+                    <li class="attack-speed" data-trans="data-tip#attack-speed#stats" tip-id="63"><span class="stat-icon"></span><span class="value">3.72</span></li>
+                    <li class="defence" data-trans="data-tip#defence#stats" tip-id="64"><span class="stat-icon"></span><span class="value">601</span></li>
+                    <li class="resists" data-trans="data-tip#resists#stats" tip-id="65">
+                        <span class="stat-icon"></span>
+                        <span class="value">
+                            <span class="resist-stats">
+                                <span class="stat red js-res-fire">3</span> /
+                                <span class="stat yellow js-res-light">0</span> /
+                                <span class="stat blue js-res-frost">5</span> /
+                                <span class="stat green js-res-poison">11</span> %
+                            </span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="interface-element-equipment-with-additional-bag equipment-wrapper ui-droppable">
+        <div class="equipment-wrapper-outline">
+            <div class="equipment-outline-1 equipment-outline"></div>
+            <div class="equipment-outline-2 equipment-outline"></div>
+            <div class="equipment-outline-3 equipment-outline"></div>
+            <div class="equipment-outline-4 equipment-outline"></div>
+        </div>
+        <div class="eq-slot" data-st="10"></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="1"><div class="eq-cl"></div><div class="item item-id-1065412370 item-tpl-33332 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" tip-id="854" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="2"><div class="eq-cl"></div><div class="item item-id-1066948834 item-tpl-33636 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" tip-id="867" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="3"><div class="eq-cl"></div><div class="item item-id-1063102971 item-tpl-46501 inventory-item ui-draggable ui-draggable-handle" data-upgrade="3" tip-id="831" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="4"><div class="eq-cl"></div><div class="item item-id-1065335162 item-tpl-52213 inventory-item ui-draggable ui-draggable-handle" tip-id="848" data-tip-type="t_item" data-item-type="t-uniupg">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="5"><div class="eq-cl"></div><div class="item item-id-1066930958 item-tpl-61443 inventory-item ui-draggable ui-draggable-handle" data-upgrade="5" tip-id="861" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="6"><div class="eq-cl"></div><div class="item item-id-1065399026 item-tpl-43087 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" tip-id="853" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="7"><div class="eq-cl"></div><div class="item item-id-1067057217 item-tpl-33749 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" tip-id="869" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="8"><div class="eq-cl"></div><div class="item item-id-1066709311 item-tpl-62101 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" tip-id="857" data-tip-type="t_item" data-item-type="t-norm">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+        <div class="eq-slot interface-element-one-item-slot-background-to-repeat" data-st="9"><div class="eq-cl"></div></div>
+    </div>
+        <div class="builds-interface" tip-id="829">
+            <div class="choose-build build-index">2</div>
+        </div>
+<!--        <div class="lagmeter-light-mode">-->
+<!--            <div class="lag-val">0</div>-->
+<!--            <div class="lag">-->
+<!--                <div class="one-lag lag-5"></div>-->
+<!--                <div class="one-lag lag-4"></div>-->
+<!--                <div class="one-lag lag-3"></div>-->
+<!--                <div class="one-lag lag-2"></div>-->
+<!--                <div class="one-lag lag-1"></div>-->
+<!--                <div class="one-lag lag-0"></div>-->
+<!--            </div>-->
+<!--        </div>-->
+        <div class="stats-wrapper interface-element-background-color-3 interface-element-box-shadow-2 interface-element-grid-border">
+            <div class="header-title-wrapper">
+                <div class="interface-element-active-card-background-stretch"></div>
+                <div class="header-title" data-trans="#stats-head-title#stats">STATYSTYKI</div>
+            </div>
+            <div class="stats-button"><div class="button stats-expand small green">
+        <div class="background"></div>
+        <div class="label">Rozwiń</div>
+    </div></div>
+            <ul class="stats-list">
+                <li class="attack" data-trans="data-tip#attack#stats" tip-id="66"><span class="stat-icon"></span><span class="value"><span class="stat undefined">883</span></span></li>
+                <li class="attack-speed" data-trans="data-tip#attack-speed#stats" tip-id="67"><span class="stat-icon"></span><span class="value">3.72</span></li>
+                <li class="defence" data-trans="data-tip#defence#stats" tip-id="68"><span class="stat-icon"></span><span class="value">601</span></li>
+                <li class="resists" data-trans="data-tip#resists#stats" tip-id="69">
+                    <span class="stat-icon"></span>
+                    <span class="value">
+                        <span class="resist-stats">
+                            <span class="stat red js-res-fire">3</span> /
+                            <span class="stat yellow js-res-light">0</span> /
+                            <span class="stat blue js-res-frost">5</span> /
+                            <span class="stat green js-res-poison">11</span> %
+                        </span>
+                    </span>
+                </li>
+            </ul>
+        </div>
+        <div class="pvp-btn fight" data-trans="data-tip#pvp_tip#buttons" data-tip-type="t_static" tip-id="70"></div>
+        <div class="bm-register-light-mode"></div>
+    </div><div class="battle-set-wrapper">
+        <div class="battle-set-choice battle-set-nr-0"></div>
+        <div class="battle-set-choice battle-set-nr-1"></div>
+        <div class="battle-set-choice battle-set-nr-2"></div>
+    </div><div class="inventory_wrapper">
+        <div class="bags-navigation-bg interface-element-grid-border">
+            <div class="interface-element-one-black-tile bag-1 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-2 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-3 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-4 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="bags-navigation ui-droppable">
+                <div class="tutorial-bag"></div>
+                <div class="bag-2-slot" data-trans="data-tip#bag_space" tip-id="71"></div>
+                <div class="bag-3-slot" data-trans="data-tip#bag_space" tip-id="72"></div>
+                <div class="bag-4-slot" data-trans="data-tip#keys_bag_space" tip-id="73"></div>
+            <div class="item item-id-1064958654 item-tpl-1456 bag inventory-item ui-draggable ui-draggable-handle bag-pos-0 ui-droppable active" tip-id="832" data-tip-type="t_item" data-item-type="t-norm" data-bag="20">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">11</div></div><div class="item item-id-1064958997 item-tpl-58337 bag inventory-item ui-draggable ui-draggable-handle bag-pos-1 ui-droppable" tip-id="833" data-tip-type="t_item" data-item-type="t-norm" data-bag="21">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">0</div></div><div class="item item-id-1066932623 item-tpl-1526 bag inventory-item ui-draggable ui-draggable-handle bag-pos-2 ui-droppable" tip-id="862" data-tip-type="t_item" data-item-type="t-norm" data-bag="22">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div></div>
+        </div>
+        <div class="inventory-grid-bg interface-element-grid-border">
+            <div class="interface-element-item-slot-grid-stretch"></div>
+            <div class="inventory-grid ui-droppable">
+                <div class="inner-grid">
+                    <div class="scroll-pane" style="top: 0px;" index-show-bag="0"><div class="item item-id-1061710209 item-tpl-46508 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="830" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 66px; left: 165px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1064971778 item-tpl-25612 inventory-item ui-draggable ui-draggable-handle" data-cl="11" tip-id="834" data-tip-type="t_item" data-item-type="t-her" bag-index="0" style="top: 99px; left: 33px;">
+        <div class="highlight t-her h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1064982021 item-tpl-25362 inventory-item ui-draggable ui-draggable-handle" data-cl="25" tip-id="835" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 66px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">4</div></div><div class="item item-id-1064982022 item-tpl-28889 inventory-item ui-draggable ui-draggable-handle" tip-id="836" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 66px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">7</div></div><div class="item item-id-1065020671 item-tpl-59324 inventory-item ui-draggable ui-draggable-handle" data-cl="25" tip-id="837" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 66px; left: 99px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065038873 item-tpl-56606 inventory-item ui-draggable ui-draggable-handle" tip-id="838" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 99px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065227940 item-tpl-57421 inventory-item ui-draggable ui-draggable-handle" tip-id="839" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 165px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065238150 item-tpl-41340 inventory-item ui-draggable ui-draggable-handle" tip-id="840" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 99px; left: 66px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065247317 item-tpl-28891 inventory-item ui-draggable ui-draggable-handle" tip-id="841" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 231px; left: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-1065276876 item-tpl-59509 inventory-item ui-draggable ui-draggable-handle" tip-id="842" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065280603 item-tpl-58926 inventory-item ui-draggable ui-draggable-handle" tip-id="843" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 231px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065295451 item-tpl-28895 inventory-item ui-draggable ui-draggable-handle" tip-id="844" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 66px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">3</div></div><div class="item item-id-1065309946 item-tpl-25689 inventory-item ui-draggable ui-draggable-handle" tip-id="845" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 0px; left: 165px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065322174 item-tpl-644 inventory-item ui-draggable ui-draggable-handle" tip-id="846" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 33px; left: 99px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065331826 item-tpl-59222 inventory-item ui-draggable ui-draggable-handle" tip-id="847" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 99px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065338762 item-tpl-502 inventory-item ui-draggable ui-draggable-handle" tip-id="849" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 99px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065349373 item-tpl-22331 inventory-item ui-draggable ui-draggable-handle" tip-id="850" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="1" style="top: 198px; left: 0px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">3</div></div><div class="item item-id-1065356884 item-tpl-37644 inventory-item ui-draggable ui-draggable-handle" tip-id="851" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">1</div></div><div class="item item-id-1065375090 item-tpl-41348 inventory-item ui-draggable ui-draggable-handle" tip-id="852" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 0px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1065469517 item-tpl-6101 inventory-item ui-draggable ui-draggable-handle" tip-id="855" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066068587 item-tpl-41880 inventory-item ui-draggable ui-draggable-handle" tip-id="856" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 66px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">7</div></div><div class="item item-id-1066789444 item-tpl-25670 inventory-item ui-draggable ui-draggable-handle" tip-id="858" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 132px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div><div class="item item-id-1066916156 item-tpl-25670 inventory-item ui-draggable ui-draggable-handle" tip-id="859" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 165px; left: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">9</div></div><div class="item item-id-1066930206 item-tpl-43129 inventory-item ui-draggable ui-draggable-handle" tip-id="860" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 165px; left: 198px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066937582 item-tpl-62097 inventory-item ui-draggable ui-draggable-handle" tip-id="863" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="1" style="top: 198px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">11</div></div><div class="item item-id-1066942299 item-tpl-59846 inventory-item ui-draggable ui-draggable-handle" tip-id="864" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="1" style="top: 231px; left: 66px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066943919 item-tpl-36497 inventory-item ui-draggable ui-draggable-handle" tip-id="865" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 231px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">47</div></div><div class="item item-id-1066945511 item-tpl-60395 inventory-item ui-draggable ui-draggable-handle" tip-id="866" data-tip-type="t_item" data-item-type="t-leg" bag-index="0" style="top: 0px; left: 132px;">
+        <div class="highlight t-leg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1066948835 item-tpl-33644 inventory-item ui-draggable ui-draggable-handle" data-upgrade="4" data-cl="13" tip-id="868" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 33px; left: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1067058657 item-tpl-33406 inventory-item ui-draggable ui-draggable-handle" data-cl="8" tip-id="870" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1068038921 item-tpl-47145 inventory-item ui-draggable ui-draggable-handle" data-cl="14" tip-id="871" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 33px; left: 165px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069094493 item-tpl-45597 inventory-item ui-draggable ui-draggable-handle" tip-id="872" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 132px; left: 198px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-1069094494 item-tpl-45598 inventory-item ui-draggable ui-draggable-handle" tip-id="873" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 165px; left: 66px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div><div class="item item-id-1069094495 item-tpl-45600 inventory-item ui-draggable ui-draggable-handle" tip-id="874" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 165px; left: 99px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div><div class="item item-id-1069094496 item-tpl-45599 inventory-item ui-draggable ui-draggable-handle" tip-id="875" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 165px; left: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-1069099117 item-tpl-38287 inventory-item ui-draggable ui-draggable-handle" data-cl="14" tip-id="876" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069106256 item-tpl-38289 inventory-item ui-draggable ui-draggable-handle" data-cl="4" tip-id="877" data-tip-type="t_item" data-item-type="t-norm" bag-index="1" style="top: 198px; left: 165px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069118602 item-tpl-38285 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="878" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069123909 item-tpl-38283 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="879" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069137339 item-tpl-38283 inventory-item ui-draggable ui-draggable-handle" data-cl="weapon" tip-id="880" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 0px; left: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069139264 item-tpl-38284 inventory-item ui-draggable ui-draggable-handle" data-cl="5" tip-id="881" data-tip-type="t_item" data-item-type="t-norm" bag-index="0" style="top: 33px; left: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1069141237 item-tpl-16630 inventory-item ui-draggable ui-draggable-handle" data-cl="9" tip-id="882" data-tip-type="t_item" data-item-type="t-uniupg" bag-index="0" style="top: 33px; left: 33px;">
+        <div class="highlight t-uniupg h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+                </div>
+            </div>
+        </div>
+    </div><div class="tutorial-banner-anchor"></div></div>
+                <!--<div class="bottom-wrapper"></div>-->
+            </div>   
+<div class="bags-navigation-bg interface-element-grid-border">
+            <div class="interface-element-one-black-tile bag-1 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-2 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-3 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="interface-element-one-black-tile bag-4 bag-slot-wrapper"><div class="interface-element-bag-eq-icon-background"></div></div>
+            <div class="bags-navigation ui-droppable">
+                <div class="tutorial-bag"></div>
+                <div class="bag-2-slot" data-trans="data-tip#bag_space" tip-id="71"></div>
+                <div class="bag-3-slot" data-trans="data-tip#bag_space" tip-id="72"></div>
+                <div class="bag-4-slot" data-trans="data-tip#keys_bag_space" tip-id="73"></div>
+            <div class="item item-id-1064958654 item-tpl-1456 bag inventory-item ui-draggable ui-draggable-handle bag-pos-0 ui-droppable active" tip-id="832" data-tip-type="t_item" data-item-type="t-norm" data-bag="20">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">11</div></div><div class="item item-id-1064958997 item-tpl-58337 bag inventory-item ui-draggable ui-draggable-handle bag-pos-1 ui-droppable" tip-id="833" data-tip-type="t_item" data-item-type="t-norm" data-bag="21">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">0</div></div><div class="item item-id-1066932623 item-tpl-1526 bag inventory-item ui-draggable ui-draggable-handle bag-pos-2 ui-droppable" tip-id="862" data-tip-type="t_item" data-item-type="t-norm" data-bag="22">
+        <div class="highlight t-norm"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">10</div></div></div>
+        </div> 

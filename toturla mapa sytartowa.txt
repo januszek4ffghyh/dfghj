@@ -1,0 +1,40 @@
+<div class="tutorial-layer layer"><div class="c-window border-window ui-draggable transparent window-on-peak no-exit-button" style="position: absolute; z-index: 16; display: block; left: 663px; top: 316.5px;">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Teleporty">Teleporty</div>
+            </div>
+        </div>
+        <div class="content">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            <div class="inner-content"><div class="tutorial">
+        <!--<div class="paper-graphics"></div>-->
+        <!--<div class="avatar"></div>-->
+        <div class="graphic-area" style="display: block;"><img src="/img/gui/newTutorial/4.gif" class="tutorial-graphic"></div>
+        <div class="click-area"></div>
+        <div class="con">Kliknij <span style="color: gold">dwukrotnie</span> lub <span style="color: gold">przeciągnij</span> przedmiot z torby na ekwipunek, aby użyć teleportu.</div>
+        <div class="buttons">
+            <div class="off-tutorial"></div>
+            <div class="right-buttons">
+                <div class="skip-tutorial"></div>
+                <div class="finish-tutorial"></div>
+            </div>
+        </div>
+    </div></div>
+            <div class="window-controlls">
+            </div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        </div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="652"><div class="ie-icon ie-icon-close"></div></button>
+        </div>
+    <div class="border-image"></div><div class="transparent-window-buttons-menu"></div></div></div>

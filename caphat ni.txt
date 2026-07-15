@@ -1,0 +1,115 @@
+'use strict';
+
+/**
+ * Canvas-aware Captcha Solver + Pre-Captcha Auto-Solve
+ */
+async function checkAndSolveCaptcha(page) {
+    if (!page || page.isClosed()) return;
+
+    try {
+        // 1. Sprawdź pre-captchę (licznik 150s) i kliknij "Rozwiąż teraz"
+        const preCaptchaClicked = await page.evaluate(() => {
+            const pre = document.querySelector('.pre-captcha.show, .captcha-pre-info');
+            if (!pre) return false;
+
+            const solveNowBtn = pre.querySelector('.button.small.green, .captcha-pre-info__button .button');
+            if (solveNowBtn) {
+                solveNowBtn.click();
+                console.log('[Captcha] Kliknięto "Rozwiąż teraz" w pre-captchie');
+                return true;
+            }
+            return false;
+        });
+
+        if (preCaptchaClicked) {
+            await delay(800); // czekamy aż otworzy się właściwe okno captcha
+        }
+
+        // 2. Normalna captcha
+        const hasCaptcha = await page.evaluate(() => {
+            const wnd = document.querySelector('.captcha-window, .captcha, .captcha-layer');
+            if (!wnd || wnd.style.display === 'none') return false;
+
+            if (wnd.hasAttribute('data-solving')) return false;
+            wnd.setAttribute('data-solving', '1');
+            return true;
+        });
+
+        if (!hasCaptcha) return;
+
+        console.log('[Puppeteer:Captcha] 🧩 Wykryto captcha (canvas) – rozwiązuję...');
+
+        await delay(600 + Math.random() * 400);
+
+        // Pobierz pytanie
+        const question = await page.evaluate(() => {
+            const q = document.querySelector('.captcha__question');
+            return q ? q.textContent.trim().toLowerCase() : '';
+        });
+
+        const symbol = getSymbol(question);
+        if (!symbol) {
+            console.warn(`[Captcha] Nieznane pytanie: ${question}`);
+            await cleanup(page);
+            return;
+        }
+
+        console.log(`[Captcha] Symbol: "${symbol}"`);
+
+        // Klikaj przyciski
+        const buttons = await page.$$('.captcha__buttons .button, .captcha__buttons .btn');
+
+        for (let i = 0; i < buttons.length; i++) {
+            const text = await buttons[i].evaluate(el => el.textContent.trim());
+            if (text.includes(symbol)) {
+                await buttons[i].click({ delay: 60 + Math.random() * 90 });
+                console.log(`[Captcha] Klik: ${text}`);
+                await delay(380 + Math.random() * 320);
+            }
+        }
+
+        // Potwierdź
+        await delay(550 + Math.random() * 450);
+        const confirm = await page.$('.captcha__confirm .button, .captcha__confirm .btn');
+        if (confirm) {
+            await confirm.click({ delay: 80 });
+            console.log('[Captcha] ✓ Potwierdzono!');
+        }
+
+        await delay(1800);
+        await cleanup(page);
+
+    } catch (err) {
+        if (!err.message.includes('Execution context') && !err.message.includes('Target closed')) {
+            console.error('[Captcha] Błąd:', err.message);
+        }
+        await cleanup(page).catch(() => {});
+    }
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getSymbol(q) {
+    if (/gwiazdk|gwiazde|gwiazd/.test(q)) return '*';
+    if (/kratk|płotk|hash|kratce/.test(q)) return '#';
+    if (/małp/.test(q)) return '@';
+    if (/wykrzyknik/.test(q)) return '!';
+    if (/dolar/.test(q)) return '$';
+    if (/procent/.test(q)) return '%';
+    if (/daszk|daszek/.test(q)) return '^';
+    if (/ukośnik|slash/.test(q)) return '/';
+    if (/pytajnik|zapytania/.test(q)) return '?';
+    if (/ampersand|and|&/.test(q)) return '&';
+    return null;
+}
+
+async function cleanup(page) {
+    await page.evaluate(() => {
+        const w = document.querySelector('.captcha-window, .captcha, .captcha-layer');
+        if (w) w.removeAttribute('data-solving');
+    });
+}
+
+module.exports = { checkAndSolveCaptcha };

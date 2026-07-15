@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  margonem-bot:
+    build: .
+    container_name: margonem-bot
+    restart: unless-stopped
+    ports:
+      - "3847:3847"          # dashboard
+    environment:
+      - MAW_HEADLESS=true
+      - MAW_GAME_SERVER=tempest
+      # Dodaj swoje dane logowania:
+      - MARGONEM_LOGIN=TwojLogin
+      - MARGONEM_PASSWORD=TwojeHaslo
+      # - MARGONEM_TOTP=...   # jeśli masz
+      - MAW_AI_MODEL=meta-llama/llama-3-8b-instruct:free
+      # Harmonogram (przykład 6-24)
+      - MAW_SCHEDULE=06:00-24:00
+    volumes:
+      - ./browser_profile:/app/browser_profile
+      - ./hosted:/app/hosted
+      - ./dashboard:/app/dashboard
+      # Jeśli masz .env
+      - ./.env:/app/.env:ro
+    shm_size: '2gb'
+    mem_limit: 12g          # limit RAM dla kontenera
+    cpus: '1.8'             # zostaw prawie całe 2 rdzenie

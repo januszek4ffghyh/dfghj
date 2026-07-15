@@ -1,0 +1,4433 @@
+// ==UserScript==
+// @name         Bot na E2 - Group Attack Fix
+// @version      2.6
+// @description  Naprawa statusu "w walce" podczas stania w grupie
+// @author       Adi / Gemini
+// @match        http://*.margonem.pl/
+// @match        https://*.margonem.pl/
+// @run-at       document-start
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    class MargonemBot {
+        constructor() {
+            this.storage = JSON.parse(localStorage.getItem("adi-bot-storage")) || {
+                x: 100, y: 100, name: "", active: false
+            };
+            this.lastAttack = 0;
+            this.engineType = null;
+            this.init();
+        }
+
+        detectInterface() {
+            if (window.Engine && window.Engine.hero && window.Engine.npcs) return "ni";
+            if (window.g && window.g.hero && window.g.npc) return "si";
+            return null;
+        }
+
+        init() {
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", () => this.createUI());
+            } else {
+                this.createUI();
+            }
+            this.mainLoop();
+        }
+
+        createUI() {
+            if (document.getElementById("bot-ui")) return;
+            const div = document.createElement("div");
+            div.id = "bot-ui";
+            div.style = `position:fixed; left:${this.storage.x}px; top:${this.storage.y}px; width:210px; background:#111; color:#eee; z-index:999999; padding:12px; border:2px solid #e67e22; border-radius:8px; font-family:Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.8);`;
+            div.innerHTML = `
+                <div id="bot-drag" style="cursor:move; background:#e67e22; color:#000; text-align:center; font-weight:bold; padding:5px; margin:-12px -12px 10px -12px; border-radius:6px 6px 0 0; font-size:12px;">BOT E2 v2.6 (Group Fix)</div>
+                <div style="font-size:10px; margin-bottom:4px;">Nazwa Elity II:</div>
+                <input type="text" id="bot-target" value="${this.storage.name}" placeholder="Nazwa potwora" style="width:100%; background:#222; color:#0f0; border:1px solid #444; padding:5px; border-radius:3px; box-sizing:border-box;">
+                <div style="margin:10px 0;"><label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="bot-active" ${this.storage.active ? 'checked' : ''} style="margin-right:8px;"> AKTYWNY</label></div>
+                <div id="bot-status" style="font-size:11px; color:gold; border-top:1px solid #333; padding-top:8px;">Status: Szukanie gry...</div>
+            `;
+            document.body.appendChild(div);
+
+            document.getElementById("bot-target").oninput = (e) => { this.storage.name = e.target.value; this.save(); };
+            document.getElementById("bot-active").onchange = (e) => { this.storage.active = e.target.checked; this.save(); };
+
+            this.setupDraggable(div);
+        }
+
+        setupDraggable(el) {
+            const handle = el.querySelector("#bot-drag");
+            handle.onmousedown = (e) => {
+                let ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
+                document.onmousemove = (e) => { el.style.left = (e.clientX - ox) + 'px'; el.style.top = (e.clientY - oy) + 'px'; };
+                document.onmouseup = () => {
+                    document.onmousemove = null;
+                    this.storage.x = parseInt(el.style.left); this.storage.y = parseInt(el.style.top);
+                    this.save();
+                };
+            };
+        }
+
+        save() { localStorage.setItem("adi-bot-storage", JSON.stringify(this.storage)); }
+
+        mainLoop() {
+            this.engineType = this.detectInterface();
+            const status = document.getElementById("bot-status");
+
+            if (!this.engineType) {
+                if (status) status.innerText = "Status: Brak mapy...";
+                setTimeout(() => this.mainLoop(), 1000);
+                return;
+            }
+
+            if (this.storage.active) {
+                const hero = this.engineType === "ni" ? window.Engine.hero.d : window.hero;
+
+                if (hero.dead) {
+                    status.innerText = "Status: Padłeś";
+                } else {
+                    // Kluczowa zmiana: Nawet jeśli jest walka, szukaj NPC
+                    // Pozwala to dołączyć do walki lidera, jeśli jeszcze w niej nie jesteś
+                    this.hunt(status);
+                }
+            } else {
+                if (status) status.innerText = "Status: OFF";
+            }
+
+            setTimeout(() => this.mainLoop(), 400);
+        }
+
+        hunt(statusLabel) {
+            const target = this.storage.name.toLowerCase();
+            if (!target) return;
+
+            let npc = null;
+            if (this.engineType === "ni") {
+                const npcs = window.Engine.npcs.check();
+                for (let i in npcs) {
+                    if (npcs[i].d.nick.toLowerCase().includes(target) && !npcs[i].d.del) {
+                        npc = { id: i, x: npcs[i].d.x, y: npcs[i].d.y };
+                        break;
+                    }
+                }
+            } else {
+                for (let i in window.g.npc) {
+                    if (window.g.npc[i].nick.toLowerCase().includes(target)) {
+                        npc = { id: i, x: window.g.npc[id].x, y: window.g.npc[id].y };
+                        break;
+                    }
+                }
+            }
+
+            if (npc) {
+                const battle = this.engineType === "ni" ? window.Engine.battle : window.g.battle;
+                if (battle) {
+                    statusLabel.innerText = "Status: Walka w toku...";
+                } else {
+                    statusLabel.innerText = "Status: Cel widoczny!";
+                }
+                this.goToAndAttack(npc);
+            } else {
+                statusLabel.innerText = "Status: Szukam: " + target;
+            }
+        }
+
+        goToAndAttack(npc) {
+            const hero = this.engineType === "ni" ? window.Engine.hero.d : window.hero;
+            const dist = Math.max(Math.abs(hero.x - npc.x), Math.abs(hero.y - npc.y));
+
+            if (dist <= 1) {
+                // Atak co 2 sekundy, żeby nie spamować, gdy walka już trwa
+                if (Date.now() - this.lastAttack > 2000) {
+                    window._g(`fight&a=attack&id=-${npc.id}`);
+                    this.lastAttack = Date.now();
+                }
+            } else {
+                // Idź tylko jeśli NIE jesteś w walce (żeby postać nie biegała w trakcie tury lidera)
+                const inBattle = this.engineType === "ni" ? window.Engine.battle : window.g.battle;
+                if (!inBattle) {
+                    if (this.engineType === "ni") {
+                        window.Engine.hero.autoPath = [{x: npc.x, y: npc.y}];
+                    } else {
+                        window.hero.beginMove(npc.x, npc.y);
+                    }
+                }
+            }
+        }
+    }
+
+    setTimeout(() => new MargonemBot(), 500);
+})(); 
+
+// ==UserScript==
+// @name         Margonem Bot (Nowy Interfejs - Poprawiony)
+// @namespace    http://tampermonkey.net/
+// @version      1.3
+// @description  Bot do Margonem.pl działający na nowym interfejsie (WebGL/Canvas) - poprawiona wersja
+// @author       TwójNick
+// @match        https://*.margonem.pl/
+// @match        https://*.margonem.com/
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ====== KONFIGURACJA ======
+    const config = {
+        debugMode: true,
+        decisionInterval: 1500,
+        safeMode: true,
+        minHpToFight: 0.5,
+        minMpToUseSkill: 0.3,
+        maxMonsterDistance: 3,
+        maxItemDistance: 2,
+        fleeThreshold: 0.2,
+        avoidNpcs: ['Strażnik', 'Mistrz Gildii'],
+        questRefreshInterval: 30000,
+        pathfinding: {
+            maxSteps: 20,
+            avoidObstacles: true
+        }
+    };
+
+    // ====== STAN GRY ======
+    const gameState = {
+        player: {
+            hp: 0,
+            maxHp: 0,
+            mp: 0,
+            maxMp: 0,
+            level: 0,
+            position: { x: 0, y: 0 },
+            target: null,
+            skills: [],
+            buffs: []
+        },
+        map: {
+            name: '',
+            size: { width: 100, height: 100 },
+            monsters: [],
+            players: [],
+            npcs: [],
+            items: [],
+            obstacles: []
+        },
+        quests: {
+            active: [],
+            completed: [],
+            available: []
+        },
+        killedMonsters: {},
+        lastAction: null,
+        lastActionTime: 0,
+        isFighting: false,
+        isMoving: false,
+        mode: 'exp'
+    };
+
+    // ====== INICJALIZACJA ======
+    function init() {
+        console.log('[Margonem Bot] Inicjalizacja bota...');
+
+        // Czekaj na załadowanie gry
+        const checkGameLoaded = setInterval(() => {
+            if (typeof window.Engine !== 'undefined' && window.Engine.game) {
+                clearInterval(checkGameLoaded);
+                console.log('[Margonem Bot] Gra załadowana, tworzenie interfejsu...');
+                createUI();
+                startGameMonitoring();
+                startDecisionLoop();
+                startQuestMonitoring();
+                console.log('[Margonem Bot] Bot gotowy!');
+            } else {
+                console.log('[Margonem Bot] Czekam na załadowanie gry...');
+            }
+        }, 1000);
+    }
+
+    // ====== TWORZENIE INTERFEJSU ======
+    function createUI() {
+        // Sprawdź, czy interfejs już istnieje
+        if (document.getElementById('margo-bot-ui')) {
+            return;
+        }
+
+        const ui = document.createElement('div');
+        ui.id = 'margo-bot-ui';
+        ui.style.position = 'fixed';
+        ui.style.bottom = '10px';
+        ui.style.right = '10px';
+        ui.style.zIndex = '99999';
+        ui.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        ui.style.color = 'white';
+        ui.style.padding = '10px';
+        ui.style.borderRadius = '5px';
+        ui.style.fontFamily = 'Arial, sans-serif';
+        ui.style.fontSize = '12px';
+        ui.style.width = '300px';
+        ui.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+
+        ui.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0;">Margonem Bot</h3>
+                <span id="margo-bot-status" style="color: lime;">Status: Gotowy</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>Tryb:</strong>
+                <select id="margo-bot-mode" style="margin-left: 5px; background: #333; color: white; border: 1px solid #555; border-radius: 3px;">
+                    <option value="exp">Expienie</option>
+                    <option value="quest">Robienie questów</option>
+                    <option value="heros">Szukanie herosów</option>
+                    <option value="e2">Stanie na E2</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <button id="margo-toggle-bot" style="background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-right: 5px;">Włącz</button>
+                <button id="margo-debug-info" style="background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-right: 5px;">Debug</button>
+                <button id="margo-clear-killed" style="background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px;">Wyczyść zabite</button>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>Opcje:</strong><br>
+                <label style="display: block; margin: 5px 0;"><input type="checkbox" id="margo-auto-use-skills" checked> Automatyczne używanie umiejętności</label>
+                <label style="display: block; margin: 5px 0;"><input type="checkbox" id="margo-auto-pick-items" checked> Automatyczne podnoszenie przedmiotów</label>
+                <label style="display: block; margin: 5px 0;"><input type="checkbox" id="margo-avoid-npcs" checked> Unikaj określonych NPC</label>
+            </div>
+            <div id="margo-bot-log" style="height: 200px; overflow-y: auto; border: 1px solid #333; padding: 5px; background: rgba(0,0,0,0.5); font-family: monospace;"></div>
+        `;
+
+        document.body.appendChild(ui);
+
+        // Dodaj event listenery
+        document.getElementById('margo-toggle-bot').addEventListener('click', toggleBot);
+        document.getElementById('margo-debug-info').addEventListener('click', showDebugInfo);
+        document.getElementById('margo-clear-killed').addEventListener('click', clearKilledMonsters);
+        document.getElementById('margo-bot-mode').addEventListener('change', (e) => {
+            gameState.mode = e.target.value;
+            log(`Zmieniono tryb na: ${gameState.mode}`);
+        });
+
+        // Ustaw początkowy status
+        document.getElementById('margo-bot-status').textContent = 'Status: Wyłączony';
+        document.getElementById('margo-bot-status').style.color = 'red';
+    }
+
+    // ====== FUNKCJE POMOCNICZE ======
+    function log(message) {
+        if (!config.debugMode) return;
+
+        const logElement = document.getElementById('margo-bot-log');
+        if (logElement) {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        console.log(`[Margonem Bot] ${message}`);
+    }
+
+    function calculateDistance(pos1, pos2) {
+        return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
+    }
+
+    function isPositionWalkable(position) {
+        if (!window.Engine.game.map.collision) return true;
+
+        const collision = window.Engine.game.map.collision;
+        const x = Math.floor(position.x);
+        const y = Math.floor(position.y);
+
+        if (x < 0 || x >= collision[0].length || y < 0 || y >= collision.length) {
+            return false;
+        }
+
+        return !collision[y][x];
+    }
+
+    // ====== STEROWANIE BOTEM ======
+    function toggleBot() {
+        const statusElement = document.getElementById('margo-bot-status');
+        const button = document.getElementById('margo-toggle-bot');
+
+        if (statusElement.textContent.includes('Aktywny')) {
+            statusElement.textContent = 'Status: Wyłączony';
+            statusElement.style.color = 'red';
+            button.textContent = 'Włącz';
+            button.style.background = '#4CAF50';
+            log('Bot wyłączony');
+        } else {
+            statusElement.textContent = 'Status: Aktywny';
+            statusElement.style.color = 'lime';
+            button.textContent = 'Wyłącz';
+            button.style.background = '#f44336';
+            log('Bot włączony');
+        }
+    }
+
+    function showDebugInfo() {
+        log('=== DEBUG INFO ===');
+        log(`Tryb: ${gameState.mode}`);
+        log(`Pozycja: ${gameState.player.position.x}, ${gameState.player.position.y}`);
+        log(`HP: ${gameState.player.hp}/${gameState.player.maxHp} (${Math.round((gameState.player.hp / gameState.player.maxHp) * 100)}%)`);
+        log(`MP: ${gameState.player.mp}/${gameState.player.maxMp} (${Math.round((gameState.player.mp / gameState.player.maxMp) * 100)}%)`);
+        log(`Poziom: ${gameState.player.level}`);
+        log(`Mapa: ${gameState.map.name}`);
+        log(`Potwory w pobliżu: ${gameState.map.monsters.length}`);
+        log(`Gracze w pobliżu: ${gameState.map.players.length}`);
+        log(`Przedmioty na ziemi: ${gameState.map.items.length}`);
+        log(`Aktywne questy: ${gameState.quests.active.length}`);
+        log('==================');
+    }
+
+    function clearKilledMonsters() {
+        gameState.killedMonsters = {};
+        log('Wyczyszczono listę zabitych potworów');
+    }
+
+    // ====== MONITOROWANIE GRY ======
+    function startGameMonitoring() {
+        setInterval(updateGameState, 1000);
+    }
+
+    function updateGameState() {
+        if (!window.Engine || !window.Engine.game) return;
+
+        try {
+            updatePlayerInfo();
+            updateMapInfo();
+            updateUIStatus();
+        } catch (e) {
+            log(`Błąd aktualizacji stanu gry: ${e.message}`);
+        }
+    }
+
+    function updatePlayerInfo() {
+        const player = window.Engine.game.player;
+
+        if (!player) return;
+
+        gameState.player.hp = player.hp;
+        gameState.player.maxHp = player.max_hp;
+        gameState.player.mp = player.mp;
+        gameState.player.maxMp = player.max_mp;
+        gameState.player.level = player.level;
+        gameState.player.position = { x: player.x, y: player.y };
+        gameState.player.target = player.target ? player.target.nick : null;
+
+        gameState.player.skills = [];
+        if (player.skills) {
+            for (const skillId in player.skills) {
+                const skill = player.skills[skillId];
+                gameState.player.skills.push({
+                    name: skill.name,
+                    cooldown: skill.cooldown > 0,
+                    lastUsed: 0
+                });
+            }
+        }
+
+        gameState.player.buffs = [];
+        if (player.buffs) {
+            for (const buffId in player.buffs) {
+                const buff = player.buffs[buffId];
+                gameState.player.buffs.push(buff.name);
+            }
+        }
+
+        gameState.isFighting = player.inFight;
+    }
+
+    function updateMapInfo() {
+        const game = window.Engine.game;
+
+        if (!game || !game.map) return;
+
+        gameState.map.name = game.map.name || 'Nieznana';
+        gameState.map.size = {
+            width: game.map.width || 100,
+            height: game.map.height || 100
+        };
+
+        gameState.map.monsters = [];
+        if (game.map.monsters) {
+            for (const monsterId in game.map.monsters) {
+                const monster = game.map.monsters[monsterId];
+                gameState.map.monsters.push({
+                    id: monsterId,
+                    name: monster.name,
+                    position: { x: monster.x, y: monster.y },
+                    hp: monster.hp,
+                    maxHp: monster.max_hp,
+                    level: monster.level,
+                    distance: calculateDistance(gameState.player.position, { x: monster.x, y: monster.y }),
+                    isBoss: monster.boss
+                });
+            }
+        }
+
+        gameState.map.monsters.sort((a, b) => {
+            if (a.isBoss && !b.isBoss) return -1;
+            if (!a.isBoss && b.isBoss) return 1;
+
+            const aHpPercent = a.hp / a.maxHp;
+            const bHpPercent = b.hp / b.maxHp;
+            if (aHpPercent < 0.3 && bHpPercent >= 0.3) return -1;
+            if (bHpPercent < 0.3 && aHpPercent >= 0.3) return 1;
+
+            return b.level - a.level;
+        });
+
+        gameState.map.players = [];
+        if (game.map.players) {
+            for (const playerId in game.map.players) {
+                const player = game.map.players[playerId];
+                if (player.nick === game.player.nick) continue;
+
+                gameState.map.players.push({
+                    name: player.nick,
+                    position: { x: player.x, y: player.y },
+                    distance: calculateDistance(gameState.player.position, { x: player.x, y: player.y }),
+                    isHeros: player.nick.includes('[Heros]') || player.nick.includes('Heros')
+                });
+            }
+        }
+
+        gameState.map.npcs = [];
+        if (game.map.npcs) {
+            for (const npcId in game.map.npcs) {
+                const npc = game.map.npcs[npcId];
+                gameState.map.npcs.push({
+                    id: npcId,
+                    name: npc.name,
+                    position: { x: npc.x, y: npc.y },
+                    distance: calculateDistance(gameState.player.position, { x: npc.x, y: npc.y }),
+                    isQuestNpc: npc.quest
+                });
+            }
+        }
+
+        gameState.map.items = [];
+        if (game.map.items) {
+            for (const itemId in game.map.items) {
+                const item = game.map.items[itemId];
+                gameState.map.items.push({
+                    id: itemId,
+                    name: item.name,
+                    position: { x: item.x, y: item.y },
+                    distance: calculateDistance(gameState.player.position, { x: item.x, y: item.y }),
+                    isGold: item.name.includes('Złoto'),
+                    isQuestItem: item.quest
+                });
+            }
+        }
+
+        gameState.map.obstacles = [];
+        if (game.map.collision) {
+            const collision = game.map.collision;
+            for (let y = 0; y < collision.length; y++) {
+                for (let x = 0; x < collision[y].length; x++) {
+                    if (collision[y][x]) {
+                        gameState.map.obstacles.push({ x, y });
+                    }
+                }
+            }
+        }
+    }
+
+    function updateUIStatus() {
+        const statusElement = document.getElementById('margo-bot-status');
+        if (statusElement) {
+            const modeText = {
+                'exp': 'Expienie',
+                'quest': 'Robienie questów',
+                'heros': 'Szukanie herosów',
+                'e2': 'Stanie na E2'
+            }[gameState.mode] || gameState.mode;
+
+            statusElement.textContent = `Status: ${gameState.isFighting ? 'Walka' : 'Spokój'} | Tryb: ${modeText}`;
+        }
+    }
+
+    // ====== MONITOROWANIE QUESTÓW ======
+    function startQuestMonitoring() {
+        setInterval(updateQuests, config.questRefreshInterval);
+    }
+
+    function updateQuests() {
+        if (!window.Engine || !window.Engine.game || !window.Engine.game.quests) return;
+
+        try {
+            const quests = window.Engine.game.quests;
+
+            gameState.quests.active = [];
+            if (quests.active) {
+                for (const questId in quests.active) {
+                    const quest = quests.active[questId];
+                    gameState.quests.active.push({
+                        id: questId,
+                        name: quest.name,
+                        progress: quest.progress,
+                        isCompleted: quest.progress.current >= quest.progress.total
+                    });
+                }
+            }
+
+            gameState.quests.available = [];
+            if (quests.available) {
+                for (const questId in quests.available) {
+                    const quest = quests.available[questId];
+                    gameState.quests.available.push({
+                        id: questId,
+                        name: quest.name,
+                        giver: quest.giver
+                    });
+                }
+            }
+
+            gameState.quests.completed = [];
+            if (quests.completed) {
+                for (const questId in quests.completed) {
+                    const quest = quests.completed[questId];
+                    gameState.quests.completed.push({
+                        id: questId,
+                        name: quest.name,
+                        receiver: quest.receiver
+                    });
+                }
+            }
+
+            log(`Zaktualizowano questy. Aktywne: ${gameState.quests.active.length}, Dostępne: ${gameState.quests.available.length}, Ukończone: ${gameState.quests.completed.length}`);
+        } catch (e) {
+            log(`Błąd aktualizacji questów: ${e.message}`);
+        }
+    }
+
+    // ====== CYKL DECYZYJNY ======
+    function startDecisionLoop() {
+        setInterval(makeDecision, config.decisionInterval);
+    }
+
+    function makeDecision() {
+        if (!window.Engine || !window.Engine.game || !document.getElementById('margo-bot-status').textContent.includes('Aktywny')) {
+            return;
+        }
+
+        try {
+            if (gameState.isFighting) {
+                handleCombat();
+                return;
+            }
+
+            switch (gameState.mode) {
+                case 'exp':
+                    handleExpMode();
+                    break;
+                case 'quest':
+                    handleQuestMode();
+                    break;
+                case 'heros':
+                    handleHerosMode();
+                    break;
+                case 'e2':
+                    handleE2Mode();
+                    break;
+                default:
+                    handleExpMode();
+            }
+        } catch (e) {
+            log(`Błąd podejmowania decyzji: ${e.message}`);
+        }
+    }
+
+    // ====== TRYBY DZIAŁANIA ======
+    function handleExpMode() {
+        const decisions = [
+            checkFleeCondition(),
+            checkLowHp(),
+            checkLowMp(),
+            checkAttackableMonster(),
+            checkPickableItem(),
+            checkRandomMovement()
+        ];
+
+        const bestDecision = getBestDecision(decisions);
+        executeDecision(bestDecision);
+    }
+
+    function handleQuestMode() {
+        if (gameState.quests.completed.length > 0) {
+            const quest = gameState.quests.completed[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.receiver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'turn_in_quest',
+                        target: quest.id,
+                        reason: `Oddaję quest: ${quest.name}`,
+                        priority: 10
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę oddać quest: ${quest.name}`,
+                        priority: 10
+                    });
+                }
+            }
+        }
+
+        if (gameState.quests.available.length > 0) {
+            const quest = gameState.quests.available[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.giver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'accept_quest',
+                        target: quest.id,
+                        reason: `Przyjmuję quest: ${quest.name}`,
+                        priority: 9
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę przyjąć quest: ${quest.name}`,
+                        priority: 9
+                    });
+                }
+            }
+        }
+
+        handleExpMode();
+    }
+
+    function handleHerosMode() {
+        const herosPlayers = gameState.map.players.filter(p => p.isHeros);
+
+        if (herosPlayers.length > 0) {
+            const closestHeros = herosPlayers[0];
+
+            if (closestHeros.distance <= 1) {
+                return executeDecision({
+                    action: 'follow_player',
+                    target: closestHeros.name,
+                    reason: `Podążam za herosem: ${closestHeros.name}`,
+                    priority: 8
+                });
+            } else {
+                return executeDecision({
+                    action: 'move_to',
+                    target: closestHeros.position,
+                    reason: `Idę do herosa: ${closestHeros.name}`,
+                    priority: 8
+                });
+            }
+        }
+
+        handleExpMode();
+    }
+
+    function handleE2Mode() {
+        const e2Position = { x: 50, y: 50 };
+
+        if (calculateDistance(gameState.player.position, e2Position) <= 1) {
+            return executeDecision({
+                action: 'wait',
+                reason: 'Stoję na E2',
+                priority: 1
+            });
+        } else {
+            return executeDecision({
+                action: 'move_to',
+                target: e2Position,
+                reason: 'Idę na E2',
+                priority: 10
+            });
+        }
+    }
+
+    // ====== DECYZJE ======
+    function checkFleeCondition() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.fleeThreshold) {
+            return { action: 'flee', reason: 'Niskie HP - ucieczka', priority: 10 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowHp() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.minHpToFight) {
+            return { action: 'use_potion', target: 'hp', reason: 'Niskie HP', priority: 9 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowMp() {
+        const mpPercentage = gameState.player.mp / gameState.player.maxMp;
+        if (mpPercentage < config.minMpToUseSkill) {
+            return { action: 'use_potion', target: 'mp', reason: 'Niskie MP', priority: 8 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkAttackableMonster() {
+        if (gameState.map.monsters.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestMonster = gameState.map.monsters[0];
+
+        if (gameState.killedMonsters[closestMonster.name] &&
+            gameState.killedMonsters[closestMonster.name] >= 5) {
+            log(`Potwór ${closestMonster.name} został już zabity wystarczająco razy, pomijam`);
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (closestMonster.distance <= config.maxMonsterDistance) {
+            return {
+                action: 'attack',
+                target: closestMonster.id,
+                reason: `Potwór ${closestMonster.name} (Lvl ${closestMonster.level}) w zasięgu`,
+                priority: 7
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkPickableItem() {
+        if (!document.getElementById('margo-auto-pick-items')?.checked) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (gameState.map.items.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestItem = gameState.map.items[0];
+        if (closestItem.distance <= config.maxItemDistance) {
+            return {
+                action: 'pick_up',
+                target: closestItem.id,
+                reason: `Przedmiot ${closestItem.name} w zasięgu`,
+                priority: 6
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkRandomMovement() {
+        return { action: 'move_random', reason: 'Brak innych akcji', priority: 1 };
+    }
+
+    function getBestDecision(decisions) {
+        return decisions.reduce((best, current) =>
+            (current.priority > best.priority) ? current : best,
+            { action: 'wait', priority: 0 }
+        );
+    }
+
+    // ====== WYKONYWANIE DECYZJI ======
+    function executeDecision(decision) {
+        if (!decision || !decision.action || decision.priority === 0) {
+            return;
+        }
+
+        gameState.lastAction = `${decision.action} ${decision.target ? `(${decision.target})` : ''}`;
+        gameState.lastActionTime = Date.now();
+
+        log(`Wykonuję: ${decision.action} (${decision.reason})`);
+
+        switch (decision.action) {
+            case 'attack':
+                attackMonster(decision.target);
+                break;
+            case 'move_to':
+                moveToPosition(decision.target);
+                break;
+            case 'pick_up':
+                pickUpItem(decision.target);
+                break;
+            case 'use_potion':
+                usePotion(decision.target);
+                break;
+            case 'use_skill':
+                useSkill(decision.target);
+                break;
+            case 'flee':
+                fleeFromCombat();
+                break;
+            case 'talk_to_npc':
+                talkToNPC(decision.target);
+                break;
+            case 'accept_quest':
+                acceptQuest(decision.target);
+                break;
+            case 'turn_in_quest':
+                turnInQuest(decision.target);
+                break;
+            case 'follow_player':
+                followPlayer(decision.target);
+                break;
+            case 'move_random':
+                moveRandomly();
+                break;
+            case 'wait':
+            default:
+                log('Czekam...');
+                break;
+        }
+    }
+
+    // ====== AKCJE ======
+    function attackMonster(monsterId) {
+        const monster = gameState.map.monsters.find(m => m.id === monsterId);
+        if (!monster) {
+            log(`Nie znaleziono potwora o ID: ${monsterId}`);
+            return;
+        }
+
+        if (monster.distance > 1) {
+            log(`Potwór ${monster.name} jest za daleko (${monster.distance.toFixed(1)})`);
+            moveToPosition(monster.position);
+            return;
+        }
+
+        log(`Atakuję ${monster.name} (Lvl ${monster.level}, HP: ${monster.hp}/${monster.maxHp})`);
+
+        if (!gameState.killedMonsters[monster.name]) {
+            gameState.killedMonsters[monster.name] = 0;
+        }
+        gameState.killedMonsters[monster.name]++;
+
+        window.Engine.game.attack(monsterId);
+
+        if (document.getElementById('margo-auto-use-skills')?.checked) {
+            useCombatSkills();
+        }
+    }
+
+    function moveToPosition(position) {
+        if (gameState.isMoving) return;
+
+        const distance = calculateDistance(gameState.player.position, position);
+        if (distance <= 1) {
+            log(`Już jesteśmy przy celu (${position.x}, ${position.y})`);
+            return;
+        }
+
+        log(`Poruszam się do (${position.x}, ${position.y})`);
+
+        const path = findPath(gameState.player.position, position);
+        if (path.length > 0) {
+            const nextStep = path[0];
+            window.Engine.game.move(nextStep.x, nextStep.y);
+            gameState.isMoving = true;
+
+            setTimeout(() => {
+                gameState.isMoving = false;
+            }, 1000);
+        } else {
+            log('Nie znaleziono ścieżki!');
+            window.Engine.game.move(position.x, position.y);
+        }
+    }
+
+    function findPath(start, end) {
+        const openSet = [start];
+        const cameFrom = {};
+        const gScore = {};
+        const fScore = {};
+
+        gScore[start.x + ',' + start.y] = 0;
+        fScore[start.x + ',' + start.y] = calculateDistance(start, end);
+
+        while (openSet.length > 0) {
+            let current = openSet[0];
+            for (const node of openSet) {
+                if (fScore[node.x + ',' + node.y] < fScore[current.x + ',' + current.y]) {
+                    current = node;
+                }
+            }
+
+            if (current.x === end.x && current.y === end.y) {
+                const path = [];
+                let temp = current;
+                while (temp.x !== start.x || temp.y !== start.y) {
+                    path.push(temp);
+                    temp = cameFrom[temp.x + ',' + temp.y];
+                }
+                return path.reverse();
+            }
+
+            openSet.splice(openSet.indexOf(current), 1);
+
+            const neighbors = [
+                { x: current.x + 1, y: current.y },
+                { x: current.x - 1, y: current.y },
+                { x: current.x, y: current.y + 1 },
+                { x: current.x, y: current.y - 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                if (neighbor.x < 0 || neighbor.x >= gameState.map.size.width ||
+                    neighbor.y < 0 || neighbor.y >= gameState.map.size.height) {
+                    continue;
+                }
+
+                if (config.pathfinding.avoidObstacles && !isPositionWalkable(neighbor)) {
+                    continue;
+                }
+
+                const tentativeGScore = gScore[current.x + ',' + current.y] + 1;
+
+                if (!gScore[neighbor.x + ',' + neighbor.y] ||
+                    tentativeGScore < gScore[neighbor.x + ',' + neighbor.y]) {
+                    cameFrom[neighbor.x + ',' + neighbor.y] = current;
+                    gScore[neighbor.x + ',' + neighbor.y] = tentativeGScore;
+                    fScore[neighbor.x + ',' + neighbor.y] = tentativeGScore + calculateDistance(neighbor, end);
+
+                    if (!openSet.some(node => node.x === neighbor.x && node.y === neighbor.y)) {
+                        openSet.push(neighbor);
+                    }
+                }
+            }
+
+            if (Object.keys(cameFrom).length > config.pathfinding.maxSteps) {
+                log('Przekroczono maksymalną liczbę kroków w szukaniu ścieżki');
+                return [];
+            }
+        }
+
+        log('Nie znaleziono ścieżki!');
+        return [];
+    }
+
+    function pickUpItem(itemId) {
+        const item = gameState.map.items.find(i => i.id === itemId);
+        if (!item) {
+            log(`Nie znaleziono przedmiotu o ID: ${itemId}`);
+            return;
+        }
+
+        if (item.distance > 1) {
+            log(`Przedmiot ${item.name} jest za daleko (${item.distance.toFixed(1)})`);
+            moveToPosition(item.position);
+            return;
+        }
+
+        log(`Podnoszę ${item.name}`);
+        window.Engine.game.pickUpItem(itemId);
+    }
+
+    function usePotion(type) {
+        log(`Używam mikstury: ${type}`);
+        window.Engine.game.usePotion(type);
+    }
+
+    function useSkill(skillName) {
+        if (!document.getElementById('margo-auto-use-skills')?.checked) {
+            return;
+        }
+
+        const skill = gameState.player.skills.find(s => s.name === skillName);
+        if (!skill) {
+            log(`Nie znaleziono umiejętności: ${skillName}`);
+            return;
+        }
+
+        log(`Używam umiejętności: ${skillName}`);
+        window.Engine.game.useSkill(skillName);
+    }
+
+    function useCombatSkills() {
+        if (gameState.player.hp / gameState.player.maxHp < 0.5) {
+            const healSkill = gameState.player.skills.find(s =>
+                s.name.includes('Leczenie') || s.name.includes('Heal')
+            );
+            if (healSkill) {
+                useSkill(healSkill.name);
+                return;
+            }
+        }
+
+        const offensiveSkills = gameState.player.skills.filter(s =>
+            !s.cooldown &&
+            (s.name.includes('Atak') || s.name.includes('Fireball') || s.name.includes('Błyskawica'))
+        );
+
+        if (offensiveSkills.length > 0) {
+            useSkill(offensiveSkills[0].name);
+        }
+    }
+
+    function fleeFromCombat() {
+        log('Uciekam z walki!');
+        window.Engine.game.flee();
+    }
+
+    function talkToNPC(npcId) {
+        log(`Rozmawiam z NPC o ID: ${npcId}`);
+        window.Engine.game.talkToNPC(npcId);
+    }
+
+    function acceptQuest(questId) {
+        log(`Przyjmuję quest o ID: ${questId}`);
+        window.Engine.game.acceptQuest(questId);
+    }
+
+    function turnInQuest(questId) {
+        log(`Oddaję quest o ID: ${questId}`);
+        window.Engine.game.turnInQuest(questId);
+    }
+
+    function followPlayer(playerName) {
+        const player = gameState.map.players.find(p => p.name === playerName);
+        if (!player) {
+            log(`Nie znaleziono gracza: ${playerName}`);
+            return;
+        }
+
+        if (player.distance <= 1) {
+            log(`Podążam za graczem: ${playerName}`);
+        } else {
+            moveToPosition(player.position);
+        }
+    }
+
+    function moveRandomly() {
+        if (gameState.isMoving) return;
+
+        const directions = [
+            { x: 0, y: -1 },
+            { x: 1, y: 0 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 }
+        ];
+
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const newPos = {
+            x: gameState.player.position.x + randomDir.x,
+            y: gameState.player.position.y + randomDir.y
+        };
+
+        if (newPos.x >= 0 && newPos.x < gameState.map.size.width &&
+            newPos.y >= 0 && newPos.y < gameState.map.size.height &&
+            isPositionWalkable(newPos)) {
+            window.Engine.game.move(newPos.x, newPos.y);
+        }
+    }
+
+    function handleCombat() {
+        if (gameState.player.hp / gameState.player.maxHp < config.fleeThreshold) {
+            fleeFromCombat();
+            return;
+        }
+
+        if (gameState.player.hp / gameState.player.maxHp < config.minHpToFight) {
+            usePotion('hp');
+            return;
+        }
+
+        if (gameState.player.mp / gameState.player.maxMp < config.minMpToUseSkill) {
+            usePotion('mp');
+            return;
+        }
+
+        if (document.getElementById('margo-auto-use-skills')?.checked) {
+            useCombatSkills();
+        }
+    }
+
+    // ====== ROZWIĄZYWANIE PROBLEMÓW ======
+    function checkForProblems() {
+        // Sprawdź, czy interfejs się wyświetla
+        if (!document.getElementById('margo-bot-ui')) {
+            log('❌ Interfejs bota nie został utworzony!');
+            console.error('[Margonem Bot] Interfejs nie został utworzony. Sprawdź, czy skrypt działa na właściwej stronie.');
+            return false;
+        }
+
+        // Sprawdź, czy Engine.game istnieje
+        if (!window.Engine || !window.Engine.game) {
+            log('❌ Nie znaleziono obiektu Engine.game!');
+            console.error('[Margonem Bot] Nie znaleziono obiektu Engine.game. Upewnij się, że jesteś w grze na nowym interfejsie.');
+            return false;
+        }
+
+        // Sprawdź, czy metody gry są dostępne
+        const requiredMethods = ['attack', 'move', 'pickUpItem', 'usePotion', 'useSkill'];
+        for (const method of requiredMethods) {
+            if (typeof window.Engine.game[method] !== 'function') {
+                log(`❌ Metoda ${method} nie jest dostępna w Engine.game!`);
+                console.error(`[Margonem Bot] Metoda ${method} nie jest dostępna. Gra mogła zaktualizować API.`);
+                return false;
+            }
+        }
+
+        log('✅ Wszystkie sprawdzenia przeszły pomyślnie!');
+        return true;
+    }
+
+    // ====== INICJALIZACJA ======
+    // Sprawdź, czy jesteśmy na właściwej stronie
+    if (window.location.hostname.includes('margonem.pl') || window.location.hostname.includes('margonem.com')) {
+        // Uruchom diagnostykę po 5 sekundach
+        setTimeout(() => {
+            if (!checkForProblems()) {
+                console.log('[Margonem Bot] Wykryto problemy. Spróbuj ponownie uruchomić skrypt.');
+            }
+        }, 5000);
+
+        init();
+    } else {
+        console.log('[Margonem Bot] Nie jesteś na stronie Margonem. Skrypt nie zostanie uruchomiony.');
+    }
+})();
+
+// ==UserScript==
+// @name         Margonem Bot (Nowy Interfejs)
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  Bot do Margonem.pl działający na nowym interfejsie (WebGL/Canvas)
+// @author       TwójNick
+// @match        https://*.margonem.pl/
+// @match        https://*.margonem.com/
+// @grant        none
+// @run-at       document-idle
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ====== KONFIGURACJA ======
+    const config = {
+        debugMode: true,          // Tryb debugowania (logi w konsoli)
+        decisionInterval: 1500,   // Co ile ms podejmować decyzje
+        safeMode: true,           // Tryb bezpieczny - nie atakuje graczy
+        minHpToFight: 0.5,        // Minimalny % HP, aby atakować (0.5 = 50%)
+        minMpToUseSkill: 0.3,     // Minimalny % MP, aby używać umiejętności
+        maxMonsterDistance: 3,    // Maksymalna odległość ataku
+        maxItemDistance: 2,       // Maksymalna odległość podnoszenia przedmiotów
+        fleeThreshold: 0.2,       // Uciekaj, jeśli HP < 20%
+        avoidNpcs: ['Strażnik', 'Mistrz Gildii'], // NPC do unikania
+        questRefreshInterval: 30000, // Co ile ms odświeżać questy
+        pathfinding: {
+            maxSteps: 20,         // Maksymalna liczba kroków w szukaniu ścieżki
+            avoidObstacles: true  // Unikaj przeszkód
+        }
+    };
+
+    // ====== STAN GRY ======
+    const gameState = {
+        player: {
+            hp: 0,
+            maxHp: 0,
+            mp: 0,
+            maxMp: 0,
+            level: 0,
+            position: { x: 0, y: 0 },
+            target: null,
+            skills: [],
+            buffs: []
+        },
+        map: {
+            name: '',
+            size: { width: 100, height: 100 },
+            monsters: [],
+            players: [],
+            npcs: [],
+            items: [],
+            obstacles: []
+        },
+        quests: {
+            active: [],
+            completed: [],
+            available: []
+        },
+        killedMonsters: {},
+        lastAction: null,
+        lastActionTime: 0,
+        isFighting: false,
+        isMoving: false,
+        mode: 'exp' // exp, quest, heros, e2
+    };
+
+    // ====== INICJALIZACJA ======
+    function init() {
+        log('[Margonem Bot] Inicjalizacja bota dla nowego interfejsu...');
+
+        // Czekaj, aż gra się załaduje
+        const checkGameLoaded = setInterval(() => {
+            if (typeof window.Engine !== 'undefined' && window.Engine.game) {
+                clearInterval(checkGameLoaded);
+                log('[Margonem Bot] Gra załadowana, inicjalizacja bota...');
+                addUI();
+                startGameMonitoring();
+                startDecisionLoop();
+                startQuestMonitoring();
+                log('[Margonem Bot] Bot zainicjalizowany. Tryb: ' + gameState.mode);
+            }
+        }, 1000);
+    }
+
+    // ====== FUNKCJE POMOCNICZE ======
+    function log(message) {
+        if (!config.debugMode) return;
+
+        const logElement = document.getElementById('margo-bot-log');
+        if (logElement) {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        console.log(`[Margonem Bot] ${message}`);
+    }
+
+    function calculateDistance(pos1, pos2) {
+        return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
+    }
+
+    function isPositionWalkable(position) {
+        if (!window.Engine.game.map.collision) return true;
+
+        const collision = window.Engine.game.map.collision;
+        const x = Math.floor(position.x);
+        const y = Math.floor(position.y);
+
+        if (x < 0 || x >= collision[0].length || y < 0 || y >= collision.length) {
+            return false;
+        }
+
+        return !collision[y][x];
+    }
+
+    // ====== INTERFEJS UŻYTKOWNIKA ======
+    function addUI() {
+        const ui = document.createElement('div');
+        ui.id = 'margo-bot-ui';
+        ui.style.position = 'fixed';
+        ui.style.bottom = '10px';
+        ui.style.right = '10px';
+        ui.style.zIndex = '99999';
+        ui.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        ui.style.color = 'white';
+        ui.style.padding = '10px';
+        ui.style.borderRadius = '5px';
+        ui.style.fontFamily = 'Arial, sans-serif';
+        ui.style.fontSize = '12px';
+        ui.style.width = '300px';
+
+        ui.innerHTML = `
+            <h3 style="margin: 0 0 10px 0;">Margonem Bot (Nowy Interfejs)</h3>
+            <div id="margo-bot-status">Status: Inicjalizacja...</div>
+            <div style="margin: 10px 0;">
+                <strong>Tryb:</strong>
+                <select id="margo-bot-mode" style="margin-left: 5px;">
+                    <option value="exp">Expienie</option>
+                    <option value="quest">Robienie questów</option>
+                    <option value="heros">Szukanie herosów</option>
+                    <option value="e2">Stanie na E2</option>
+                </select>
+            </div>
+            <div id="margo-bot-actions" style="margin: 10px 0;">
+                <button id="margo-toggle-bot" style="margin-right: 5px;">Włącz/Wyłącz</button>
+                <button id="margo-debug-info" style="margin-right: 5px;">Debug</button>
+                <button id="margo-clear-killed">Wyczyść zabite</button>
+            </div>
+            <div style="margin: 10px 0;">
+                <strong>Opcje:</strong><br>
+                <label><input type="checkbox" id="margo-auto-use-skills" checked> Automatyczne używanie umiejętności</label><br>
+                <label><input type="checkbox" id="margo-auto-pick-items" checked> Automatyczne podnoszenie przedmiotów</label><br>
+                <label><input type="checkbox" id="margo-avoid-npcs" checked> Unikaj określonych NPC</label>
+            </div>
+            <div id="margo-bot-log" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 5px; background: rgba(0,0,0,0.5);"></div>
+        `;
+
+        document.body.appendChild(ui);
+
+        document.getElementById('margo-toggle-bot').addEventListener('click', toggleBot);
+        document.getElementById('margo-debug-info').addEventListener('click', showDebugInfo);
+        document.getElementById('margo-clear-killed').addEventListener('click', clearKilledMonsters);
+        document.getElementById('margo-bot-mode').addEventListener('change', (e) => {
+            gameState.mode = e.target.value;
+            log(`Zmieniono tryb na: ${gameState.mode}`);
+        });
+    }
+
+    function toggleBot() {
+        const statusElement = document.getElementById('margo-bot-status');
+        if (statusElement.textContent.includes('Aktywny')) {
+            statusElement.textContent = 'Status: Wyłączony';
+            statusElement.style.color = 'red';
+            log('Bot wyłączony');
+        } else {
+            statusElement.textContent = 'Status: Aktywny';
+            statusElement.style.color = 'lime';
+            log('Bot włączony');
+        }
+    }
+
+    function showDebugInfo() {
+        log('=== DEBUG INFO ===');
+        log(`Tryb: ${gameState.mode}`);
+        log(`Pozycja: ${gameState.player.position.x}, ${gameState.player.position.y}`);
+        log(`HP: ${gameState.player.hp}/${gameState.player.maxHp} (${Math.round((gameState.player.hp / gameState.player.maxHp) * 100)}%)`);
+        log(`MP: ${gameState.player.mp}/${gameState.player.maxMp} (${Math.round((gameState.player.mp / gameState.player.maxMp) * 100)}%)`);
+        log(`Poziom: ${gameState.player.level}`);
+        log(`Mapa: ${gameState.map.name}`);
+        log(`Potwory w pobliżu: ${gameState.map.monsters.length}`);
+        log(`Gracze w pobliżu: ${gameState.map.players.length}`);
+        log(`Przedmioty na ziemi: ${gameState.map.items.length}`);
+        log(`Aktywne questy: ${gameState.quests.active.length}`);
+        log('==================');
+    }
+
+    function clearKilledMonsters() {
+        gameState.killedMonsters = {};
+        log('Wyczyszczono listę zabitych potworów');
+    }
+
+    // ====== MONITOROWANIE GRY ======
+    function startGameMonitoring() {
+        setInterval(updateGameState, 1000);
+    }
+
+    function updateGameState() {
+        if (!window.Engine || !window.Engine.game) return;
+
+        try {
+            updatePlayerInfo();
+            updateMapInfo();
+            updateUIStatus();
+        } catch (e) {
+            log(`Błąd aktualizacji stanu gry: ${e.message}`);
+        }
+    }
+
+    function updatePlayerInfo() {
+        const player = window.Engine.game.player;
+
+        if (!player) return;
+
+        gameState.player.hp = player.hp;
+        gameState.player.maxHp = player.max_hp;
+        gameState.player.mp = player.mp;
+        gameState.player.maxMp = player.max_mp;
+        gameState.player.level = player.level;
+        gameState.player.position = { x: player.x, y: player.y };
+        gameState.player.target = player.target ? player.target.nick : null;
+
+        gameState.player.skills = [];
+        if (player.skills) {
+            for (const skillId in player.skills) {
+                const skill = player.skills[skillId];
+                gameState.player.skills.push({
+                    name: skill.name,
+                    cooldown: skill.cooldown > 0,
+                    lastUsed: 0
+                });
+            }
+        }
+
+        gameState.player.buffs = [];
+        if (player.buffs) {
+            for (const buffId in player.buffs) {
+                const buff = player.buffs[buffId];
+                gameState.player.buffs.push(buff.name);
+            }
+        }
+
+        gameState.isFighting = player.inFight;
+    }
+
+    function updateMapInfo() {
+        const game = window.Engine.game;
+
+        if (!game || !game.map) return;
+
+        gameState.map.name = game.map.name || 'Nieznana';
+        gameState.map.size = {
+            width: game.map.width || 100,
+            height: game.map.height || 100
+        };
+
+        gameState.map.monsters = [];
+        if (game.map.monsters) {
+            for (const monsterId in game.map.monsters) {
+                const monster = game.map.monsters[monsterId];
+                gameState.map.monsters.push({
+                    id: monsterId,
+                    name: monster.name,
+                    position: { x: monster.x, y: monster.y },
+                    hp: monster.hp,
+                    maxHp: monster.max_hp,
+                    level: monster.level,
+                    distance: calculateDistance(gameState.player.position, { x: monster.x, y: monster.y }),
+                    isBoss: monster.boss
+                });
+            }
+        }
+
+        gameState.map.monsters.sort((a, b) => {
+            if (a.isBoss && !b.isBoss) return -1;
+            if (!a.isBoss && b.isBoss) return 1;
+
+            const aHpPercent = a.hp / a.maxHp;
+            const bHpPercent = b.hp / b.maxHp;
+            if (aHpPercent < 0.3 && bHpPercent >= 0.3) return -1;
+            if (bHpPercent < 0.3 && aHpPercent >= 0.3) return 1;
+
+            return b.level - a.level;
+        });
+
+        gameState.map.players = [];
+        if (game.map.players) {
+            for (const playerId in game.map.players) {
+                const player = game.map.players[playerId];
+                if (player.nick === game.player.nick) continue;
+
+                gameState.map.players.push({
+                    name: player.nick,
+                    position: { x: player.x, y: player.y },
+                    distance: calculateDistance(gameState.player.position, { x: player.x, y: player.y }),
+                    isHeros: player.nick.includes('[Heros]') || player.nick.includes('Heros')
+                });
+            }
+        }
+
+        gameState.map.npcs = [];
+        if (game.map.npcs) {
+            for (const npcId in game.map.npcs) {
+                const npc = game.map.npcs[npcId];
+                gameState.map.npcs.push({
+                    id: npcId,
+                    name: npc.name,
+                    position: { x: npc.x, y: npc.y },
+                    distance: calculateDistance(gameState.player.position, { x: npc.x, y: npc.y }),
+                    isQuestNpc: npc.quest
+                });
+            }
+        }
+
+        gameState.map.items = [];
+        if (game.map.items) {
+            for (const itemId in game.map.items) {
+                const item = game.map.items[itemId];
+                gameState.map.items.push({
+                    id: itemId,
+                    name: item.name,
+                    position: { x: item.x, y: item.y },
+                    distance: calculateDistance(gameState.player.position, { x: item.x, y: item.y }),
+                    isGold: item.name.includes('Złoto'),
+                    isQuestItem: item.quest
+                });
+            }
+        }
+
+        gameState.map.obstacles = [];
+        if (game.map.collision) {
+            const collision = game.map.collision;
+            for (let y = 0; y < collision.length; y++) {
+                for (let x = 0; x < collision[y].length; x++) {
+                    if (collision[y][x]) {
+                        gameState.map.obstacles.push({ x, y });
+                    }
+                }
+            }
+        }
+    }
+
+    function updateUIStatus() {
+        const statusElement = document.getElementById('margo-bot-status');
+        if (statusElement) {
+            const modeText = {
+                'exp': 'Expienie',
+                'quest': 'Robienie questów',
+                'heros': 'Szukanie herosów',
+                'e2': 'Stanie na E2'
+            }[gameState.mode] || gameState.mode;
+
+            statusElement.textContent = `Status: ${gameState.isFighting ? 'Walka' : 'Spokój'} | Tryb: ${modeText} | Poziom: ${gameState.player.level}`;
+        }
+    }
+
+    // ====== MONITOROWANIE QUESTÓW ======
+    function startQuestMonitoring() {
+        setInterval(updateQuests, config.questRefreshInterval);
+    }
+
+    function updateQuests() {
+        if (!window.Engine || !window.Engine.game || !window.Engine.game.quests) return;
+
+        try {
+            const quests = window.Engine.game.quests;
+
+            gameState.quests.active = [];
+            if (quests.active) {
+                for (const questId in quests.active) {
+                    const quest = quests.active[questId];
+                    gameState.quests.active.push({
+                        id: questId,
+                        name: quest.name,
+                        progress: quest.progress,
+                        isCompleted: quest.progress.current >= quest.progress.total
+                    });
+                }
+            }
+
+            gameState.quests.available = [];
+            if (quests.available) {
+                for (const questId in quests.available) {
+                    const quest = quests.available[questId];
+                    gameState.quests.available.push({
+                        id: questId,
+                        name: quest.name,
+                        giver: quest.giver
+                    });
+                }
+            }
+
+            gameState.quests.completed = [];
+            if (quests.completed) {
+                for (const questId in quests.completed) {
+                    const quest = quests.completed[questId];
+                    gameState.quests.completed.push({
+                        id: questId,
+                        name: quest.name,
+                        receiver: quest.receiver
+                    });
+                }
+            }
+
+            log(`Zaktualizowano questy. Aktywne: ${gameState.quests.active.length}, Dostępne: ${gameState.quests.available.length}, Ukończone: ${gameState.quests.completed.length}`);
+        } catch (e) {
+            log(`Błąd aktualizacji questów: ${e.message}`);
+        }
+    }
+
+    // ====== CYKL DECYZYJNY ======
+    function startDecisionLoop() {
+        setInterval(makeDecision, config.decisionInterval);
+    }
+
+    function makeDecision() {
+        if (!window.Engine || !window.Engine.game || !document.getElementById('margo-bot-status').textContent.includes('Aktywny')) {
+            return;
+        }
+
+        try {
+            if (gameState.isFighting) {
+                handleCombat();
+                return;
+            }
+
+            switch (gameState.mode) {
+                case 'exp':
+                    handleExpMode();
+                    break;
+                case 'quest':
+                    handleQuestMode();
+                    break;
+                case 'heros':
+                    handleHerosMode();
+                    break;
+                case 'e2':
+                    handleE2Mode();
+                    break;
+                default:
+                    handleExpMode();
+            }
+        } catch (e) {
+            log(`Błąd podejmowania decyzji: ${e.message}`);
+        }
+    }
+
+    // ====== TRYBY DZIAŁANIA ======
+    function handleExpMode() {
+        const decisions = [
+            checkFleeCondition(),
+            checkLowHp(),
+            checkLowMp(),
+            checkAttackableMonster(),
+            checkPickableItem(),
+            checkRandomMovement()
+        ];
+
+        const bestDecision = getBestDecision(decisions);
+        executeDecision(bestDecision);
+    }
+
+    function handleQuestMode() {
+        if (gameState.quests.completed.length > 0) {
+            const quest = gameState.quests.completed[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.receiver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'turn_in_quest',
+                        target: quest.id,
+                        reason: `Oddaję quest: ${quest.name}`,
+                        priority: 10
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę oddać quest: ${quest.name}`,
+                        priority: 10
+                    });
+                }
+            }
+        }
+
+        if (gameState.quests.available.length > 0) {
+            const quest = gameState.quests.available[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.giver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'accept_quest',
+                        target: quest.id,
+                        reason: `Przyjmuję quest: ${quest.name}`,
+                        priority: 9
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę przyjąć quest: ${quest.name}`,
+                        priority: 9
+                    });
+                }
+            }
+        }
+
+        handleExpMode();
+    }
+
+    function handleHerosMode() {
+        const herosPlayers = gameState.map.players.filter(p => p.isHeros);
+
+        if (herosPlayers.length > 0) {
+            const closestHeros = herosPlayers[0];
+
+            if (closestHeros.distance <= 1) {
+                return executeDecision({
+                    action: 'follow_player',
+                    target: closestHeros.name,
+                    reason: `Podążam za herosem: ${closestHeros.name}`,
+                    priority: 8
+                });
+            } else {
+                return executeDecision({
+                    action: 'move_to',
+                    target: closestHeros.position,
+                    reason: `Idę do herosa: ${closestHeros.name}`,
+                    priority: 8
+                });
+            }
+        }
+
+        handleExpMode();
+    }
+
+    function handleE2Mode() {
+        const e2Position = { x: 50, y: 50 };
+
+        if (calculateDistance(gameState.player.position, e2Position) <= 1) {
+            return executeDecision({
+                action: 'wait',
+                reason: 'Stoję na E2',
+                priority: 1
+            });
+        } else {
+            return executeDecision({
+                action: 'move_to',
+                target: e2Position,
+                reason: 'Idę na E2',
+                priority: 10
+            });
+        }
+    }
+
+    // ====== DECYZJE ======
+    function checkFleeCondition() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.fleeThreshold) {
+            return { action: 'flee', reason: 'Niskie HP - ucieczka', priority: 10 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowHp() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.minHpToFight) {
+            return { action: 'use_potion', target: 'hp', reason: 'Niskie HP', priority: 9 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowMp() {
+        const mpPercentage = gameState.player.mp / gameState.player.maxMp;
+        if (mpPercentage < config.minMpToUseSkill) {
+            return { action: 'use_potion', target: 'mp', reason: 'Niskie MP', priority: 8 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkAttackableMonster() {
+        if (gameState.map.monsters.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestMonster = gameState.map.monsters[0];
+
+        if (gameState.killedMonsters[closestMonster.name] &&
+            gameState.killedMonsters[closestMonster.name] >= 5) {
+            log(`Potwór ${closestMonster.name} został już zabity wystarczająco razy, pomijam`);
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (closestMonster.distance <= config.maxMonsterDistance) {
+            return {
+                action: 'attack',
+                target: closestMonster.id,
+                reason: `Potwór ${closestMonster.name} (Lvl ${closestMonster.level}) w zasięgu`,
+                priority: 7
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkPickableItem() {
+        if (!document.getElementById('margo-auto-pick-items')?.checked) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (gameState.map.items.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestItem = gameState.map.items[0];
+        if (closestItem.distance <= config.maxItemDistance) {
+            return {
+                action: 'pick_up',
+                target: closestItem.id,
+                reason: `Przedmiot ${closestItem.name} w zasięgu`,
+                priority: 6
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkRandomMovement() {
+        return { action: 'move_random', reason: 'Brak innych akcji', priority: 1 };
+    }
+
+    function getBestDecision(decisions) {
+        return decisions.reduce((best, current) =>
+            (current.priority > best.priority) ? current : best,
+            { action: 'wait', priority: 0 }
+        );
+    }
+
+    // ====== WYKONYWANIE DECYZJI ======
+    function executeDecision(decision) {
+        if (!decision || !decision.action || decision.priority === 0) {
+            return;
+        }
+
+        gameState.lastAction = `${decision.action} ${decision.target ? `(${decision.target})` : ''}`;
+        gameState.lastActionTime = Date.now();
+
+        log(`Wykonuję: ${decision.action} (${decision.reason})`);
+
+        switch (decision.action) {
+            case 'attack':
+                attackMonster(decision.target);
+                break;
+            case 'move_to':
+                moveToPosition(decision.target);
+                break;
+            case 'pick_up':
+                pickUpItem(decision.target);
+                break;
+            case 'use_potion':
+                usePotion(decision.target);
+                break;
+            case 'use_skill':
+                useSkill(decision.target);
+                break;
+            case 'flee':
+                fleeFromCombat();
+                break;
+            case 'talk_to_npc':
+                talkToNPC(decision.target);
+                break;
+            case 'accept_quest':
+                acceptQuest(decision.target);
+                break;
+            case 'turn_in_quest':
+                turnInQuest(decision.target);
+                break;
+            case 'follow_player':
+                followPlayer(decision.target);
+                break;
+            case 'move_random':
+                moveRandomly();
+                break;
+            case 'wait':
+            default:
+                log('Czekam...');
+                break;
+        }
+    }
+
+    // ====== AKCJE ======
+    function attackMonster(monsterId) {
+        const monster = gameState.map.monsters.find(m => m.id === monsterId);
+        if (!monster) {
+            log(`Nie znaleziono potwora o ID: ${monsterId}`);
+            return;
+        }
+
+        if (monster.distance > 1) {
+            log(`Potwór ${monster.name} jest za daleko (${monster.distance.toFixed(1)})`);
+            moveToPosition(monster.position);
+            return;
+        }
+
+        log(`Atakuję ${monster.name} (Lvl ${monster.level}, HP: ${monster.hp}/${monster.maxHp})`);
+
+        if (!gameState.killedMonsters[monster.name]) {
+            gameState.killedMonsters[monster.name] = 0;
+        }
+        gameState.killedMonsters[monster.name]++;
+
+        window.Engine.game.attack(monsterId);
+
+        if (document.getElementById('margo-auto-use-skills')?.checked) {
+            useCombatSkills();
+        }
+    }
+
+    function moveToPosition(position) {
+        if (gameState.isMoving) return;
+
+        const distance = calculateDistance(gameState.player.position, position);
+        if (distance <= 1) {
+            log(`Już jesteśmy przy celu (${position.x}, ${position.y})`);
+            return;
+        }
+
+        log(`Poruszam się do (${position.x}, ${position.y})`);
+
+        const path = findPath(gameState.player.position, position);
+        if (path.length > 0) {
+            const nextStep = path[0];
+            window.Engine.game.move(nextStep.x, nextStep.y);
+            gameState.isMoving = true;
+
+            setTimeout(() => {
+                gameState.isMoving = false;
+            }, 1000);
+        } else {
+            log('Nie znaleziono ścieżki!');
+            window.Engine.game.move(position.x, position.y);
+        }
+    }
+
+    function findPath(start, end) {
+        const openSet = [start];
+        const cameFrom = {};
+        const gScore = {};
+        const fScore = {};
+
+        gScore[start.x + ',' + start.y] = 0;
+        fScore[start.x + ',' + start.y] = calculateDistance(start, end);
+
+        while (openSet.length > 0) {
+            let current = openSet[0];
+            for (const node of openSet) {
+                if (fScore[node.x + ',' + node.y] < fScore[current.x + ',' + current.y]) {
+                    current = node;
+                }
+            }
+
+            if (current.x === end.x && current.y === end.y) {
+                const path = [];
+                let temp = current;
+                while (temp.x !== start.x || temp.y !== start.y) {
+                    path.push(temp);
+                    temp = cameFrom[temp.x + ',' + temp.y];
+                }
+                return path.reverse();
+            }
+
+            openSet.splice(openSet.indexOf(current), 1);
+
+            const neighbors = [
+                { x: current.x + 1, y: current.y },
+                { x: current.x - 1, y: current.y },
+                { x: current.x, y: current.y + 1 },
+                { x: current.x, y: current.y - 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                if (neighbor.x < 0 || neighbor.x >= gameState.map.size.width ||
+                    neighbor.y < 0 || neighbor.y >= gameState.map.size.height) {
+                    continue;
+                }
+
+                if (config.pathfinding.avoidObstacles && !isPositionWalkable(neighbor)) {
+                    continue;
+                }
+
+                const tentativeGScore = gScore[current.x + ',' + current.y] + 1;
+
+                if (!gScore[neighbor.x + ',' + neighbor.y] ||
+                    tentativeGScore < gScore[neighbor.x + ',' + neighbor.y]) {
+                    cameFrom[neighbor.x + ',' + neighbor.y] = current;
+                    gScore[neighbor.x + ',' + neighbor.y] = tentativeGScore;
+                    fScore[neighbor.x + ',' + neighbor.y] = tentativeGScore + calculateDistance(neighbor, end);
+
+                    if (!openSet.some(node => node.x === neighbor.x && node.y === neighbor.y)) {
+                        openSet.push(neighbor);
+                    }
+                }
+            }
+
+            if (Object.keys(cameFrom).length > config.pathfinding.maxSteps) {
+                log('Przekroczono maksymalną liczbę kroków w szukaniu ścieżki');
+                return [];
+            }
+        }
+
+        log('Nie znaleziono ścieżki!');
+        return [];
+    }
+
+    function pickUpItem(itemId) {
+        const item = gameState.map.items.find(i => i.id === itemId);
+        if (!item) {
+            log(`Nie znaleziono przedmiotu o ID: ${itemId}`);
+            return;
+        }
+
+        if (item.distance > 1) {
+            log(`Przedmiot ${item.name} jest za daleko (${item.distance.toFixed(1)})`);
+            moveToPosition(item.position);
+            return;
+        }
+
+        log(`Podnoszę ${item.name}`);
+        window.Engine.game.pickUpItem(itemId);
+    }
+
+    function usePotion(type) {
+        log(`Używam mikstury: ${type}`);
+        window.Engine.game.usePotion(type);
+    }
+
+    function useSkill(skillName) {
+        if (!document.getElementById('margo-auto-use-skills')?.checked) {
+            return;
+        }
+
+        const skill = gameState.player.skills.find(s => s.name === skillName);
+        if (!skill) {
+            log(`Nie znaleziono umiejętności: ${skillName}`);
+            return;
+        }
+
+        log(`Używam umiejętności: ${skillName}`);
+        window.Engine.game.useSkill(skillName);
+    }
+
+    function useCombatSkills() {
+        if (gameState.player.hp / gameState.player.maxHp < 0.5) {
+            const healSkill = gameState.player.skills.find(s =>
+                s.name.includes('Leczenie') || s.name.includes('Heal')
+            );
+            if (healSkill) {
+                useSkill(healSkill.name);
+                return;
+            }
+        }
+
+        const offensiveSkills = gameState.player.skills.filter(s =>
+            !s.cooldown &&
+            (s.name.includes('Atak') || s.name.includes('Fireball') || s.name.includes('Błyskawica'))
+        );
+
+        if (offensiveSkills.length > 0) {
+            useSkill(offensiveSkills[0].name);
+        }
+    }
+
+    function fleeFromCombat() {
+        log('Uciekam z walki!');
+        window.Engine.game.flee();
+    }
+
+    function talkToNPC(npcId) {
+        log(`Rozmawiam z NPC o ID: ${npcId}`);
+        window.Engine.game.talkToNPC(npcId);
+    }
+
+    function acceptQuest(questId) {
+        log(`Przyjmuję quest o ID: ${questId}`);
+        window.Engine.game.acceptQuest(questId);
+    }
+
+    function turnInQuest(questId) {
+        log(`Oddaję quest o ID: ${questId}`);
+        window.Engine.game.turnInQuest(questId);
+    }
+
+    function followPlayer(playerName) {
+        const player = gameState.map.players.find(p => p.name === playerName);
+        if (!player) {
+            log(`Nie znaleziono gracza: ${playerName}`);
+            return;
+        }
+
+        if (player.distance <= 1) {
+            log(`Podążam za graczem: ${playerName}`);
+        } else {
+            moveToPosition(player.position);
+        }
+    }
+
+    function moveRandomly() {
+        if (gameState.isMoving) return;
+
+        const directions = [
+            { x: 0, y: -1 },
+            { x: 1, y: 0 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 }
+        ];
+
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const newPos = {
+            x: gameState.player.position.x + randomDir.x,
+            y: gameState.player.position.y + randomDir.y
+        };
+
+        if (newPos.x >= 0 && newPos.x < gameState.map.size.width &&
+            newPos.y >= 0 && newPos.y < gameState.map.size.height &&
+            isPositionWalkable(newPos)) {
+            window.Engine.game.move(newPos.x, newPos.y);
+        }
+    }
+
+    // ====== INICJALIZACJA ======
+    init();
+})();
+
+// ==UserScript==
+// @name         Margonem Advanced Rule-Based Bot
+// @namespace    http://tampermonkey.net/
+// @version      0.3
+// @description  Zaawansowany bot do Margonem.pl oparty na regułach (bez AI)
+// @author       TwójNick
+// @match        https://*.margonem.pl/
+// @grant        GM_setValue
+// @grant        GM_getValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ====== KONFIGURACJA ======
+    const config = {
+        debugMode: true,          // Tryb debugowania (logi w konsoli)
+        decisionInterval: 1500,   // Co ile ms podejmować decyzje (ms)
+        safeMode: true,           // Tryb bezpieczny - nie atakuje graczy
+        minHpToFight: 0.5,        // Minimalny % HP, aby atakować (0.5 = 50%)
+        minMpToUseSkill: 0.3,     // Minimalny % MP, aby używać umiejętności
+        maxMonsterDistance: 3,    // Maksymalna odległość, aby atakować potwora
+        maxItemDistance: 2,       // Maksymalna odległość, aby podnosić przedmioty
+        fleeThreshold: 0.2,       // Jeśli HP spadnie poniżej 20%, uciekaj
+        avoidNpcs: ['Strażnik', 'Mistrz Gildii'], // NPC do unikania
+        skillCooldowns: {},       // Przechowuje czasy odnowienia umiejętności
+        questRefreshInterval: 30000, // Co ile ms odświeżać questy (30s)
+        pathfinding: {
+            maxSteps: 20,         // Maksymalna liczba kroków w szukaniu ścieżki
+            avoidObstacles: true  // Czy unikać przeszkód
+        }
+    };
+
+    // ====== STAN GRY ======
+    const gameState = {
+        player: {
+            hp: 0,
+            maxHp: 0,
+            mp: 0,
+            maxMp: 0,
+            level: 0,
+            position: { x: 0, y: 0 },
+            target: null,
+            skills: [],
+            buffs: []
+        },
+        map: {
+            name: '',
+            size: { width: 0, height: 0 },
+            monsters: [],
+            players: [],
+            npcs: [],
+            items: [],
+            obstacles: [] // Przeszkody (np. ściany, drzewa)
+        },
+        quests: {
+            active: [],
+            completed: [],
+            available: []
+        },
+        killedMonsters: GM_getValue('killedMonsters', {}), // Zapamiętane zabite potwory
+        lastAction: null,
+        lastActionTime: 0,
+        isFighting: false,
+        isMoving: false,
+        mode: 'exp' // Domyślny tryb: exp, quest, heros, e2
+    };
+
+    // ====== INICJALIZACJA ======
+    function init() {
+        log('Inicjalizacja zaawansowanego bota...');
+
+        if (!isGamePage()) {
+            log('Nie jesteśmy na stronie gry Margonem');
+            return;
+        }
+
+        addUI();
+        loadSavedState();
+        startGameMonitoring();
+        startDecisionLoop();
+        startQuestMonitoring();
+
+        log('Bot zainicjalizowany. Tryb: ' + gameState.mode);
+    }
+
+    // ====== FUNKCJE POMOCNICZE ======
+    function isGamePage() {
+        return window.location.href.includes('margonem.pl/') &&
+               (document.getElementById('game') || document.querySelector('.game-container'));
+    }
+
+    function log(message) {
+        if (!config.debugMode) return;
+
+        const logElement = document.getElementById('bot-log');
+        if (logElement) {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        console.log(`[Margonem Bot] ${message}`);
+    }
+
+    function calculateDistance(pos1, pos2) {
+        return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
+    }
+
+    function isPositionWalkable(position) {
+        // Sprawdź, czy pozycja nie jest przeszkodą
+        return !gameState.map.obstacles.some(obstacle =>
+            obstacle.x === position.x && obstacle.y === position.y
+        );
+    }
+
+    // ====== ZAPISYWANIE STANU ======
+    function saveState() {
+        GM_setValue('killedMonsters', gameState.killedMonsters);
+    }
+
+    function loadSavedState() {
+        gameState.killedMonsters = GM_getValue('killedMonsters', {});
+    }
+
+    // ====== INTERFEJS UŻYTKOWNIKA ======
+    function addUI() {
+        const ui = document.createElement('div');
+        ui.id = 'advanced-bot-ui';
+        ui.style.position = 'fixed';
+        ui.style.bottom = '10px';
+        ui.style.right = '10px';
+        ui.style.zIndex = '9999';
+        ui.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        ui.style.color = 'white';
+        ui.style.padding = '10px';
+        ui.style.borderRadius = '5px';
+        ui.style.fontFamily = 'Arial, sans-serif';
+        ui.style.fontSize = '12px';
+        ui.style.width = '300px';
+
+        ui.innerHTML = `
+            <h3 style="margin: 0 0 10px 0;">Margonem Advanced Bot</h3>
+            <div id="bot-status">Status: Inicjalizacja...</div>
+            <div style="margin: 10px 0;">
+                <strong>Tryb:</strong>
+                <select id="bot-mode" style="margin-left: 5px;">
+                    <option value="exp">Expienie</option>
+                    <option value="quest">Robienie questów</option>
+                    <option value="heros">Szukanie herosów</option>
+                    <option value="e2">Stanie na E2</option>
+                </select>
+            </div>
+            <div id="bot-actions" style="margin: 10px 0;">
+                <button id="toggle-bot" style="margin-right: 5px;">Włącz/Wyłącz</button>
+                <button id="debug-info" style="margin-right: 5px;">Debug</button>
+                <button id="clear-killed">Wyczyść zabite</button>
+            </div>
+            <div style="margin: 10px 0;">
+                <strong>Opcje:</strong><br>
+                <label><input type="checkbox" id="auto-use-skills" checked> Automatyczne używanie umiejętności</label><br>
+                <label><input type="checkbox" id="auto-pick-items" checked> Automatyczne podnoszenie przedmiotów</label><br>
+                <label><input type="checkbox" id="avoid-npcs" checked> Unikaj określonych NPC</label>
+            </div>
+            <div id="bot-log" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 5px; background: rgba(0,0,0,0.5);"></div>
+        `;
+
+        document.body.appendChild(ui);
+
+        // Event listeners
+        document.getElementById('toggle-bot').addEventListener('click', toggleBot);
+        document.getElementById('debug-info').addEventListener('click', showDebugInfo);
+        document.getElementById('clear-killed').addEventListener('click', clearKilledMonsters);
+        document.getElementById('bot-mode').addEventListener('change', (e) => {
+            gameState.mode = e.target.value;
+            log(`Zmieniono tryb na: ${gameState.mode}`);
+        });
+    }
+
+    function toggleBot() {
+        const statusElement = document.getElementById('bot-status');
+        if (statusElement.textContent.includes('Aktywny')) {
+            statusElement.textContent = 'Status: Wyłączony';
+            statusElement.style.color = 'red';
+            log('Bot wyłączony');
+        } else {
+            statusElement.textContent = 'Status: Aktywny';
+            statusElement.style.color = 'lime';
+            log('Bot włączony');
+        }
+    }
+
+    function showDebugInfo() {
+        log('=== DEBUG INFO ===');
+        log(`Tryb: ${gameState.mode}`);
+        log(`Pozycja: ${gameState.player.position.x}, ${gameState.player.position.y}`);
+        log(`HP: ${gameState.player.hp}/${gameState.player.maxHp} (${Math.round((gameState.player.hp / gameState.player.maxHp) * 100)}%)`);
+        log(`MP: ${gameState.player.mp}/${gameState.player.maxMp} (${Math.round((gameState.player.mp / gameState.player.maxMp) * 100)}%)`);
+        log(`Poziom: ${gameState.player.level}`);
+        log(`Mapa: ${gameState.map.name}`);
+        log(`Potwory w pobliżu: ${gameState.map.monsters.length}`);
+        log(`Gracze w pobliżu: ${gameState.map.players.length}`);
+        log(`Przedmioty na ziemi: ${gameState.map.items.length}`);
+        log(`Aktywne questy: ${gameState.quests.active.length}`);
+        log(`Zabite potwory: ${Object.keys(gameState.killedMonsters).length}`);
+        log('==================');
+    }
+
+    function clearKilledMonsters() {
+        gameState.killedMonsters = {};
+        saveState();
+        log('Wyczyszczono listę zabitych potworów');
+    }
+
+    // ====== MONITOROWANIE GRY ======
+    function startGameMonitoring() {
+        setInterval(updateGameState, 1000);
+    }
+
+    function updateGameState() {
+        if (!isGamePage()) return;
+
+        try {
+            updatePlayerInfo();
+            updateMapInfo();
+            updateUIStatus();
+        } catch (e) {
+            log(`Błąd aktualizacji stanu gry: ${e.message}`);
+        }
+    }
+
+    function updatePlayerInfo() {
+        const hpElement = document.querySelector('.player-hp .bar-value');
+        const mpElement = document.querySelector('.player-mp .bar-value');
+        const levelElement = document.querySelector('.player-level');
+        const posElement = document.querySelector('.player-position');
+
+        if (hpElement) {
+            const hpText = hpElement.textContent.trim();
+            const [hp, maxHp] = hpText.split('/').map(Number);
+            gameState.player.hp = hp;
+            gameState.player.maxHp = maxHp;
+        }
+
+        if (mpElement) {
+            const mpText = mpElement.textContent.trim();
+            const [mp, maxMp] = mpText.split('/').map(Number);
+            gameState.player.mp = mp;
+            gameState.player.maxMp = maxMp;
+        }
+
+        if (levelElement) {
+            gameState.player.level = parseInt(levelElement.textContent.trim());
+        }
+
+        if (posElement) {
+            const posText = posElement.textContent.trim();
+            const [x, y] = posText.split(',').map(Number);
+            gameState.player.position.x = x;
+            gameState.player.position.y = y;
+        }
+
+        // Aktualizuj umiejętności
+        gameState.player.skills = [];
+        const skillElements = document.querySelectorAll('.skill-button');
+        skillElements.forEach(skill => {
+            const name = skill.textContent.trim();
+            const cooldown = skill.classList.contains('cooldown');
+            gameState.player.skills.push({
+                name,
+                cooldown,
+                lastUsed: config.skillCooldowns[name] || 0
+            });
+        });
+
+        // Aktualizuj buffy
+        gameState.player.buffs = [];
+        const buffElements = document.querySelectorAll('.buff-icon');
+        buffElements.forEach(buff => {
+            const name = buff.getAttribute('title') || 'Nieznany buff';
+            gameState.player.buffs.push(name);
+        });
+
+        gameState.isFighting = document.querySelector('.fight-container') !== null;
+    }
+
+    function updateMapInfo() {
+        gameState.map.name = document.querySelector('.map-name')?.textContent.trim() || 'Nieznana';
+
+        // Pobierz rozmiar mapy (jeśli dostępny)
+        const mapSizeElement = document.querySelector('.map-size');
+        if (mapSizeElement) {
+            const sizeText = mapSizeElement.textContent.trim();
+            const [width, height] = sizeText.split('x').map(Number);
+            gameState.map.size = { width, height };
+        }
+
+        // Pobierz potwory w pobliżu
+        gameState.map.monsters = [];
+        const monsterElements = document.querySelectorAll('.monster');
+        monsterElements.forEach(monster => {
+            const name = monster.querySelector('.name')?.textContent.trim() || 'Nieznany';
+            const pos = monster.querySelector('.position')?.textContent.trim() || '0,0';
+            const [x, y] = pos.split(',').map(Number);
+            const hp = monster.querySelector('.hp')?.textContent.trim() || '100/100';
+            const [currentHp, maxHp] = hp.split('/').map(Number);
+            const level = parseInt(monster.querySelector('.level')?.textContent.trim() || '1');
+
+            gameState.map.monsters.push({
+                name,
+                position: { x, y },
+                hp: currentHp,
+                maxHp,
+                level,
+                distance: calculateDistance(gameState.player.position, { x, y }),
+                isBoss: monster.classList.contains('boss')
+            });
+        });
+
+        // Sortuj potwory (silniejsze = wyższy priorytet)
+        gameState.map.monsters.sort((a, b) => {
+            // Priorytet dla bossów
+            if (a.isBoss && !b.isBoss) return -1;
+            if (!a.isBoss && b.isBoss) return 1;
+
+            // Priorytet dla potworów z niskim HP
+            const aHpPercent = a.hp / a.maxHp;
+            const bHpPercent = b.hp / b.maxHp;
+            if (aHpPercent < 0.3 && bHpPercent >= 0.3) return -1;
+            if (bHpPercent < 0.3 && aHpPercent >= 0.3) return 1;
+
+            // Priorytet dla silniejszych potworów
+            return b.level - a.level;
+        });
+
+        // Pobierz graczy w pobliżu
+        gameState.map.players = [];
+        const playerElements = document.querySelectorAll('.player');
+        playerElements.forEach(player => {
+            const name = player.querySelector('.name')?.textContent.trim() || 'Nieznany';
+            const pos = player.querySelector('.position')?.textContent.trim() || '0,0';
+            const [x, y] = pos.split(',').map(Number);
+
+            gameState.map.players.push({
+                name,
+                position: { x, y },
+                distance: calculateDistance(gameState.player.position, { x, y })
+            });
+        });
+
+        // Pobierz NPC w pobliżu
+        gameState.map.npcs = [];
+        const npcElements = document.querySelectorAll('.npc');
+        npcElements.forEach(npc => {
+            const name = npc.querySelector('.name')?.textContent.trim() || 'Nieznany';
+            const pos = npc.querySelector('.position')?.textContent.trim() || '0,0';
+            const [x, y] = pos.split(',').map(Number);
+            const isQuestNpc = npc.classList.contains('quest-npc');
+
+            gameState.map.npcs.push({
+                name,
+                position: { x, y },
+                distance: calculateDistance(gameState.player.position, { x, y }),
+                isQuestNpc
+            });
+        });
+
+        // Pobierz przedmioty na ziemi
+        gameState.map.items = [];
+        const itemElements = document.querySelectorAll('.ground-item');
+        itemElements.forEach(item => {
+            const name = item.querySelector('.name')?.textContent.trim() || 'Nieznany';
+            const pos = item.querySelector('.position')?.textContent.trim() || '0,0';
+            const [x, y] = pos.split(',').map(Number);
+            const isGold = name.includes('Złoto');
+            const isQuestItem = item.classList.contains('quest-item');
+
+            gameState.map.items.push({
+                name,
+                position: { x, y },
+                distance: calculateDistance(gameState.player.position, { x, y }),
+                isGold,
+                isQuestItem
+            });
+        });
+
+        // Pobierz przeszkody (jeśli dostępne)
+        gameState.map.obstacles = [];
+        const obstacleElements = document.querySelectorAll('.obstacle');
+        obstacleElements.forEach(obstacle => {
+            const pos = obstacle.querySelector('.position')?.textContent.trim() || '0,0';
+            const [x, y] = pos.split(',').map(Number);
+            gameState.map.obstacles.push({ x, y });
+        });
+    }
+
+    function updateUIStatus() {
+        const statusElement = document.getElementById('bot-status');
+        if (statusElement) {
+            const modeText = {
+                'exp': 'Expienie',
+                'quest': 'Robienie questów',
+                'heros': 'Szukanie herosów',
+                'e2': 'Stanie na E2'
+            }[gameState.mode] || gameState.mode;
+
+            statusElement.textContent = `Status: ${gameState.isFighting ? 'Walka' : 'Spokój'} | Tryb: ${modeText} | Poziom: ${gameState.player.level}`;
+        }
+    }
+
+    // ====== MONITOROWANIE QUESTÓW ======
+    function startQuestMonitoring() {
+        setInterval(updateQuests, config.questRefreshInterval);
+    }
+
+    function updateQuests() {
+        if (!isGamePage()) return;
+
+        try {
+            // Pobierz aktywne questy
+            gameState.quests.active = [];
+            const activeQuestElements = document.querySelectorAll('.active-quest');
+            activeQuestElements.forEach(quest => {
+                const name = quest.querySelector('.quest-name')?.textContent.trim() || 'Nieznany quest';
+                const progress = quest.querySelector('.quest-progress')?.textContent.trim() || '0/1';
+                const [current, total] = progress.split('/').map(Number);
+                const isCompleted = current >= total;
+
+                gameState.quests.active.push({
+                    name,
+                    progress: { current, total },
+                    isCompleted
+                });
+            });
+
+            // Pobierz dostępne questy
+            gameState.quests.available = [];
+            const availableQuestElements = document.querySelectorAll('.available-quest');
+            availableQuestElements.forEach(quest => {
+                const name = quest.querySelector('.quest-name')?.textContent.trim() || 'Nieznany quest';
+                const giver = quest.querySelector('.quest-giver')?.textContent.trim() || 'Nieznany NPC';
+
+                gameState.quests.available.push({
+                    name,
+                    giver
+                });
+            });
+
+            // Pobierz ukończone questy (do oddania)
+            gameState.quests.completed = [];
+            const completedQuestElements = document.querySelectorAll('.completed-quest');
+            completedQuestElements.forEach(quest => {
+                const name = quest.querySelector('.quest-name')?.textContent.trim() || 'Nieznany quest';
+                const receiver = quest.querySelector('.quest-receiver')?.textContent.trim() || 'Nieznany NPC';
+
+                gameState.quests.completed.push({
+                    name,
+                    receiver
+                });
+            });
+
+            log(`Zaktualizowano questy. Aktywne: ${gameState.quests.active.length}, Dostępne: ${gameState.quests.available.length}, Ukończone: ${gameState.quests.completed.length}`);
+        } catch (e) {
+            log(`Błąd aktualizacji questów: ${e.message}`);
+        }
+    }
+
+    // ====== CYKL DECYZYJNY ======
+    function startDecisionLoop() {
+        setInterval(makeDecision, config.decisionInterval);
+    }
+
+    function makeDecision() {
+        if (!isGamePage() || !document.getElementById('bot-status').textContent.includes('Aktywny')) {
+            return;
+        }
+
+        try {
+            if (gameState.isFighting) {
+                handleCombat();
+                return;
+            }
+
+            // Wybierz akcję na podstawie trybu
+            switch (gameState.mode) {
+                case 'exp':
+                    handleExpMode();
+                    break;
+                case 'quest':
+                    handleQuestMode();
+                    break;
+                case 'heros':
+                    handleHerosMode();
+                    break;
+                case 'e2':
+                    handleE2Mode();
+                    break;
+                default:
+                    handleExpMode();
+            }
+        } catch (e) {
+            log(`Błąd podejmowania decyzji: ${e.message}`);
+        }
+    }
+
+    // ====== TRYBY DZIAŁANIA ======
+    function handleExpMode() {
+        const decisions = [
+            checkFleeCondition(),
+            checkLowHp(),
+            checkLowMp(),
+            checkAttackableMonster(),
+            checkPickableItem(),
+            checkRandomMovement()
+        ];
+
+        const bestDecision = getBestDecision(decisions);
+        executeDecision(bestDecision);
+    }
+
+    function handleQuestMode() {
+        // Priorytet: oddawanie ukończonych questów
+        if (gameState.quests.completed.length > 0) {
+            const quest = gameState.quests.completed[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.receiver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'turn_in_quest',
+                        target: quest.name,
+                        reason: `Oddaję quest: ${quest.name}`,
+                        priority: 10
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę oddać quest: ${quest.name}`,
+                        priority: 10
+                    });
+                }
+            }
+        }
+
+        // Następny priorytet: przyjmowanie nowych questów
+        if (gameState.quests.available.length > 0) {
+            const quest = gameState.quests.available[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.giver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'accept_quest',
+                        target: quest.name,
+                        reason: `Przyjmuję quest: ${quest.name}`,
+                        priority: 9
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę przyjąć quest: ${quest.name}`,
+                        priority: 9
+                    });
+                }
+            }
+        }
+
+        // Jeśli nie ma questów do oddania/przyjęcia, rób expa
+        handleExpMode();
+    }
+
+    function handleHerosMode() {
+        // Szukaj graczy z tagiem [Heros]
+        const herosPlayers = gameState.map.players.filter(p =>
+            p.name.includes('[Heros]') || p.name.includes('Heros')
+        );
+
+        if (herosPlayers.length > 0) {
+            const closestHeros = herosPlayers[0];
+
+            if (closestHeros.distance <= 1) {
+                return executeDecision({
+                    action: 'follow_player',
+                    target: closestHeros.name,
+                    reason: `Podążam za herosem: ${closestHeros.name}`,
+                    priority: 8
+                });
+            } else {
+                return executeDecision({
+                    action: 'move_to',
+                    target: closestHeros.position,
+                    reason: `Idę do herosa: ${closestHeros.name}`,
+                    priority: 8
+                });
+            }
+        }
+
+        // Jeśli nie ma herosów, rób expa
+        handleExpMode();
+    }
+
+    function handleE2Mode() {
+        // Stój na pozycji E2 (50,50)
+        const e2Position = { x: 50, y: 50 };
+
+        if (calculateDistance(gameState.player.position, e2Position) <= 1) {
+            return executeDecision({
+                action: 'wait',
+                reason: 'Stoję na E2',
+                priority: 1
+            });
+        } else {
+            return executeDecision({
+                action: 'move_to',
+                target: e2Position,
+                reason: 'Idę na E2',
+                priority: 10
+            });
+        }
+    }
+
+    // ====== DECYZJE ======
+    function checkFleeCondition() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.fleeThreshold) {
+            return { action: 'flee', reason: 'Niskie HP - ucieczka', priority: 10 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowHp() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.minHpToFight) {
+            return { action: 'use_potion', target: 'hp', reason: 'Niskie HP', priority: 9 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowMp() {
+        const mpPercentage = gameState.player.mp / gameState.player.maxMp;
+        if (mpPercentage < config.minMpToUseSkill) {
+            return { action: 'use_potion', target: 'mp', reason: 'Niskie MP', priority: 8 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkAttackableMonster() {
+        if (gameState.map.monsters.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestMonster = gameState.map.monsters[0];
+
+        // Sprawdź, czy potwór nie został już zabity (jeśli mamy zapisane)
+        if (gameState.killedMonsters[closestMonster.name] &&
+            gameState.killedMonsters[closestMonster.name] >= 5) {
+            log(`Potwór ${closestMonster.name} został już zabity wystarczająco razy, pomijam`);
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (closestMonster.distance <= config.maxMonsterDistance) {
+            return {
+                action: 'attack',
+                target: closestMonster.name,
+                reason: `Potwór ${closestMonster.name} (Lvl ${closestMonster.level}) w zasięgu`,
+                priority: 7
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkPickableItem() {
+        if (!document.getElementById('auto-pick-items')?.checked) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (gameState.map.items.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestItem = gameState.map.items[0];
+        if (closestItem.distance <= config.maxItemDistance) {
+            return {
+                action: 'pick_up',
+                target: closestItem.name,
+                reason: `Przedmiot ${closestItem.name} w zasięgu`,
+                priority: 6
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkNpcInteraction() {
+        if (gameState.map.npcs.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        // Unikaj określonych NPC
+        if (document.getElementById('avoid-npcs')?.checked) {
+            const closestNpc = gameState.map.npcs.find(npc =>
+                !config.avoidNpcs.includes(npc.name)
+            );
+
+            if (!closestNpc) {
+                return { action: 'wait', priority: 0 };
+            }
+
+            if (closestNpc.distance <= 1) {
+                return {
+                    action: 'talk_to_npc',
+                    target: closestNpc.name,
+                    reason: `Rozmawiam z NPC: ${closestNpc.name}`,
+                    priority: 5
+                };
+            }
+        } else {
+            const closestNpc = gameState.map.npcs[0];
+            if (closestNpc.distance <= 1) {
+                return {
+                    action: 'talk_to_npc',
+                    target: closestNpc.name,
+                    reason: `Rozmawiam z NPC: ${closestNpc.name}`,
+                    priority: 5
+                };
+            }
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkRandomMovement() {
+        if (!config.autoWalk) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        return { action: 'move_random', reason: 'Brak innych akcji', priority: 1 };
+    }
+
+    function getBestDecision(decisions) {
+        return decisions.reduce((best, current) =>
+            (current.priority > best.priority) ? current : best,
+            { action: 'wait', priority: 0 }
+        );
+    }
+
+    // ====== WYKONYWANIE DECYZJI ======
+    function executeDecision(decision) {
+        if (!decision || !decision.action || decision.priority === 0) {
+            return;
+        }
+
+        gameState.lastAction = `${decision.action} ${decision.target ? `(${decision.target})` : ''}`;
+        gameState.lastActionTime = Date.now();
+
+        log(`Wykonuję: ${decision.action} (${decision.reason})`);
+
+        switch (decision.action) {
+            case 'attack':
+                attackMonster(decision.target);
+                break;
+            case 'move_to':
+                moveToPosition(decision.target);
+                break;
+            case 'pick_up':
+                pickUpItem(decision.target);
+                break;
+            case 'use_potion':
+                usePotion(decision.target);
+                break;
+            case 'use_skill':
+                useSkill(decision.target);
+                break;
+            case 'flee':
+                fleeFromCombat();
+                break;
+            case 'talk_to_npc':
+                talkToNPC(decision.target);
+                break;
+            case 'accept_quest':
+                acceptQuest(decision.target);
+                break;
+            case 'turn_in_quest':
+                turnInQuest(decision.target);
+                break;
+            case 'follow_player':
+                followPlayer(decision.target);
+                break;
+            case 'move_random':
+                moveRandomly();
+                break;
+            case 'wait':
+            default:
+                log('Czekam...');
+                break;
+        }
+    }
+
+    // ====== AKCJE ======
+    function attackMonster(monsterName) {
+        const monster = gameState.map.monsters.find(m => m.name === monsterName);
+        if (!monster) {
+            log(`Nie znaleziono potwora: ${monsterName}`);
+            return;
+        }
+
+        if (monster.distance > 1) {
+            log(`Potwór ${monster.name} jest za daleko (${monster.distance.toFixed(1)})`);
+            moveToPosition(monster.position);
+            return;
+        }
+
+        log(`Atakuję ${monster.name} (Lvl ${monster.level}, HP: ${monster.hp}/${monster.maxHp})`);
+
+        // Zapamiętaj, że zaatakowaliśmy tego potwora
+        if (!gameState.killedMonsters[monster.name]) {
+            gameState.killedMonsters[monster.name] = 0;
+        }
+        gameState.killedMonsters[monster.name]++;
+        saveState();
+
+        const monsterElement = Array.from(document.querySelectorAll('.monster .name'))
+            .find(el => el.textContent.trim() === monster.name)?.closest('.monster');
+
+        if (monsterElement) {
+            monsterElement.click();
+            setTimeout(() => {
+                const attackButton = document.querySelector('.attack-button');
+                if (attackButton) attackButton.click();
+
+                // Użyj umiejętności, jeśli są dostępne
+                if (document.getElementById('auto-use-skills')?.checked) {
+                    useCombatSkills();
+                }
+            }, 500);
+        }
+    }
+
+    function moveToPosition(position) {
+        if (gameState.isMoving) return;
+
+        const distance = calculateDistance(gameState.player.position, position);
+        if (distance <= 1) {
+            log(`Już jesteśmy przy celu (${position.x}, ${position.y})`);
+            return;
+        }
+
+        log(`Poruszam się do (${position.x}, ${position.y})`);
+
+        // Znajdź optymalną ścieżkę
+        const path = findPath(gameState.player.position, position);
+        if (path.length > 0) {
+            const nextStep = path[0];
+            moveToExactPosition(nextStep);
+        } else {
+            log('Nie znaleziono ścieżki!');
+            moveToExactPosition(position); // Próbuj bezpośrednio
+        }
+    }
+
+    function moveToExactPosition(position) {
+        const gameMap = document.querySelector('.game-map');
+        if (gameMap) {
+            const mapRect = gameMap.getBoundingClientRect();
+            const cellWidth = mapRect.width / gameState.map.size.width;
+            const cellHeight = mapRect.height / gameState.map.size.height;
+
+            const clickX = mapRect.left + (position.x + 0.5) * cellWidth;
+            const clickY = mapRect.top + (position.y + 0.5) * cellHeight;
+
+            const event = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: clickX,
+                clientY: clickY
+            });
+
+            gameMap.dispatchEvent(event);
+            gameState.isMoving = true;
+
+            setTimeout(() => {
+                gameState.isMoving = false;
+            }, 1000);
+        }
+    }
+
+    function findPath(start, end) {
+        // Prosty algorytm A* do znajdowania ścieżki
+        const openSet = [start];
+        const cameFrom = {};
+        const gScore = {};
+        const fScore = {};
+
+        gScore[start.x + ',' + start.y] = 0;
+        fScore[start.x + ',' + start.y] = calculateDistance(start, end);
+
+        while (openSet.length > 0) {
+            // Znajdź węzeł z najniższym fScore
+            let current = openSet[0];
+            for (const node of openSet) {
+                if (fScore[node.x + ',' + node.y] < fScore[current.x + ',' + current.y]) {
+                    current = node;
+                }
+            }
+
+            // Jeśli dotarliśmy do celu
+            if (current.x === end.x && current.y === end.y) {
+                const path = [];
+                let temp = current;
+                while (temp.x !== start.x || temp.y !== start.y) {
+                    path.push(temp);
+                    temp = cameFrom[temp.x + ',' + temp.y];
+                }
+                return path.reverse();
+            }
+
+            // Usuń current z openSet
+            openSet.splice(openSet.indexOf(current), 1);
+
+            // Sprawdź sąsiadów
+            const neighbors = [
+                { x: current.x + 1, y: current.y },
+                { x: current.x - 1, y: current.y },
+                { x: current.x, y: current.y + 1 },
+                { x: current.x, y: current.y - 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                // Sprawdź, czy sąsiad jest na mapie
+                if (neighbor.x < 0 || neighbor.x >= gameState.map.size.width ||
+                    neighbor.y < 0 || neighbor.y >= gameState.map.size.height) {
+                    continue;
+                }
+
+                // Sprawdź, czy sąsiad nie jest przeszkodą
+                if (config.pathfinding.avoidObstacles && !isPositionWalkable(neighbor)) {
+                    continue;
+                }
+
+                const tentativeGScore = gScore[current.x + ',' + current.y] + 1;
+
+                if (!gScore[neighbor.x + ',' + neighbor.y] ||
+                    tentativeGScore < gScore[neighbor.x + ',' + neighbor.y]) {
+                    cameFrom[neighbor.x + ',' + neighbor.y] = current;
+                    gScore[neighbor.x + ',' + neighbor.y] = tentativeGScore;
+                    fScore[neighbor.x + ',' + neighbor.y] = tentativeGScore + calculateDistance(neighbor, end);
+
+                    if (!openSet.some(node => node.x === neighbor.x && node.y === neighbor.y)) {
+                        openSet.push(neighbor);
+                    }
+                }
+            }
+
+            // Ograniczenie liczby kroków
+            if (Object.keys(cameFrom).length > config.pathfinding.maxSteps) {
+                log('Przekroczono maksymalną liczbę kroków w szukaniu ścieżki');
+                return [];
+            }
+        }
+
+        log('Nie znaleziono ścieżki!');
+        return [];
+    }
+
+    function pickUpItem(itemName) {
+        const item = gameState.map.items.find(i => i.name === itemName);
+        if (!item) {
+            log(`Nie znaleziono przedmiotu: ${itemName}`);
+            return;
+        }
+
+        if (item.distance > 1) {
+            log(`Przedmiot ${item.name} jest za daleko (${item.distance.toFixed(1)})`);
+            moveToPosition(item.position);
+            return;
+        }
+
+        log(`Podnoszę ${item.name}`);
+
+        const itemElement = Array.from(document.querySelectorAll('.ground-item .name'))
+            .find(el => el.textContent.trim() === item.name)?.closest('.ground-item');
+
+        if (itemElement) itemElement.click();
+    }
+
+    function usePotion(type) {
+        log(`Używam mikstury: ${type}`);
+        const potionButton = document.querySelector(`.potion-button.${type}`);
+        if (potionButton) potionButton.click();
+    }
+
+    function useSkill(skillName) {
+        if (!document.getElementById('auto-use-skills')?.checked) {
+            return;
+        }
+
+        const skill = gameState.player.skills.find(s => s.name === skillName);
+        if (!skill) {
+            log(`Nie znaleziono umiejętności: ${skillName}`);
+            return;
+        }
+
+        // Sprawdź, czy umiejętność nie jest na cooldownzie
+        if (skill.cooldown) {
+            log(`Umiejętność ${skillName} jest na cooldownzie`);
+            return;
+        }
+
+        // Sprawdź, czy mamy wystarczająco MP
+        const mpPercentage = gameState.player.mp / gameState.player.maxMp;
+        if (mpPercentage < config.minMpToUseSkill) {
+            log(`Za mało MP na użycie ${skillName}`);
+            return;
+        }
+
+        log(`Używam umiejętności: ${skillName}`);
+
+        const skillButton = Array.from(document.querySelectorAll('.skill-button'))
+            .find(el => el.textContent.trim() === skillName);
+
+        if (skillButton) {
+            skillButton.click();
+            config.skillCooldowns[skillName] = Date.now();
+        }
+    }
+
+    function useCombatSkills() {
+        // Priorytet dla umiejętności leczących
+        if (gameState.player.hp / gameState.player.maxHp < 0.5) {
+            const healSkill = gameState.player.skills.find(s =>
+                s.name.includes('Leczenie') || s.name.includes('Heal')
+            );
+            if (healSkill) {
+                useSkill(healSkill.name);
+                return;
+            }
+        }
+
+        // Użyj umiejętności ofensywnych
+        const offensiveSkills = gameState.player.skills.filter(s =>
+            !s.cooldown &&
+            (s.name.includes('Atak') || s.name.includes('Fireball') || s.name.includes('Błyskawica'))
+        );
+
+        if (offensiveSkills.length > 0) {
+            useSkill(offensiveSkills[0].name);
+        }
+    }
+
+    function fleeFromCombat() {
+        log('Uciekam z walki!');
+        const fleeButton = document.querySelector('.flee-button');
+        if (fleeButton) fleeButton.click();
+    }
+
+    function talkToNPC(npcName) {
+        log(`Rozmawiam z NPC: ${npcName}`);
+        const npcElement = Array.from(document.querySelectorAll('.npc .name'))
+            .find(el => el.textContent.trim() === npcName)?.closest('.npc');
+
+        if (npcElement) npcElement.click();
+    }
+
+    function acceptQuest(questName) {
+        log(`Przyjmuję quest: ${questName}`);
+        const acceptButton = document.querySelector('.quest-accept-button');
+        if (acceptButton) acceptButton.click();
+    }
+
+    function turnInQuest(questName) {
+        log(`Oddaję quest: ${questName}`);
+        const turnInButton = document.querySelector('.quest-turn-in-button');
+        if (turnInButton) turnInButton.click();
+    }
+
+    function followPlayer(playerName) {
+        const player = gameState.map.players.find(p => p.name === playerName);
+        if (!player) {
+            log(`Nie znaleziono gracza: ${playerName}`);
+            return;
+        }
+
+        if (player.distance <= 1) {
+            log(`Podążam za graczem: ${playerName}`);
+            // Można dodać logikę śledzenia, ale w Margonemie trudno to zrobić bez klikania
+        } else {
+            moveToPosition(player.position);
+        }
+    }
+
+    function moveRandomly() {
+        if (gameState.isMoving) return;
+
+        const directions = [
+            { x: 0, y: -1 }, // góra
+            { x: 1, y: 0 },  // prawo
+            { x: 0, y: 1 },  // dół
+            { x: -1, y: 0 }  // lewo
+        ];
+
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const newPos = {
+            x: gameState.player.position.x + randomDir.x,
+            y: gameState.player.position.y + randomDir.y
+        };
+
+        if (newPos.x >= 0 && newPos.x < gameState.map.size.width &&
+            newPos.y >= 0 && newPos.y < gameState.map.size.height &&
+            isPositionWalkable(newPos)) {
+            moveToPosition(newPos);
+        }
+    }
+
+    // ====== INICJALIZACJA ======
+    window.addEventListener('load', init);
+})();
+
+// ==UserScript==
+// @name         Margonem Advanced Bot (Gargonem Integration)
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Zaawansowany bot do Margonem.pl zintegrowany z Gargonem (Priw8)
+// @author       TwójNick
+// @match        https://*.margonem.pl/
+// @exclude      https://www.margonem.pl/
+// @match        https://*.margonem.com/
+// @exclude      https://www.margonem.com/
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=margonem.pl
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_deleteValue
+// @grant        GM_listValues
+// @grant        unsafeWindow
+// @require      https://priw8.com/margo/gargonem/dist/main.js
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ====== KONFIGURACJA ======
+    const config = {
+        debugMode: true,          // Tryb debugowania
+        decisionInterval: 1500,   // Co ile ms podejmować decyzje
+        safeMode: true,           // Tryb bezpieczny - nie atakuje graczy
+        minHpToFight: 0.5,        // Minimalny % HP, aby atakować
+        minMpToUseSkill: 0.3,     // Minimalny % MP, aby używać umiejętności
+        maxMonsterDistance: 3,    // Maksymalna odległość ataku
+        maxItemDistance: 2,       // Maksymalna odległość podnoszenia przedmiotów
+        fleeThreshold: 0.2,       // Uciekaj, jeśli HP < 20%
+        avoidNpcs: ['Strażnik', 'Mistrz Gildii'], // NPC do unikania
+        questRefreshInterval: 30000, // Co ile ms odświeżać questy
+        pathfinding: {
+            maxSteps: 20,         // Maksymalna liczba kroków w szukaniu ścieżki
+            avoidObstacles: true  // Unikaj przeszkód
+        }
+    };
+
+    // ====== STAN GRY ======
+    const gameState = {
+        player: {
+            hp: 0,
+            maxHp: 0,
+            mp: 0,
+            maxMp: 0,
+            level: 0,
+            position: { x: 0, y: 0 },
+            target: null,
+            skills: [],
+            buffs: []
+        },
+        map: {
+            name: '',
+            size: { width: 100, height: 100 },
+            monsters: [],
+            players: [],
+            npcs: [],
+            items: [],
+            obstacles: []
+        },
+        quests: {
+            active: [],
+            completed: [],
+            available: []
+        },
+        killedMonsters: GM_getValue('killedMonsters', {}),
+        lastAction: null,
+        lastActionTime: 0,
+        isFighting: false,
+        isMoving: false,
+        mode: 'exp' // exp, quest, heros, e2
+    };
+
+    // ====== INICJALIZACJA ======
+    function init() {
+        log('[Gargonem Bot] Inicjalizacja bota...');
+
+        // Czekaj, aż Gargonem się załaduje
+        const checkGargonemLoaded = setInterval(() => {
+            if (typeof unsafeWindow.g !== 'undefined' && unsafeWindow.g.game) {
+                clearInterval(checkGargonemLoaded);
+                log('[Gargonem Bot] Gargonem załadowany, inicjalizacja bota...');
+                addUI();
+                loadSavedState();
+                startGameMonitoring();
+                startDecisionLoop();
+                startQuestMonitoring();
+                log('[Gargonem Bot] Bot zainicjalizowany. Tryb: ' + gameState.mode);
+            }
+        }, 1000);
+    }
+
+    // ====== FUNKCJE POMOCNICZE ======
+    function log(message) {
+        if (!config.debugMode) return;
+
+        const logElement = document.getElementById('gargonem-bot-log');
+        if (logElement) {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        console.log(`[Gargonem Bot] ${message}`);
+    }
+
+    function calculateDistance(pos1, pos2) {
+        return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
+    }
+
+    function isPositionWalkable(position) {
+        if (!unsafeWindow.g.game.map.collision) return true;
+
+        const collision = unsafeWindow.g.game.map.collision;
+        const x = Math.floor(position.x);
+        const y = Math.floor(position.y);
+
+        if (x < 0 || x >= collision[0].length || y < 0 || y >= collision.length) {
+            return false;
+        }
+
+        return !collision[y][x];
+    }
+
+    // ====== ZAPISYWANIE STANU ======
+    function saveState() {
+        GM_setValue('killedMonsters', gameState.killedMonsters);
+    }
+
+    function loadSavedState() {
+        gameState.killedMonsters = GM_getValue('killedMonsters', {});
+    }
+
+    // ====== INTERFEJS UŻYTKOWNIKA ======
+    function addUI() {
+        const ui = document.createElement('div');
+        ui.id = 'gargonem-bot-ui';
+        ui.style.position = 'fixed';
+        ui.style.bottom = '10px';
+        ui.style.right = '10px';
+        ui.style.zIndex = '99999';
+        ui.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        ui.style.color = 'white';
+        ui.style.padding = '10px';
+        ui.style.borderRadius = '5px';
+        ui.style.fontFamily = 'Arial, sans-serif';
+        ui.style.fontSize = '12px';
+        ui.style.width = '300px';
+
+        ui.innerHTML = `
+            <h3 style="margin: 0 0 10px 0;">Margonem Advanced Bot</h3>
+            <div id="gargonem-bot-status">Status: Inicjalizacja...</div>
+            <div style="margin: 10px 0;">
+                <strong>Tryb:</strong>
+                <select id="gargonem-bot-mode" style="margin-left: 5px;">
+                    <option value="exp">Expienie</option>
+                    <option value="quest">Robienie questów</option>
+                    <option value="heros">Szukanie herosów</option>
+                    <option value="e2">Stanie na E2</option>
+                </select>
+            </div>
+            <div id="gargonem-bot-actions" style="margin: 10px 0;">
+                <button id="gargonem-toggle-bot" style="margin-right: 5px;">Włącz/Wyłącz</button>
+                <button id="gargonem-debug-info" style="margin-right: 5px;">Debug</button>
+                <button id="gargonem-clear-killed">Wyczyść zabite</button>
+            </div>
+            <div style="margin: 10px 0;">
+                <strong>Opcje:</strong><br>
+                <label><input type="checkbox" id="gargonem-auto-use-skills" checked> Automatyczne używanie umiejętności</label><br>
+                <label><input type="checkbox" id="gargonem-auto-pick-items" checked> Automatyczne podnoszenie przedmiotów</label><br>
+                <label><input type="checkbox" id="gargonem-avoid-npcs" checked> Unikaj określonych NPC</label>
+            </div>
+            <div id="gargonem-bot-log" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 5px; background: rgba(0,0,0,0.5);"></div>
+        `;
+
+        document.body.appendChild(ui);
+
+        document.getElementById('gargonem-toggle-bot').addEventListener('click', toggleBot);
+        document.getElementById('gargonem-debug-info').addEventListener('click', showDebugInfo);
+        document.getElementById('gargonem-clear-killed').addEventListener('click', clearKilledMonsters);
+        document.getElementById('gargonem-bot-mode').addEventListener('change', (e) => {
+            gameState.mode = e.target.value;
+            log(`Zmieniono tryb na: ${gameState.mode}`);
+        });
+    }
+
+    function toggleBot() {
+        const statusElement = document.getElementById('gargonem-bot-status');
+        if (statusElement.textContent.includes('Aktywny')) {
+            statusElement.textContent = 'Status: Wyłączony';
+            statusElement.style.color = 'red';
+            log('Bot wyłączony');
+        } else {
+            statusElement.textContent = 'Status: Aktywny';
+            statusElement.style.color = 'lime';
+            log('Bot włączony');
+        }
+    }
+
+    function showDebugInfo() {
+        log('=== DEBUG INFO ===');
+        log(`Tryb: ${gameState.mode}`);
+        log(`Pozycja: ${gameState.player.position.x}, ${gameState.player.position.y}`);
+        log(`HP: ${gameState.player.hp}/${gameState.player.maxHp} (${Math.round((gameState.player.hp / gameState.player.maxHp) * 100)}%)`);
+        log(`MP: ${gameState.player.mp}/${gameState.player.maxMp} (${Math.round((gameState.player.mp / gameState.player.maxMp) * 100)}%)`);
+        log(`Poziom: ${gameState.player.level}`);
+        log(`Mapa: ${gameState.map.name}`);
+        log(`Potwory w pobliżu: ${gameState.map.monsters.length}`);
+        log(`Gracze w pobliżu: ${gameState.map.players.length}`);
+        log(`Przedmioty na ziemi: ${gameState.map.items.length}`);
+        log(`Aktywne questy: ${gameState.quests.active.length}`);
+        log(`Zabite potwory: ${Object.keys(gameState.killedMonsters).length}`);
+        log('==================');
+    }
+
+    function clearKilledMonsters() {
+        gameState.killedMonsters = {};
+        saveState();
+        log('Wyczyszczono listę zabitych potworów');
+    }
+
+    // ====== MONITOROWANIE GRY ======
+    function startGameMonitoring() {
+        setInterval(updateGameState, 1000);
+    }
+
+    function updateGameState() {
+        if (!unsafeWindow.g || !unsafeWindow.g.game) return;
+
+        try {
+            updatePlayerInfo();
+            updateMapInfo();
+            updateUIStatus();
+        } catch (e) {
+            log(`Błąd aktualizacji stanu gry: ${e.message}`);
+        }
+    }
+
+    function updatePlayerInfo() {
+        const player = unsafeWindow.g.game.player;
+
+        if (!player) return;
+
+        gameState.player.hp = player.hp;
+        gameState.player.maxHp = player.max_hp;
+        gameState.player.mp = player.mp;
+        gameState.player.maxMp = player.max_mp;
+        gameState.player.level = player.level;
+        gameState.player.position = { x: player.x, y: player.y };
+        gameState.player.target = player.target ? player.target.nick : null;
+
+        gameState.player.skills = [];
+        if (player.skills) {
+            for (const skillId in player.skills) {
+                const skill = player.skills[skillId];
+                gameState.player.skills.push({
+                    name: skill.name,
+                    cooldown: skill.cooldown > 0,
+                    lastUsed: 0
+                });
+            }
+        }
+
+        gameState.player.buffs = [];
+        if (player.buffs) {
+            for (const buffId in player.buffs) {
+                const buff = player.buffs[buffId];
+                gameState.player.buffs.push(buff.name);
+            }
+        }
+
+        gameState.isFighting = player.inFight;
+    }
+
+    function updateMapInfo() {
+        const game = unsafeWindow.g.game;
+
+        if (!game || !game.map) return;
+
+        gameState.map.name = game.map.name || 'Nieznana';
+        gameState.map.size = {
+            width: game.map.width || 100,
+            height: game.map.height || 100
+        };
+
+        gameState.map.monsters = [];
+        if (game.map.monsters) {
+            for (const monsterId in game.map.monsters) {
+                const monster = game.map.monsters[monsterId];
+                gameState.map.monsters.push({
+                    id: monsterId,
+                    name: monster.name,
+                    position: { x: monster.x, y: monster.y },
+                    hp: monster.hp,
+                    maxHp: monster.max_hp,
+                    level: monster.level,
+                    distance: calculateDistance(gameState.player.position, { x: monster.x, y: monster.y }),
+                    isBoss: monster.boss
+                });
+            }
+        }
+
+        gameState.map.monsters.sort((a, b) => {
+            if (a.isBoss && !b.isBoss) return -1;
+            if (!a.isBoss && b.isBoss) return 1;
+
+            const aHpPercent = a.hp / a.maxHp;
+            const bHpPercent = b.hp / b.maxHp;
+            if (aHpPercent < 0.3 && bHpPercent >= 0.3) return -1;
+            if (bHpPercent < 0.3 && aHpPercent >= 0.3) return 1;
+
+            return b.level - a.level;
+        });
+
+        gameState.map.players = [];
+        if (game.map.players) {
+            for (const playerId in game.map.players) {
+                const player = game.map.players[playerId];
+                if (player.nick === game.player.nick) continue;
+
+                gameState.map.players.push({
+                    name: player.nick,
+                    position: { x: player.x, y: player.y },
+                    distance: calculateDistance(gameState.player.position, { x: player.x, y: player.y }),
+                    isHeros: player.nick.includes('[Heros]') || player.nick.includes('Heros')
+                });
+            }
+        }
+
+        gameState.map.npcs = [];
+        if (game.map.npcs) {
+            for (const npcId in game.map.npcs) {
+                const npc = game.map.npcs[npcId];
+                gameState.map.npcs.push({
+                    id: npcId,
+                    name: npc.name,
+                    position: { x: npc.x, y: npc.y },
+                    distance: calculateDistance(gameState.player.position, { x: npc.x, y: npc.y }),
+                    isQuestNpc: npc.quest
+                });
+            }
+        }
+
+        gameState.map.items = [];
+        if (game.map.items) {
+            for (const itemId in game.map.items) {
+                const item = game.map.items[itemId];
+                gameState.map.items.push({
+                    id: itemId,
+                    name: item.name,
+                    position: { x: item.x, y: item.y },
+                    distance: calculateDistance(gameState.player.position, { x: item.x, y: item.y }),
+                    isGold: item.name.includes('Złoto'),
+                    isQuestItem: item.quest
+                });
+            }
+        }
+
+        gameState.map.obstacles = [];
+        if (game.map.collision) {
+            const collision = game.map.collision;
+            for (let y = 0; y < collision.length; y++) {
+                for (let x = 0; x < collision[y].length; x++) {
+                    if (collision[y][x]) {
+                        gameState.map.obstacles.push({ x, y });
+                    }
+                }
+            }
+        }
+    }
+
+    function updateUIStatus() {
+        const statusElement = document.getElementById('gargonem-bot-status');
+        if (statusElement) {
+            const modeText = {
+                'exp': 'Expienie',
+                'quest': 'Robienie questów',
+                'heros': 'Szukanie herosów',
+                'e2': 'Stanie na E2'
+            }[gameState.mode] || gameState.mode;
+
+            statusElement.textContent = `Status: ${gameState.isFighting ? 'Walka' : 'Spokój'} | Tryb: ${modeText} | Poziom: ${gameState.player.level}`;
+        }
+    }
+
+    // ====== MONITOROWANIE QUESTÓW ======
+    function startQuestMonitoring() {
+        setInterval(updateQuests, config.questRefreshInterval);
+    }
+
+    function updateQuests() {
+        if (!unsafeWindow.g || !unsafeWindow.g.game || !unsafeWindow.g.game.quests) return;
+
+        try {
+            const quests = unsafeWindow.g.game.quests;
+
+            gameState.quests.active = [];
+            if (quests.active) {
+                for (const questId in quests.active) {
+                    const quest = quests.active[questId];
+                    gameState.quests.active.push({
+                        id: questId,
+                        name: quest.name,
+                        progress: quest.progress,
+                        isCompleted: quest.progress.current >= quest.progress.total
+                    });
+                }
+            }
+
+            gameState.quests.available = [];
+            if (quests.available) {
+                for (const questId in quests.available) {
+                    const quest = quests.available[questId];
+                    gameState.quests.available.push({
+                        id: questId,
+                        name: quest.name,
+                        giver: quest.giver
+                    });
+                }
+            }
+
+            gameState.quests.completed = [];
+            if (quests.completed) {
+                for (const questId in quests.completed) {
+                    const quest = quests.completed[questId];
+                    gameState.quests.completed.push({
+                        id: questId,
+                        name: quest.name,
+                        receiver: quest.receiver
+                    });
+                }
+            }
+
+            log(`Zaktualizowano questy. Aktywne: ${gameState.quests.active.length}, Dostępne: ${gameState.quests.available.length}, Ukończone: ${gameState.quests.completed.length}`);
+        } catch (e) {
+            log(`Błąd aktualizacji questów: ${e.message}`);
+        }
+    }
+
+    // ====== CYKL DECYZYJNY ======
+    function startDecisionLoop() {
+        setInterval(makeDecision, config.decisionInterval);
+    }
+
+    function makeDecision() {
+        if (!unsafeWindow.g || !unsafeWindow.g.game || !document.getElementById('gargonem-bot-status').textContent.includes('Aktywny')) {
+            return;
+        }
+
+        try {
+            if (gameState.isFighting) {
+                handleCombat();
+                return;
+            }
+
+            switch (gameState.mode) {
+                case 'exp':
+                    handleExpMode();
+                    break;
+                case 'quest':
+                    handleQuestMode();
+                    break;
+                case 'heros':
+                    handleHerosMode();
+                    break;
+                case 'e2':
+                    handleE2Mode();
+                    break;
+                default:
+                    handleExpMode();
+            }
+        } catch (e) {
+            log(`Błąd podejmowania decyzji: ${e.message}`);
+        }
+    }
+
+    // ====== TRYBY DZIAŁANIA ======
+    function handleExpMode() {
+        const decisions = [
+            checkFleeCondition(),
+            checkLowHp(),
+            checkLowMp(),
+            checkAttackableMonster(),
+            checkPickableItem(),
+            checkRandomMovement()
+        ];
+
+        const bestDecision = getBestDecision(decisions);
+        executeDecision(bestDecision);
+    }
+
+    function handleQuestMode() {
+        if (gameState.quests.completed.length > 0) {
+            const quest = gameState.quests.completed[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.receiver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'turn_in_quest',
+                        target: quest.id,
+                        reason: `Oddaję quest: ${quest.name}`,
+                        priority: 10
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę oddać quest: ${quest.name}`,
+                        priority: 10
+                    });
+                }
+            }
+        }
+
+        if (gameState.quests.available.length > 0) {
+            const quest = gameState.quests.available[0];
+            const npc = gameState.map.npcs.find(n => n.name === quest.giver);
+
+            if (npc) {
+                if (npc.distance <= 1) {
+                    return executeDecision({
+                        action: 'accept_quest',
+                        target: quest.id,
+                        reason: `Przyjmuję quest: ${quest.name}`,
+                        priority: 9
+                    });
+                } else {
+                    return executeDecision({
+                        action: 'move_to',
+                        target: npc.position,
+                        reason: `Idę przyjąć quest: ${quest.name}`,
+                        priority: 9
+                    });
+                }
+            }
+        }
+
+        handleExpMode();
+    }
+
+    function handleHerosMode() {
+        const herosPlayers = gameState.map.players.filter(p => p.isHeros);
+
+        if (herosPlayers.length > 0) {
+            const closestHeros = herosPlayers[0];
+
+            if (closestHeros.distance <= 1) {
+                return executeDecision({
+                    action: 'follow_player',
+                    target: closestHeros.name,
+                    reason: `Podążam za herosem: ${closestHeros.name}`,
+                    priority: 8
+                });
+            } else {
+                return executeDecision({
+                    action: 'move_to',
+                    target: closestHeros.position,
+                    reason: `Idę do herosa: ${closestHeros.name}`,
+                    priority: 8
+                });
+            }
+        }
+
+        handleExpMode();
+    }
+
+    function handleE2Mode() {
+        const e2Position = { x: 50, y: 50 };
+
+        if (calculateDistance(gameState.player.position, e2Position) <= 1) {
+            return executeDecision({
+                action: 'wait',
+                reason: 'Stoję na E2',
+                priority: 1
+            });
+        } else {
+            return executeDecision({
+                action: 'move_to',
+                target: e2Position,
+                reason: 'Idę na E2',
+                priority: 10
+            });
+        }
+    }
+
+    // ====== DECYZJE ======
+    function checkFleeCondition() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.fleeThreshold) {
+            return { action: 'flee', reason: 'Niskie HP - ucieczka', priority: 10 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowHp() {
+        const hpPercentage = gameState.player.hp / gameState.player.maxHp;
+        if (hpPercentage < config.minHpToFight) {
+            return { action: 'use_potion', target: 'hp', reason: 'Niskie HP', priority: 9 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkLowMp() {
+        const mpPercentage = gameState.player.mp / gameState.player.maxMp;
+        if (mpPercentage < config.minMpToUseSkill) {
+            return { action: 'use_potion', target: 'mp', reason: 'Niskie MP', priority: 8 };
+        }
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkAttackableMonster() {
+        if (gameState.map.monsters.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestMonster = gameState.map.monsters[0];
+
+        if (gameState.killedMonsters[closestMonster.name] &&
+            gameState.killedMonsters[closestMonster.name] >= 5) {
+            log(`Potwór ${closestMonster.name} został już zabity wystarczająco razy, pomijam`);
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (closestMonster.distance <= config.maxMonsterDistance) {
+            return {
+                action: 'attack',
+                target: closestMonster.id,
+                reason: `Potwór ${closestMonster.name} (Lvl ${closestMonster.level}) w zasięgu`,
+                priority: 7
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkPickableItem() {
+        if (!document.getElementById('gargonem-auto-pick-items')?.checked) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        if (gameState.map.items.length === 0) {
+            return { action: 'wait', priority: 0 };
+        }
+
+        const closestItem = gameState.map.items[0];
+        if (closestItem.distance <= config.maxItemDistance) {
+            return {
+                action: 'pick_up',
+                target: closestItem.id,
+                reason: `Przedmiot ${closestItem.name} w zasięgu`,
+                priority: 6
+            };
+        }
+
+        return { action: 'wait', priority: 0 };
+    }
+
+    function checkRandomMovement() {
+        return { action: 'move_random', reason: 'Brak innych akcji', priority: 1 };
+    }
+
+    function getBestDecision(decisions) {
+        return decisions.reduce((best, current) =>
+            (current.priority > best.priority) ? current : best,
+            { action: 'wait', priority: 0 }
+        );
+    }
+
+    // ====== WYKONYWANIE DECYZJI ======
+    function executeDecision(decision) {
+        if (!decision || !decision.action || decision.priority === 0) {
+            return;
+        }
+
+        gameState.lastAction = `${decision.action} ${decision.target ? `(${decision.target})` : ''}`;
+        gameState.lastActionTime = Date.now();
+
+        log(`Wykonuję: ${decision.action} (${decision.reason})`);
+
+        switch (decision.action) {
+            case 'attack':
+                attackMonster(decision.target);
+                break;
+            case 'move_to':
+                moveToPosition(decision.target);
+                break;
+            case 'pick_up':
+                pickUpItem(decision.target);
+                break;
+            case 'use_potion':
+                usePotion(decision.target);
+                break;
+            case 'use_skill':
+                useSkill(decision.target);
+                break;
+            case 'flee':
+                fleeFromCombat();
+                break;
+            case 'talk_to_npc':
+                talkToNPC(decision.target);
+                break;
+            case 'accept_quest':
+                acceptQuest(decision.target);
+                break;
+            case 'turn_in_quest':
+                turnInQuest(decision.target);
+                break;
+            case 'follow_player':
+                followPlayer(decision.target);
+                break;
+            case 'move_random':
+                moveRandomly();
+                break;
+            case 'wait':
+            default:
+                log('Czekam...');
+                break;
+        }
+    }
+
+    // ====== AKCJE ======
+    function attackMonster(monsterId) {
+        const monster = gameState.map.monsters.find(m => m.id === monsterId);
+        if (!monster) {
+            log(`Nie znaleziono potwora o ID: ${monsterId}`);
+            return;
+        }
+
+        if (monster.distance > 1) {
+            log(`Potwór ${monster.name} jest za daleko (${monster.distance.toFixed(1)})`);
+            moveToPosition(monster.position);
+            return;
+        }
+
+        log(`Atakuję ${monster.name} (Lvl ${monster.level}, HP: ${monster.hp}/${monster.maxHp})`);
+
+        if (!gameState.killedMonsters[monster.name]) {
+            gameState.killedMonsters[monster.name] = 0;
+        }
+        gameState.killedMonsters[monster.name]++;
+        saveState();
+
+        unsafeWindow.g.game.attack(monsterId);
+
+        if (document.getElementById('gargonem-auto-use-skills')?.checked) {
+            useCombatSkills();
+        }
+    }
+
+    function moveToPosition(position) {
+        if (gameState.isMoving) return;
+
+        const distance = calculateDistance(gameState.player.position, position);
+        if (distance <= 1) {
+            log(`Już jesteśmy przy celu (${position.x}, ${position.y})`);
+            return;
+        }
+
+        log(`Poruszam się do (${position.x}, ${position.y})`);
+
+        const path = findPath(gameState.player.position, position);
+        if (path.length > 0) {
+            const nextStep = path[0];
+            unsafeWindow.g.game.move(nextStep.x, nextStep.y);
+            gameState.isMoving = true;
+
+            setTimeout(() => {
+                gameState.isMoving = false;
+            }, 1000);
+        } else {
+            log('Nie znaleziono ścieżki!');
+            unsafeWindow.g.game.move(position.x, position.y);
+        }
+    }
+
+    function findPath(start, end) {
+        const openSet = [start];
+        const cameFrom = {};
+        const gScore = {};
+        const fScore = {};
+
+        gScore[start.x + ',' + start.y] = 0;
+        fScore[start.x + ',' + start.y] = calculateDistance(start, end);
+
+        while (openSet.length > 0) {
+            let current = openSet[0];
+            for (const node of openSet) {
+                if (fScore[node.x + ',' + node.y] < fScore[current.x + ',' + current.y]) {
+                    current = node;
+                }
+            }
+
+            if (current.x === end.x && current.y === end.y) {
+                const path = [];
+                let temp = current;
+                while (temp.x !== start.x || temp.y !== start.y) {
+                    path.push(temp);
+                    temp = cameFrom[temp.x + ',' + temp.y];
+                }
+                return path.reverse();
+            }
+
+            openSet.splice(openSet.indexOf(current), 1);
+
+            const neighbors = [
+                { x: current.x + 1, y: current.y },
+                { x: current.x - 1, y: current.y },
+                { x: current.x, y: current.y + 1 },
+                { x: current.x, y: current.y - 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                if (neighbor.x < 0 || neighbor.x >= gameState.map.size.width ||
+                    neighbor.y < 0 || neighbor.y >= gameState.map.size.height) {
+                    continue;
+                }
+
+                if (config.pathfinding.avoidObstacles && !isPositionWalkable(neighbor)) {
+                    continue;
+                }
+
+                const tentativeGScore = gScore[current.x + ',' + current.y] + 1;
+
+                if (!gScore[neighbor.x + ',' + neighbor.y] ||
+                    tentativeGScore < gScore[neighbor.x + ',' + neighbor.y]) {
+                    cameFrom[neighbor.x + ',' + neighbor.y] = current;
+                    gScore[neighbor.x + ',' + neighbor.y] = tentativeGScore;
+                    fScore[neighbor.x + ',' + neighbor.y] = tentativeGScore + calculateDistance(neighbor, end);
+
+                    if (!openSet.some(node => node.x === neighbor.x && node.y === neighbor.y)) {
+                        openSet.push(neighbor);
+                    }
+                }
+            }
+
+            if (Object.keys(cameFrom).length > config.pathfinding.maxSteps) {
+                log('Przekroczono maksymalną liczbę kroków w szukaniu ścieżki');
+                return [];
+            }
+        }
+
+        log('Nie znaleziono ścieżki!');
+        return [];
+    }
+
+    function pickUpItem(itemId) {
+        const item = gameState.map.items.find(i => i.id === itemId);
+        if (!item) {
+            log(`Nie znaleziono przedmiotu o ID: ${itemId}`);
+            return;
+        }
+
+        if (item.distance > 1) {
+            log(`Przedmiot ${item.name} jest za daleko (${item.distance.toFixed(1)})`);
+            moveToPosition(item.position);
+            return;
+        }
+
+        log(`Podnoszę ${item.name}`);
+        unsafeWindow.g.game.pickUpItem(itemId);
+    }
+
+    function usePotion(type) {
+        log(`Używam mikstury: ${type}`);
+        unsafeWindow.g.game.usePotion(type);
+    }
+
+    function useSkill(skillName) {
+        if (!document.getElementById('gargonem-auto-use-skills')?.checked) {
+            return;
+        }
+
+        const skill = gameState.player.skills.find(s => s.name === skillName);
+        if (!skill) {
+            log(`Nie znaleziono umiejętności: ${skillName}`);
+            return;
+        }
+
+        log(`Używam umiejętności: ${skillName}`);
+        unsafeWindow.g.game.useSkill(skillName);
+    }
+
+    function useCombatSkills() {
+        if (gameState.player.hp / gameState.player.maxHp < 0.5) {
+            const healSkill = gameState.player.skills.find(s =>
+                s.name.includes('Leczenie') || s.name.includes('Heal')
+            );
+            if (healSkill) {
+                useSkill(healSkill.name);
+                return;
+            }
+        }
+
+        const offensiveSkills = gameState.player.skills.filter(s =>
+            !s.cooldown &&
+            (s.name.includes('Atak') || s.name.includes('Fireball') || s.name.includes('Błyskawica'))
+        );
+
+        if (offensiveSkills.length > 0) {
+            useSkill(offensiveSkills[0].name);
+        }
+    }
+
+    function fleeFromCombat() {
+        log('Uciekam z walki!');
+        unsafeWindow.g.game.flee();
+    }
+
+    function talkToNPC(npcId) {
+        log(`Rozmawiam z NPC o ID: ${npcId}`);
+        unsafeWindow.g.game.talkToNPC(npcId);
+    }
+
+    function acceptQuest(questId) {
+        log(`Przyjmuję quest o ID: ${questId}`);
+        unsafeWindow.g.game.acceptQuest(questId);
+    }
+
+    function turnInQuest(questId) {
+        log(`Oddaję quest o ID: ${questId}`);
+        unsafeWindow.g.game.turnInQuest(questId);
+    }
+
+    function followPlayer(playerName) {
+        const player = gameState.map.players.find(p => p.name === playerName);
+        if (!player) {
+            log(`Nie znaleziono gracza: ${playerName}`);
+            return;
+        }
+
+        if (player.distance <= 1) {
+            log(`Podążam za graczem: ${playerName}`);
+        } else {
+            moveToPosition(player.position);
+        }
+    }
+
+    function moveRandomly() {
+        if (gameState.isMoving) return;
+
+        const directions = [
+            { x: 0, y: -1 },
+            { x: 1, y: 0 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 }
+        ];
+
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const newPos = {
+            x: gameState.player.position.x + randomDir.x,
+            y: gameState.player.position.y + randomDir.y
+        };
+
+        if (newPos.x >= 0 && newPos.x < gameState.map.size.width &&
+            newPos.y >= 0 && newPos.y < gameState.map.size.height &&
+            isPositionWalkable(newPos)) {
+            unsafeWindow.g.game.move(newPos.x, newPos.y);
+        }
+    }
+
+    // ====== INICJALIZACJA ======
+    init();
+})();
+
+// ==UserScript==
+// @name         Margonem - Auto Event 2 (e2) Farmer
+// @namespace    http://tampermonkey.net/
+// @version      1.3
+// @description  Automatycznie szuka, podróżuje i wykonuje eventy 2 (e2).
+// @author       AI
+// @match        https://*.margonem.pl/
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // --- KONFIGURACJA ---
+    const CONFIG = {
+        // ID mapy, na której bot ma czekać na eventy (np. Twoja ulubiona mapa do farmienia).
+        // Znajdziesz go w linku, gdy jesteś na mapie. Przykład: ...?task=map&map=123
+        HOME_MAP_ID: 224, // Przykład: Tawerna w Karczmie w Tiranie (zmień na swoją mapę!)
+
+        // Opóźnienia w milisekundach (1000ms = 1s). Zwiększaj, jeśli bot działa zbyt szybko.
+        DELAY_BETWEEN_ACTIONS: 1500, // Opóźnienie między akcjami
+        DELAY_AFTER_TRAVEL: 5000,    // Opóźnienie po podróży, aby mapa się załadowała
+        DELAY_AFTER_EVENT: 3000,     // Opóźnienie po ukończeniu eventu
+    };
+    // --- KONIEC KONFIGURACJI ---
+
+    let isRunning = false;
+    let actionTimeout = null;
+    let currentState = 'IDLE'; // IDLE, CHECKING_EVENT, TRAVELING, IN_EVENT, RETURNING
+
+    // Funkcja do logowania na konsolę
+    function log(message) {
+        console.log(`[Auto e2 Farmer] ${message}`);
+    }
+
+    // Sprawdza, czy interfejs gry jest załadowany
+    function isGameReady() {
+        return typeof window.hero !== 'undefined' && typeof window.g !== 'undefined' && typeof window._g === 'function';
+    }
+
+    // Sprawdza, czy jest dostępny event
+    function checkForEvent() {
+        // W Margonem eventy są zazwyczaj w ramce o id 'event-box'.
+        // Sprawdzamy, czy istnieje przycisk "Weź udział" i jest widoczny.
+        const eventBox = document.querySelector('#event-box');
+        if (!eventBox) {
+            log("Brak okna eventów. Sprawdzam ponownie.");
+            setTimeout(mainLoop, 10000);
+            return;
+        }
+
+        const eventButton = eventBox.querySelector('a[onclick*="event&join=1"]');
+        if (eventButton && eventButton.style.display !== 'none' && !eventButton.classList.contains('disabled')) {
+            log("Wykryto dostępny event!");
+            // Klikamy w przycisk, aby rozpocząć podróż do eventu
+            eventButton.click();
+            currentState = 'TRAVELING';
+            log("Rozpoczynam podróż do eventu.");
+            setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS);
+        } else {
+            log("Brak dostępnego eventu. Sprawdzam ponownie za 15 sekund.");
+            currentState = 'IDLE';
+            setTimeout(mainLoop, 15000); // Sprawdzaj co 15 sekund
+        }
+    }
+
+    // Wykonuje akcje wewnątrz eventu
+    function performEventActions() {
+        log("Jestem w evencie. Szukam zadań...");
+        // Zazwyczaj w eventach trzeba kliknąć w NPC lub potwora.
+        // Bot próbuje znaleźć i kliknąć w pierwszą dostępną, aktywną istotę.
+        const target = g.npc.find(npc => npc.npc && (npc.npc.type === 'mob' || npc.npc.type === 'npc') && !npc.npc.dead && !npc.npc.dialog);
+
+        if (target) {
+            log(`Wykryto cel: ${target.npc.name}. Klikam.`);
+            _g(`talk&id=${target.id}`);
+            // Czekamy na rozwój sytuacji (dialog, walka)
+            setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS * 2);
+        } else {
+            // Jeśli nie ma celu, może trzeba kliknąć w obiekt na mapie?
+            const mapObject = g.mapo.find(obj => obj && obj.onclick);
+            if (mapObject) {
+                log(`Wykryto obiekt na mapie. Klikam.`);
+                _g(mapObject.onclick);
+                setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS);
+            } else {
+                log("Nie znalazłem żadnych celów. Czekam na rozwój sytuacji...");
+                setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS * 3);
+            }
+        }
+    }
+
+    // Wraca na mapę domową
+    function returnHome() {
+        log("Event zakończony. Wracam na mapę domową.");
+        // Używamy podróży prosto do mapy docelowej, jeśli to możliwe
+        _g(`travel&mapid=${CONFIG.HOME_MAP_ID}`);
+        currentState = 'RETURNING';
+        setTimeout(mainLoop, CONFIG.DELAY_AFTER_TRAVEL);
+    }
+
+    // Główna pętla decyzyjna bota
+    function mainLoop() {
+        if (!isRunning) return;
+        if (!isGameReady()) {
+            log("Gra nie jest jeszcze załadowana. Czekam...");
+            setTimeout(mainLoop, 2000);
+            return;
+        }
+
+        log(`Stan bota: ${currentState} (Mapa: ${g.mapid})`);
+
+        switch (currentState) {
+            case 'IDLE':
+                if (g.mapid === CONFIG.HOME_MAP_ID) {
+                    checkForEvent();
+                } else {
+                    log("Nie jestem na mapie domowej. Podróżuję...");
+                    _g(`travel&mapid=${CONFIG.HOME_MAP_ID}`);
+                    setTimeout(mainLoop, CONFIG.DELAY_AFTER_TRAVEL);
+                }
+                break;
+
+            case 'TRAVELING':
+                // Sprawdzamy, czy dotarliśmy na mapę eventu (inna niż mapa domowa)
+                if (g.mapid !== CONFIG.HOME_MAP_ID) {
+                    log("Dotarłem do mapy eventu. Rozpoczynam wykonywanie zadań.");
+                    currentState = 'IN_EVENT';
+                    setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS);
+                } else {
+                    // Jeśli coś poszło nie tak i jesteśmy nadal w domu, wróć do sprawdzania
+                    log("Coś poszło nie tak z podróżą. Sprawdzam event ponownie.");
+                    currentState = 'IDLE';
+                    setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS);
+                }
+                break;
+
+            case 'IN_EVENT':
+                // Sprawdzamy, czy event się nie zakończył (wróciliśmy na mapę domową)
+                if (g.mapid === CONFIG.HOME_MAP_ID) {
+                    log("Wygląda na to, że event się zakończył. Wróciłem automatycznie.");
+                    currentState = 'IDLE';
+                    setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS);
+                } else {
+                    // Sprawdzamy, czy event został zakończony, ale nie wróciliśmy (np. komunikat o zakończeniu)
+                    const eventEndMessage = document.querySelector('#event-box .event-end-message');
+                    if (eventEndMessage) {
+                        returnHome();
+                    } else {
+                        performEventActions();
+                    }
+                }
+                break;
+
+            case 'RETURNING':
+                if (g.mapid === CONFIG.HOME_MAP_ID) {
+                    log("Powrót zakończony. Wracam do stanu IDLE.");
+                    currentState = 'IDLE';
+                    setTimeout(mainLoop, CONFIG.DELAY_BETWEEN_ACTIONS);
+                } else {
+                    // Jeśli nie jesteśmy w mieście, spróbuj podróżować do mapy domowej
+                    log("Jestem w mieście, podróżuję na mapę docelową.");
+                    _g(`travel&mapid=${CONFIG.HOME_MAP_ID}`);
+                    setTimeout(mainLoop, CONFIG.DELAY_AFTER_TRAVEL);
+                }
+                break;
+        }
+    }
+
+    // Funkcja startująca bota
+    function startBot() {
+        if (isRunning) {
+            log("Bot już jest uruchomiony.");
+            return;
+        }
+        isRunning = true;
+        log("Auto e2 Farmer URUCHOMIONE!");
+        mainLoop();
+    }
+
+    // Funkcja zatrzymująca bota
+    function stopBot() {
+        if (!isRunning) {
+            log("Bot już jest zatrzymany.");
+            return;
+        }
+        isRunning = false;
+        if (actionTimeout) {
+            clearTimeout(actionTimeout);
+        }
+        log("Auto e2 Farmer ZATRZYMANE!");
+    }
+
+    // Dodaj przyciski ster
+

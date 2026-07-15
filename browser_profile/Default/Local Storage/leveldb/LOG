@@ -1,0 +1,12 @@
+2026/07/15-16:55:56.532 74f8 Reusing MANIFEST C:\Users\Janus\Desktop\danessi\browser_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/07/15-16:55:56.543 74f8 Recovering log #30
+2026/07/15-16:55:56.549 74f8 Reusing old log C:\Users\Janus\Desktop\danessi\browser_profile\Default\Local Storage\leveldb/000030.log 
+2026/07/15-17:06:10.076 42d0 Level-0 table #35: started
+2026/07/15-17:06:10.100 42d0 Level-0 table #35: 22182 bytes OK
+2026/07/15-17:06:10.106 42d0 Delete type=0 #30
+2026/07/15-17:58:10.080 42d0 Level-0 table #37: started
+2026/07/15-17:58:10.127 42d0 Level-0 table #37: 21319 bytes OK
+2026/07/15-17:58:10.130 42d0 Delete type=0 #34
+2026/07/15-18:45:10.080 42d0 Level-0 table #39: started
+2026/07/15-18:45:10.092 42d0 Level-0 table #39: 20560 bytes OK
+2026/07/15-18:45:10.095 42d0 Delete type=0 #36

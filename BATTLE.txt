@@ -1,0 +1,654 @@
+<div class="battle-window" style="display: block;">
+        <div class="battle-interface">
+            <div class="inner">
+            </div>
+        </div>
+        <div class="battle-area" style="transform: translateX(-50%); bottom: 185px;">
+            <div class="battle-background" style="transform: translate(-50%, -50%) scale(2); background: url(&quot;blob:https://telawel.margonem.pl/798b6308-b930-4489-8c46-9da331615c7d&quot;);"></div>
+            <!--<div class="background"></div>-->
+        <div class="one-warrior transition other-id-battle-1351845 do-action-cursor animate-warrior" style="z-index: 3; display: block; width: 32px; height: 48px; margin-left: -16px; top: 402px; left: 278.5px;">
+        <div class="warrior-info">
+            <div class="warrior-name">Certyfikowany Janusz</div>
+            <div class="warrior-class"></div>
+        </div>
+        <div class="hover-selector" style="height: 40px; width: 32px; border-radius: 60px; bottom: -15px;"></div>
+        <div class="selector" style="height: 40px; width: 32px; border-radius: 60px; bottom: -15px; display: none;"></div>
+        <div class="warrior grave-warrior-npc" tip-id="579"></div>
+        <div class="warrior grave-warrior-other" tip-id="579"></div>
+        <div class="warrior canvas-warrior-icon" tip-id="579"><canvas width="32" height="48"></canvas></div>
+        <div class="warrior canvas-warrior-effects"></div>
+        <div class="warrior-dmg"></div>
+        <div class="warrior-buffs-wrapper" style="margin-left: -12px;"></div>
+        <div class="progress-bar-wrapper" style="z-index: 0;"><div class="health-points stat-bar stat-bar-top">
+        <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+    </div><div class="energy-points stat-bar stat-bar-middle">
+        <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+    </div><div class="mana-points stat-bar stat-bar-bottom">
+        <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+    </div></div>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-top"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-right"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-bottom"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-left"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-center"></canvas>
+    <div class="current-arrow">
+        <div class="css-arrow"></div>
+        <div class="canvas-arrow" style="background: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABMUlEQVQ4T4WTMU8CQRCF3/Ef6I9YmBhrDC3SSS3BguZ+gIUlsSLEisLeK6DgAjV2p1EbIrWxkkBsKa1VMuPOZeZuwdfc7ux739xc9gI4LWaNX3pWm2kgNZ/EJ2IzFavNlAuLWYOfPpD2uT0CKdLm6/gOp2GYHWqI+B7Wa96TzwDuB22UDze47P/gtluicAbR4afkGcuPF4zj+A+g6bVaHZWjCr7fYkxezTjeMMENgN5iNE3wWapjPn8U084wZQszilon4LfYFyYZgKxJ/3UWmRHcmsPXN0MOrt5XehwTJhlAt3OA/miJiyjiQwnLOD6IGYEgZBr00sKHFHgeUgBQt855G2dXCZtFuyDeEUh5s26gxzE3UXelmoNn3cRLF07GywA+MxdzP1bezwB3Zoz7pDNbBU4kZ0wpI44AAAAASUVORK5CYII=&quot;);"></div>
+    </div></div><div class="one-warrior transition other-id-battle--263630 one-warrior--npc do-action-cursor wt-normal selected animate-warrior" style="z-index: 2; display: block; width: 42px; height: 64px; margin-left: -21px; top: 356px; left: 256px;">
+        <div class="warrior-info">
+            <div class="warrior-name">Ghul wojownik</div>
+            <div class="warrior-class"></div>
+        </div>
+        <div class="hover-selector" style="height: 40px; width: 42px; border-radius: 60px; bottom: -15px;"></div>
+        <div class="selector" style="height: 40px; width: 42px; border-radius: 60px; bottom: -15px; display: block;"></div>
+        <div class="warrior grave-warrior-npc" tip-id="580"></div>
+        <div class="warrior grave-warrior-other" tip-id="580"></div>
+        <div class="warrior canvas-warrior-icon" tip-id="580"><canvas width="42" height="64"></canvas></div>
+        <div class="warrior canvas-warrior-effects"></div>
+        <div class="warrior-dmg"></div>
+        <div class="warrior-buffs-wrapper" style="margin-left: -12px;"></div>
+        <div class="progress-bar-wrapper" style="z-index: 1;"><div class="health-points stat-bar">
+        <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+    </div><div class="super-cast stat-bar">
+        <div class="inner" bar-horizontal="true"></div>
+    </div></div>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-top"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-right"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-bottom"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-left"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-center"></canvas>
+    </div><div class="one-warrior transition other-id-battle--263631 one-warrior--npc do-action-cursor wt-normal animate-warrior" style="z-index: 1; display: block; width: 42px; height: 64px; margin-left: -21px; top: 326px; left: 278.5px;">
+        <div class="warrior-info">
+            <div class="warrior-name">Ghul szaman</div>
+            <div class="warrior-class"></div>
+        </div>
+        <div class="hover-selector" style="height: 40px; width: 42px; border-radius: 60px; bottom: -15px;"></div>
+        <div class="selector" style="height: 40px; width: 42px; border-radius: 60px; bottom: -15px; display: none;"></div>
+        <div class="warrior grave-warrior-npc" tip-id="581"></div>
+        <div class="warrior grave-warrior-other" tip-id="581"></div>
+        <div class="warrior canvas-warrior-icon" tip-id="581"><canvas width="42" height="64"></canvas></div>
+        <div class="warrior canvas-warrior-effects"></div>
+        <div class="warrior-dmg"></div>
+        <div class="warrior-buffs-wrapper" style="margin-left: -12px;"></div>
+        <div class="progress-bar-wrapper" style="z-index: 0;"><div class="health-points stat-bar">
+        <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+    </div><div class="super-cast stat-bar">
+        <div class="inner" bar-horizontal="true"></div>
+    </div></div>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-top"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-right"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-bottom"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-left"></canvas>
+        <canvas class="canvas-graphic-effect canvas-icon-wrapper-center"></canvas>
+    </div></div>
+        <canvas class="battle-effect-tint" width="482" height="727"></canvas>
+        <canvas class="character-effects" style="display: none;" width="482" height="727"></canvas>
+        <!--<div class="battle-night-layer"></div>-->
+        <canvas class="battle-night2-layer" width="482" height="727"></canvas>
+    </div>
+
+<div class="bottom positioner show-widget-hamburgers"><div class="battle-controller" style="display: block; height: 200px;" size="2">
+        <div class="graphics">
+            <div class="battle-border"></div>
+            <!--<div class="header-graphic"></div>-->
+            <div class="column-separator" style="display: block;"></div>
+            <div class="middle-graphic  interface-element-middle-4-background"></div>
+            <div class="divide-wood interface-element-vertical-wood"></div>
+            <div class="bottom-graphic">
+                <div class="interface-element-bottom-bar-background-stretch"></div>
+            </div>
+        </div>
+        <div class="battle-content">
+            <div class="time-wrapper">
+                <div class="pool-timer-wrapper">
+                    <div class="pool-timer" data-trans="data-tip#pool-timer-tip#battle" tip-id="78">83s</div>
+                </div>
+                <div class="time-progress-bar"><div class="c-timer c-timer--theme-dark c-timer--low-time" title="Czas na wykonanie tury"><div class="c-timer__progress-bar" style="width: 100%;"></div><div class="c-timer__text">5s</div></div></div>
+            </div>
+            <div class="nick">Ghul szaman</div>
+            <div class="level-icon">
+                <div class="level">(42)</div>
+                <div class="prof-wrapper"><div class="profs-icon m" tip-id="614"></div></div>
+            </div>
+            <div class="toggle-battle show-more" tip-id="576"></div>
+            <div class="attach-battle-log-help-window attach-icon" data-trans="data-tip#attach-battle-log-help-window" tip-id="79"></div>
+            <div class="attach-battle-prediction-help-window  attach-icon" data-trans="data-tip#attach-battle-prediction-help-window" tip-id="80"></div>
+            <div class="attach-battle-hot-skills-help-window  attach-icon" data-trans="data-tip#attach-battle-hot-skills-help-window" tip-id="81"></div>
+            <div class="surrender" tip-id="149" style=""></div>
+            <div class="left-column" style="display: block;">
+                <div class="scroll-wrapper">
+                    <div class="scroll-pane"><div class="battle-msg txt">Rozpoczęła się walka pomiędzy Certyfikowany Janusz (180p) a Ghul wojownik (42w), Ghul szaman (42m)</div><div class="battle-msg attack">Certyfikowany Janusz(100%) uderzył z siłą <b class="dmg">+14027</b><b class="dmgf">+6603</b><br><font color="ff96b1"><i>+Cios krytyczny</i></font><br>+Niszczenie pancerza o 16<br>Ghul wojownik(0%) otrzymał(a) <b class="dmg" prof-p="">-13729</b><b class="dmgf" prof-p="">-6454</b> obrażeń<br></div><div class="battle-msg neu"><font color="white">Certyfikowany Janusz(100%) zrobił krok do przodu.</font></div></div>
+                <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+            </div>
+            <div class="stats-wrapper"><div class="progress-bar-wrapper hp-progress-bar red" style="display: block;">
+        <div class="background"></div>
+        <div class="bar-percentage" bar-horizontal="true" bar-percent="100" style="display: block;"></div>
+        <div class="label">100%</div>
+    </div><div class="progress-bar-wrapper ep-progress-bar yellow" style="display: none;">
+        <div class="background"></div>
+        <div class="bar-percentage" bar-horizontal="true"></div>
+        <div class="label"></div>
+    </div><div class="progress-bar-wrapper mp-progress-bar blue" style="display: none;">
+        <div class="background"></div>
+        <div class="bar-percentage" bar-horizontal="true"></div>
+        <div class="label"></div>
+    </div></div>
+            <div class="buffs-wrapper" style="display: none;"></div>
+            <div class="buttons-wrapper" style="display: block;"><div class="button green auto-fight-btn small" tip-id="150">
+        <div class="background"></div>
+        <div class="label">Szybka walka   <b class="hot-char">[F]</b></div>
+    </div><div class="button green auto-fight-cancel-btn small" tip-id="151" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Anuluj   <b class="hot-char">[F]</b></div>
+    </div><div class="button green copy-battle-logs small" tip-id="152" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Kopiuj logi</div>
+    </div><div class="button green close-battle-ground small" tip-id="153" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Opuść walkę   <b class="hot-char">[Z]</b></div>
+    </div><div class="button green close-battle-logs small" tip-id="154" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Opuść logi</div>
+    </div><div class="button green change-target-btn small" tip-id="155">
+        <div class="background"></div>
+        <div class="label">Zmiana celu</div>
+    </div></div>
+            <div class="right-column" style="display: block;">
+                <div class="scroll-wrapper scrollable">
+                    <div class="scroll-pane">
+                        <div class="turn-prediction" style="opacity: 1;"><div class="turn-prediction__item" tip-id="615">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="616">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="617">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/npc/hum/ghul4-a.gif&quot;); background-size: cover; height: 28px; width: 32px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--red">Ghul szaman</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="618">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="619">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="620">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="621">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="622">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/npc/hum/ghul4-a.gif&quot;); background-size: cover; height: 28px; width: 32px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--red">Ghul szaman</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="623">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="624">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div></div>
+                    </div>
+                <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+                <div class="battle-end-layer" data-trans="#battle_ended#battle" style="display: none;">Walka zakończona.</div>
+            </div>
+
+            <div class="battle-bar-light-mode interface-element-progress-bar-2 energy-battle-bar-light-mode" data-trans="data-tip#stat-energy" tip-id="82" style="display: none;">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+                <div class="value">50/50</div>
+            </div>
+            <div class="battle-bar-light-mode interface-element-progress-bar-2 mana-battle-bar-light-mode" data-trans="data-tip#stat-mana" tip-id="83" style="display: none;">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+                <div class="value">241/241</div>
+            </div>
+        </div>
+        <div class="battle-skills-wrapper" style="display: block;">
+        <div class="skill-usable-slots-light-mode left">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="0"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="1"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="2"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="3"></div>
+        </div>
+        <div class="skill-usable-slots-light-mode right">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="7"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="6"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="5"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="4"></div>
+        </div>
+        <div class="skill-usable-add-slots left" style="display: block;">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="8"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="9"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="10"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="11"></div>
+        </div>
+        <div class="skill-usable-add-slots right" style="display: block;">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="15"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="14"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="13"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="12"></div>
+        </div>
+        </div>
+        <!--<div class="skill-hider"></div>-->
+        <div class="battle-watch right">07.07.2026 17:59</div>
+    </div>
+            <div class="bg">
+            </div>
+            <div class="bg-additional-widget-left" style="display: none;"></div>
+            <div class="bg-additional-widget-right" style="display: none;"></div>
+            <div class="content">
+                <div class="bottom-left-additional main-buttons-container ui-droppable static-widget-position" style="height: 45px; width: 308px; bottom: 51px; left: 0px; display: none;"><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 0px;" widget-pos="bottom-left-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 44px;" widget-pos="bottom-left-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 88px;" widget-pos="bottom-left-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 132px;" widget-pos="bottom-left-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 176px;" widget-pos="bottom-left-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 220px;" widget-pos="bottom-left-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 264px;" widget-pos="bottom-left-additional"></div></div>
+                <div class="bottom-right-additional main-buttons-container ui-droppable static-widget-position" style="height: 45px; width: 308px; bottom: 51px; right: 0px; display: none;"><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 0px;" widget-pos="bottom-right-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 44px;" widget-pos="bottom-right-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 88px;" widget-pos="bottom-right-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 132px;" widget-pos="bottom-right-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 176px;" widget-pos="bottom-right-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 220px;" widget-pos="bottom-right-additional"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 264px;" widget-pos="bottom-right-additional"></div></div>
+                <div class="bottom-left main-buttons-container ui-droppable static-widget-position" style="height: 45px; width: 308px; bottom: 0px; left: 0px;"><div class="widget-button green widget-in-interface-bar widget-chat ui-draggable ui-draggable-handle ui-draggable-disabled window-is-open" style="width: 44px; height: 44px; left: 0px; position: absolute;" widget-index="0" widget-name="chat" widget-pos="bottom-left" tip-id="501">
+        <div class="icon chat"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-photo ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 44px; position: absolute;" widget-index="1" widget-name="photo" widget-pos="bottom-left" tip-id="502">
+        <div class="icon photo"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-portable-map-icon window-is-open ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 88px; position: absolute;" widget-index="2" widget-name="portable-map-icon" widget-pos="bottom-left" tip-id="503">
+        <div class="icon portable-map-icon"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-compass window-is-open ui-draggable ui-draggable-handle is-active ui-draggable-disabled" style="width: 44px; height: 44px; left: 132px; position: absolute;" widget-index="3" widget-name="compass" widget-pos="bottom-left" tip-id="504">
+        <div class="icon compass"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount">0</div>
+    </div><div class="widget-button green widget-in-interface-bar widget-loot-filter-icon ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 176px; position: absolute;" widget-index="4" widget-name="loot-filter-icon" widget-pos="bottom-left" tip-id="509">
+        <div class="icon loot-filter-icon"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-timer-icon ui-draggable ui-draggable-handle ui-draggable-disabled window-is-open" style="width: 44px; height: 44px; left: 220px; position: absolute;" widget-index="5" widget-name="timer-icon" widget-pos="bottom-left" tip-id="510">
+        <div class="icon timer-icon"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 0px;" widget-pos="bottom-left"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 44px;" widget-pos="bottom-left"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 88px;" widget-pos="bottom-left"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 132px;" widget-pos="bottom-left"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 176px;" widget-pos="bottom-left"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 220px;" widget-pos="bottom-left"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 264px;" widget-pos="bottom-left"></div></div>
+                <div class="bottom-right main-buttons-container ui-droppable static-widget-position" style="height: 45px; width: 308px; bottom: 0px; right: 0px;">
+                    <div class="version-info"></div>
+                    <div class="game-notifications"></div>
+                <div class="widget-button blink-violet widget-in-interface-bar widget-star ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 264px; position: absolute;" widget-index="6" widget-name="star" widget-pos="bottom-right" tip-id="505">
+        <div class="icon star"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-skills ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 176px; position: absolute;" widget-index="4" widget-name="skills" widget-pos="bottom-right" tip-id="506">
+        <div class="icon skills"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-friends ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 132px; position: absolute;" widget-index="3" widget-name="friends" widget-pos="bottom-right" tip-id="507">
+        <div class="icon friends"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-scroll ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 88px; position: absolute;" widget-index="2" widget-name="scroll" widget-pos="bottom-right" tip-id="508">
+        <div class="icon scroll"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button violet widget-in-interface-bar widget-news-icon ui-draggable ui-draggable-handle ui-draggable-disabled widget-notification" style="width: 44px; height: 44px; left: 220px; position: absolute;" widget-index="5" widget-name="news-icon" widget-pos="bottom-right" tip-id="511">
+        <div class="icon news-icon"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="widget-button green widget-in-interface-bar widget-addon_24 ui-draggable ui-draggable-handle ui-draggable-disabled" style="width: 44px; height: 44px; left: 0px; position: absolute;" widget-index="0" widget-name="addon_24" widget-pos="bottom-right" tip-id="515">
+        <div class="icon addon_24"></div>
+        <div class="red-notification interface-element-red-notification" style="width: 8px; height: 8px;"></div>
+        <div class="amount"></div>
+    </div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 0px;" widget-pos="bottom-right"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 44px;" widget-pos="bottom-right"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 88px;" widget-pos="bottom-right"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 132px;" widget-pos="bottom-right"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 176px;" widget-pos="bottom-right"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 220px;" widget-pos="bottom-right"></div><div class="empty-slot-widget" style="width: 44px; height: 44px; left: 264px;" widget-pos="bottom-right"></div></div>
+            <div class="bottom-panel-of-bottom-positioner bottom-panel">
+        <div class="bottom-panel-graphic"></div>
+        <!--<div class="helpers-numbers">-->
+            <!--<span class="h-n-1">1</span>-->
+            <!--<span class="h-n-2">2</span>-->
+            <!--<span class="h-n-3">3</span>-->
+            <!--<span class="h-n-4">4</span>-->
+            <!--<span class="h-n-5">5</span>-->
+            <!--<span class="h-n-6">6</span>-->
+            <!--<span class="h-n-7">7</span>-->
+            <!--<span class="h-n-8">8</span>-->
+        <!--</div>-->
+
+        <div class="battle-bars-wrapper-template"><div class="battle-bars-wrapper" style="display: block;">
+        <div class="battle-bar energy" data-trans="data-tip#stat-energy" tip-id="0">
+            <div class="background"></div>
+            <div class="bar-overflow">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+            </div>
+            <div class="overlay"></div>
+            <div class="values">50</div>
+        </div>
+        <div class="battle-bar mana" data-trans="data-tip#stat-mana" tip-id="1">
+            <div class="background"></div>
+            <div class="bar-overflow">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+            </div>
+            <div class="overlay"></div>
+            <div class="values">241</div>
+        </div>
+        <!--<div class="battle-bar-light-mode energy-battle-bar-light-mode" data-trans="data-tip#stat-energy">-->
+            <!--<div class="inner" bar-horizontal="true" bar-percent="100"></div>-->
+            <!--<div class="value"></div>-->
+        <!--</div>-->
+        <!--<div class="battle-bar-light-mode mana-battle-bar-light-mode" data-trans="data-tip#stat-mana">-->
+            <!--<div class="inner" bar-horizontal="true" bar-percent="100"></div>-->
+            <!--<div class="value"></div>-->
+        <!--</div>-->
+    </div></div>
+        <!--<div class="exp-bar-wrapper-template"></div>-->
+        <div class="hp-indicator-wrapper-template"><div class="hp-indicator-wrapper">
+        <div class="hp-indicator">
+            <div class="blood-frame" style="display: none; background-position-x: 0px;"></div>
+            <div class="blood" bar-horizontal="false" bar-percent="100" style="background-position: -103px -9px;"></div>
+            <div class="hpp"><span class="value">100%</span></div>
+        </div>
+        <div class="glass" tip-id="295" data-tip-type="t_static"></div>
+    </div></div>
+
+        <div class="lagmeter">
+            <div class="lag lag-0" tip-id="105" data-tip-type="t_static"></div>
+        </div>
+        <!--
+        <div class="slots right" data-trans="data-tip#hot_items_info">
+            <div class="usable-slot usable-slot-8 interface-element-one-item-slot-2"><div class="help-number">8</div></div>
+            <div class="usable-slot usable-slot-7 interface-element-one-item-slot-2"><div class="help-number">7</div></div>
+            <div class="usable-slot usable-slot-6 interface-element-one-item-slot-2"><div class="help-number">6</div></div>
+            <div class="usable-slot usable-slot-5 interface-element-one-item-slot-2"><div class="help-number">5</div></div>
+        </div>
+        <div class="slots left" data-trans="data-tip#hot_items_info">
+            <div class="usable-slot usable-slot-1 interface-element-one-item-slot-2"><div class="help-number">1</div></div>
+            <div class="usable-slot usable-slot-2 interface-element-one-item-slot-2"><div class="help-number">2</div></div>
+            <div class="usable-slot usable-slot-3 interface-element-one-item-slot-2"><div class="help-number">3</div></div>
+            <div class="usable-slot usable-slot-4 interface-element-one-item-slot-2"><div class="help-number">4</div></div>
+        </div>
+        -->
+        <div class="slots right" data-trans="data-tip#hot_items_info" tip-id="6" style="display: none;">
+            <div class="slots-area-tip" data-trans="data-tip#hot_items_info" tip-id="7"></div>
+            <div class="usable-slot usable-slot-8 interface-element-one-item-slot-2 ui-droppable" data-slot-index="8"></div>
+            <div class="usable-slot usable-slot-7 interface-element-one-item-slot-2 ui-droppable" data-slot-index="7"></div>
+            <div class="usable-slot usable-slot-6 interface-element-one-item-slot-2 ui-droppable" data-slot-index="6"></div>
+            <div class="usable-slot usable-slot-5 interface-element-one-item-slot-2 ui-droppable" data-slot-index="5"></div>
+        </div>
+        <div class="slots left" style="display: none;">
+            <div class="slots-area-tip" data-trans="data-tip#hot_items_info" tip-id="8"></div>
+            <div class="usable-slot usable-slot-1 interface-element-one-item-slot-2 ui-droppable" data-slot-index="1"></div>
+            <div class="usable-slot usable-slot-2 interface-element-one-item-slot-2 ui-droppable" data-slot-index="2"></div>
+            <div class="usable-slot usable-slot-3 interface-element-one-item-slot-2 ui-droppable" data-slot-index="3"></div>
+            <div class="usable-slot usable-slot-4 interface-element-one-item-slot-2 ui-droppable" data-slot-index="4"><div class="item item-id-1158460225 item-tpl-1471 ui-draggable ui-draggable-handle bottomItem" tip-id="330" data-tip-type="t_item" data-item-type="t-norm" id="bottomItem1158460225">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">9</div></div></div>
+        </div>
+        <div class="exp-bar-wrapper-template"><div class="exp-bar-wrapper" style="display: none;">
+        <div class="exp-progress left" tip-id="291" data-tip-type="t_static">
+            <div class="progress">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+            </div>
+            <div class="overlay"></div>
+            <div class="ribbon"></div>
+            <div class="ribbon-up"></div>
+            <div class="ribbon-down"></div>
+        </div>
+        <div class="exp-progress right" tip-id="291" data-tip-type="t_static">
+            <div class="progress">
+                <div class="inner" bar-horizontal="true" bar-percent="66"></div>
+            </div>
+            <div class="overlay"></div>
+            <div class="ribbon"></div>
+            <div class="ribbon-up"></div>
+            <div class="ribbon-down"></div>
+        </div>
+    </div></div>
+        <div class="exp-bar"></div>
+        <div class="gained-exp-indicator"></div>
+        <div class="bottom-panel-pointer-bg">
+            <div class="pointer-exp-graphic"></div>
+            <div class="pointer-ttl-graphic"></div>
+            <div class="pointer-exp" data-trans="data-tip#exp#exp-ttl-pointer" tip-id="9">83,25%</div>
+            <div class="pointer-ttl" data-trans="data-tip#ttl#exp-ttl-pointer" tip-id="10">351 min</div>
+        </div>
+        <div class="skill-usable-slots left" style="display: block;">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="0"><div class="battle-skill" tip-id="577" data-tip-type="t_skill" battle-skill-id="-1">
+        <div class="background interface-element-box-shadow-1"></div>
+        <div class="icon skill-icon pl icon--1 prof-p"></div>
+        <div class="name"></div>
+        <div class="type"></div>
+    </div></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="1"><div class="battle-skill" tip-id="578" data-tip-type="t_skill" battle-skill-id="-2">
+        <div class="background interface-element-box-shadow-1 move-skill-bck"></div>
+        <div class="icon skill-icon pl icon--2"></div>
+        <div class="name"></div>
+        <div class="type"></div>
+    </div></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="2"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="3"></div>
+        </div>
+        <div class="skill-usable-slots right" style="display: block;">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="7"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="6"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="5"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="4"></div>
+        </div>
+    </div></div>
+        </div>  
+
+JAK KLIKNEMY PRAWYM TO MAMY TAKIE OKNO <div class="popup-menu show skill-popup-menu" style="top: 444.867px; left: 588.334px; z-index: 1;"><div class="popup-menu__header">Ghul nocny</div>
+      <div class="scroll-wrapper small-bar">
+          <div class="scroll-pane popup-menu__list"><div class="menu-item not-close menu-item-skill menu-item-skill-id--1 one-step-skill-menu"><span class="name-menu-skill">Atakuj</span></div></div>
+      <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle"></div>
+        </div>
+    </div></div>
+    </div>    
+
+
+<div class="battle-controller" style="display: block; height: 200px;" size="2">
+        <div class="graphics">
+            <div class="battle-border"></div>
+            <!--<div class="header-graphic"></div>-->
+            <div class="column-separator" style="display: block;"></div>
+            <div class="middle-graphic  interface-element-middle-4-background"></div>
+            <div class="divide-wood interface-element-vertical-wood"></div>
+            <div class="bottom-graphic">
+                <div class="interface-element-bottom-bar-background-stretch"></div>
+            </div>
+        </div>
+        <div class="battle-content">
+            <div class="time-wrapper">
+                <div class="pool-timer-wrapper">
+                    <div class="pool-timer" data-trans="data-tip#pool-timer-tip#battle" tip-id="78" style="display: block;">109s</div>
+                </div>
+                <div class="time-progress-bar"><div class="c-timer c-timer--theme-dark c-timer--low-time" title="Czas na wykonanie tury"><div class="c-timer__progress-bar" style="width: 26.6667%;"></div><div class="c-timer__text">4s</div></div></div>
+            </div>
+            <div class="nick">Ghul nocny</div>
+            <div class="level-icon">
+                <div class="level">(41)</div>
+                <div class="prof-wrapper"><div class="profs-icon w" tip-id="691"></div></div>
+            </div>
+            <div class="toggle-battle show-more" tip-id="576"></div>
+            <div class="attach-battle-log-help-window attach-icon" data-trans="data-tip#attach-battle-log-help-window" tip-id="79"></div>
+            <div class="attach-battle-prediction-help-window  attach-icon" data-trans="data-tip#attach-battle-prediction-help-window" tip-id="80"></div>
+            <div class="attach-battle-hot-skills-help-window  attach-icon" data-trans="data-tip#attach-battle-hot-skills-help-window" tip-id="81"></div>
+            <div class="surrender" tip-id="149" style="display: inline-block;"></div>
+            <div class="left-column" style="display: block;">
+                <div class="scroll-wrapper">
+                    <div class="scroll-pane"><div class="battle-msg txt">Rozpoczęła się walka pomiędzy Certyfikowany Janusz (180p) a Ghul wojownik (42w), Ghul szaman (42m), Ghul nocny (41w)</div></div>
+                <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+            </div>
+            <div class="stats-wrapper"><div class="progress-bar-wrapper hp-progress-bar red" style="display: block;">
+        <div class="background"></div>
+        <div class="bar-percentage" bar-horizontal="true" bar-percent="100" style="display: block;"></div>
+        <div class="label">100%</div>
+    </div><div class="progress-bar-wrapper ep-progress-bar yellow" style="display: none;">
+        <div class="background"></div>
+        <div class="bar-percentage" bar-horizontal="true"></div>
+        <div class="label"></div>
+    </div><div class="progress-bar-wrapper mp-progress-bar blue" style="display: none;">
+        <div class="background"></div>
+        <div class="bar-percentage" bar-horizontal="true"></div>
+        <div class="label"></div>
+    </div></div>
+            <div class="buffs-wrapper" style="display: none;"></div>
+            <div class="buttons-wrapper" style="display: block;"><div class="button green auto-fight-btn small" tip-id="150" style="">
+        <div class="background"></div>
+        <div class="label">Szybka walka   <b class="hot-char">[F]</b></div>
+    </div><div class="button green auto-fight-cancel-btn small" tip-id="151" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Anuluj   <b class="hot-char">[F]</b></div>
+    </div><div class="button green copy-battle-logs small" tip-id="152" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Kopiuj logi</div>
+    </div><div class="button green close-battle-ground small" tip-id="153" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Opuść walkę   <b class="hot-char">[Z]</b></div>
+    </div><div class="button green close-battle-logs small" tip-id="154" style="display: none;">
+        <div class="background"></div>
+        <div class="label">Opuść logi</div>
+    </div><div class="button green change-target-btn small" tip-id="155" style="">
+        <div class="background"></div>
+        <div class="label">Zmiana celu</div>
+    </div></div>
+            <div class="right-column" style="display: block;">
+                <div class="scroll-wrapper scrollable">
+                    <div class="scroll-pane">
+                        <div class="turn-prediction" style="opacity: 1;"><div class="turn-prediction__item" tip-id="692">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="693">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="694">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="695">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="696">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/npc/hum/ghul4-a.gif&quot;); background-size: cover; height: 28px; width: 32px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--red">Ghul szaman</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="697">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/npc/hum/ghul3-b.gif&quot;); background-size: cover; height: 28px; width: 32px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--red">Ghul wojownik</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="698">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/npc/hum/ghul5-a.gif&quot;); background-size: cover; height: 28px; width: 32px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--red">Ghul nocny</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="699">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="700">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div><div class="turn-prediction__item" tip-id="701">
+        <div class="turn-prediction__content">
+            <div class="turn-prediction__av"><div class="table-img-avatar"><div class="table-cell-img-avatar"><div class="img-avatar-correct" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie//kuf/kuf_male_25a.gif&quot;); width: 32px; height: 28px;"></div></div></div></div>
+            <div class="turn-prediction__name turn-prediction__name--green">Certyfikowany Janusz</div>
+        </div>
+    </div></div>
+                    </div>
+                <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle" style="top: 0px;"></div>
+        </div>
+    </div></div>
+                <div class="battle-end-layer" data-trans="#battle_ended#battle" style="display: none;">Walka zakończona.</div>
+            </div>
+
+            <div class="battle-bar-light-mode interface-element-progress-bar-2 energy-battle-bar-light-mode" data-trans="data-tip#stat-energy" tip-id="82" style="display: none;">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+                <div class="value">50/50</div>
+            </div>
+            <div class="battle-bar-light-mode interface-element-progress-bar-2 mana-battle-bar-light-mode" data-trans="data-tip#stat-mana" tip-id="83" style="display: none;">
+                <div class="inner" bar-horizontal="true" bar-percent="100"></div>
+                <div class="value">241/241</div>
+            </div>
+        </div>
+        <div class="battle-skills-wrapper" style="display: block;">
+        <div class="skill-usable-slots-light-mode left">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="0"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="1"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="2"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="3"></div>
+        </div>
+        <div class="skill-usable-slots-light-mode right">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="7"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="6"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="5"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="4"></div>
+        </div>
+        <div class="skill-usable-add-slots left" style="display: block;">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="8"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="9"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="10"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="11"></div>
+        </div>
+        <div class="skill-usable-add-slots right" style="display: block;">
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="15"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="14"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="13"></div>
+            <div class="skill-usable-slot interface-element-one-item-slot-2" slot="12"></div>
+        </div>
+        </div>
+        <!--<div class="skill-hider"></div>-->
+        <div class="battle-watch right">07.07.2026 18:00</div>
+    </div> 

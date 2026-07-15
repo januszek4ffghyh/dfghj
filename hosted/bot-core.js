@@ -29,6 +29,8 @@
     let cfgTargetMapId = 0;
     let cfgHeroHunterEnabled = false;
     let cfgHeroHunterName = "Zmora";
+    let cfgE2HunterEnabled = false;
+    let cfgE2HunterName = "Szczet alias Gladki";
     let cfgPatrolMapIds = [];
 
     let autoFEnabled = false;
@@ -47,6 +49,13 @@
         return Math.abs(hero.x - mob.tx) + Math.abs(hero.y - mob.ty);
     }
 
+    function normText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+    }
+
     function getBagInfo(forceRefresh = false) {
         const now = Date.now();
         if (!forceRefresh && now - lastBagScan < 2000) return lastBagInfo;
@@ -58,18 +67,48 @@
     function getFilteredMobs() {
         const hero = bridge.getHeroTile() || { x: 0, y: 0 };
         const rawMobs = bridge.scanMobs();
-        
-        if (cfgHeroHunterEnabled) {
-            const heroes = rawMobs.filter(m => {
-                const isHeroRank = m.rank === 'hero';
-                const matchesName = cfgHeroHunterName && m.name.toLowerCase().includes(cfgHeroHunterName.toLowerCase());
-                return isHeroRank || matchesName;
-            });
-            if (heroes.length > 0) {
-                return heroes.sort((a, b) => tileDistManhattan(hero, a) - tileDistManhattan(hero, b));
+
+        // Debug Kolosów
+        if (cfgE2HunterEnabled) {
+            const kolosy = rawMobs.filter(m => m.rank === 'colossus' || m.isColossus);
+            if (kolosy.length > 0) {
+                console.log(`[E2 HUNTER] Znaleziono ${kolosy.length} kolosów:`, 
+                    kolosy.map(m => `${m.name} (Lv${m.lvl})`).join(', '));
             }
         }
 
+        // === E2 HUNTER – NAJWYŻSZY PRIORYTET ===
+        if (cfgE2HunterEnabled) {
+            const nameFilter = normText(cfgE2HunterName || '').trim();
+
+            const candidates = rawMobs.filter(m => {
+                if (m.rank === 'colossus' || m.isColossus) return true;
+                if (nameFilter && normText(m.name).includes(nameFilter)) return true;
+                return false;
+            });
+
+            return candidates.sort((a, b) => 
+                tileDistManhattan(hero, a) - tileDistManhattan(hero, b)
+            );
+        }
+
+        // === HERO HUNTER ===
+        if (cfgHeroHunterEnabled) {
+            const heroes = rawMobs.filter(m => {
+                const isHero = m.rank === 'hero';
+                const matchesName = cfgHeroHunterName && 
+                    normText(m.name).includes(normText(cfgHeroHunterName));
+                return isHero || matchesName;
+            });
+
+            if (heroes.length > 0) {
+                return heroes.sort((a, b) => 
+                    tileDistManhattan(hero, a) - tileDistManhattan(hero, b)
+                );
+            }
+        }
+
+        // Normalny tryb
         return rawMobs
             .filter(m => m.lvl >= cfgMinLvl && m.lvl <= cfgMaxLvl)
             .filter(m => !cfgGrpOnly || m.grp)
@@ -84,6 +123,14 @@
     function pickNextTarget() {
         const mobs = getFilteredMobs();
         if (!mobs.length) return null;
+
+        // Priorytet E2
+        const e2 = mobs.find(m => m.rank === 'colossus' || m.isColossus);
+        if (e2) {
+            console.log(`[E2 PRIORITY] Natychmiast zmieniam cel na: ${e2.name}`);
+            return e2;
+        }
+
         return mobs.find(m => !target || m.id !== target.id) || mobs[0];
     }
 
@@ -135,22 +182,38 @@
 
         const hero = bridge.getHeroTile();
 
+        // NATYCHMIASTOWA REAKCJA NA E2
+        const currentMobs = getFilteredMobs();
+        const e2Target = currentMobs.find(m => m.rank === 'colossus' || m.isColossus);
+        if (e2Target && (!target || target.id !== e2Target.id)) {
+            target = e2Target;
+            phase = 'next';
+            bridge.log(`<span style="color:#fbbf24;font-weight:700">🔥 E2/KOLOS! Natychmiast idę do: ${target.name} Lv${target.lvl}</span>`);
+        }
+
         if (phase === 'idle' || phase === 'next') {
-            target = pickNextTarget();
+            if (!target) target = pickNextTarget();
+
             if (!target) {
                 bridge.log(`<span class="warn">⚠ Brak mobów — czekam...</span>`);
                 bridge.updateStatus('Brak mobów', '⚠');
-                walkTimer = setTimeout(mainLoop, 2000);
+                walkTimer = setTimeout(mainLoop, 1500);
                 return;
             }
+
             const d = hero ? tileDist(hero, target).toFixed(1) : '?';
             bridge.log(`🎯 Cel: <span class="hi">${target.name}</span> Lv${target.lvl} (${target.tx},${target.ty}) · ${d} kaf.`);
+
+            if (target.rank === 'colossus' || target.isColossus) {
+                bridge.log(`<span style="color:#fbbf24">⚡ NATYCHMIASTOWE podejście do Kolosa!</span>`);
+            }
+
             bridge.updateStatus(`Idę do: ${target.name} Lv${target.lvl} · ${d} kaf.`, '🚶');
             stuckCnt = 0;
             lastHeroPos = hero;
             bridge.heroGoTo(target.tx, target.ty);
             phase = 'walking';
-            walkTimer = setTimeout(checkArrival, cfgWalkDelay);
+            walkTimer = setTimeout(checkArrival, (target.rank === 'colossus' || target.isColossus) ? 300 : cfgWalkDelay);
             bridge.renderAll();
             return;
         }
@@ -170,10 +233,24 @@
         }
 
         const hero = bridge.getHeroTile();
-        if (!hero || !target) { phase = 'idle'; mainLoop(); return; }
+        if (!hero || !target) { 
+            phase = 'idle'; 
+            mainLoop(); 
+            return; 
+        }
 
         const d = tileDist(hero, target);
         bridge.updateStatus(`Idę: ${target.name} Lv${target.lvl} · ${d.toFixed(1)} kaf.`, '🚶');
+
+        // Natychmiastowa reakcja na nowego E2
+        const currentE2 = getFilteredMobs().find(m => m.rank === 'colossus' || m.isColossus);
+        if (currentE2 && (!target || target.id !== currentE2.id)) {
+            target = currentE2;
+            phase = 'next';
+            bridge.log(`<span style="color:#fbbf24">🔄 Nowy Kolos na mapie – zmieniam cel!</span>`);
+            mainLoop();
+            return;
+        }
 
         if (!bridge.npcExists(target.id)) {
             bridge.log(`💀 npc${target.id} zniknął`);
@@ -213,7 +290,8 @@
                 stuckCnt = 0;
             }
             lastHeroPos = hero;
-            walkTimer = setTimeout(checkArrival, 400);
+            const delay = (target.rank === 'colossus' || target.isColossus) ? 250 : 400;
+            walkTimer = setTimeout(checkArrival, delay);
         }
     }
 
@@ -239,40 +317,96 @@
     }
 
     let autoFLastMode = null;
+    let _lastSkillUseTime = 0;
 
     function autoFTick() {
         if (!autoFEnabled) return;
-
         if (!bridge.isInBattle()) {
             autoFLastMode = null;
             bridge.updateAutoFStatus('idle');
             return;
         }
-
         if (!bridge.isBattleReady()) {
             bridge.updateAutoFStatus('ładuje...');
             return;
         }
-
         const hp = bridge.getHeroHP();
         const wantFast = hp.pct > cfgAutoFMinHP;
-
         if (wantFast) {
             if (bridge.clickFastBattle()) {
-                if (autoFLastMode !== 'fast') {
-                    bridge.log(`⚡ Auto-F: Szybka walka (HP ${hp.pct}%)`);
-                }
+                if (autoFLastMode !== 'fast') bridge.log(`⚡ Auto-F: Szybka walka (HP ${hp.pct}%)`);
                 autoFLastMode = 'fast';
                 bridge.updateAutoFStatus('fast');
             }
         } else {
+            // Turowa walka — użyj umiejętności!
             if (bridge.clickTourBattle()) {
-                if (autoFLastMode !== 'tour') {
-                    bridge.log(`<span class="warn">🛡 Auto-F: HP nisko (${hp.pct}%) → Turowa!</span>`);
-                }
+                if (autoFLastMode !== 'tour') bridge.log(`<span class="warn">🛡 Auto-F: HP nisko (${hp.pct}%) → Turowa!</span>`);
                 autoFLastMode = 'tour';
                 bridge.updateAutoFStatus('tour');
             }
+
+            // Próbuj użyć umiejętności co 1.5s
+            if (Date.now() - _lastSkillUseTime > 1500) {
+                useBattleSkill(hp);
+                _lastSkillUseTime = Date.now();
+            }
+        }
+    }
+
+    /** Używanie umiejętności w walce turowej (Paladyn) */
+    function useBattleSkill(hp) {
+        try {
+            // Szukaj slotów umiejętności w UI walki
+            const skillSlots = document.querySelectorAll(
+                '.skill-usable-slot .item, .battle-skills-wrapper .skill-usable-slot .item'
+            );
+            if (!skillSlots.length) return;
+
+            let healSkill = null;
+            let atkSkill = null;
+            let buffSkill = null;
+
+            for (const slot of skillSlots) {
+                const tip = (slot.getAttribute('tip') || '').toLowerCase();
+                const decoded = tip
+                    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                const plain = decoded.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+
+                // Czy jest gotowy do użycia? (brak klasy disabled/cooldown)
+                const isReady = !slot.closest('.skill-usable-slot')?.classList.contains('on-cooldown')
+                    && !slot.classList.contains('disabled');
+                if (!isReady) continue;
+
+                // Klasyfikuj umiejętność
+                if (/lecz|leczenie|życie|zycie|heal|przywrac.*punkt.*życi|uzdrow/i.test(plain)) {
+                    healSkill = slot;
+                } else if (/obraż|atak|cios|strzał|dmg|taran|uderzeni|holy|świę|ogien|ogień|błysk|piorun/i.test(plain)) {
+                    atkSkill = slot;
+                } else if (/bufor|wzmocn|tarcza|blogo|bless|aura/i.test(plain)) {
+                    buffSkill = slot;
+                }
+            }
+
+            // Priorytet: heal jeśli HP < 35%, w innym przypadku atak
+            let chosenSkill = null;
+            if (hp.pct < 35 && healSkill) {
+                chosenSkill = healSkill;
+                bridge.log(`<span style="color:#4ade80">🩹 Używam heal (HP ${hp.pct}%)</span>`);
+            } else if (atkSkill) {
+                chosenSkill = atkSkill;
+            } else if (buffSkill) {
+                chosenSkill = buffSkill;
+            } else if (healSkill && hp.pct < 60) {
+                chosenSkill = healSkill;
+            }
+
+            if (chosenSkill) {
+                chosenSkill.click();
+            }
+        } catch (e) {
+            console.warn('[SKILL] Błąd używania umiejętności:', e);
         }
     }
 
@@ -291,6 +425,8 @@
         if (cfg.targetMapId != null) cfgTargetMapId = cfg.targetMapId;
         if (cfg.heroHunterEnabled != null) cfgHeroHunterEnabled = cfg.heroHunterEnabled;
         if (cfg.heroHunterName != null) cfgHeroHunterName = cfg.heroHunterName;
+        if (cfg.e2HunterEnabled != null) cfgE2HunterEnabled = cfg.e2HunterEnabled;
+        if (cfg.e2HunterName != null) cfgE2HunterName = cfg.e2HunterName;
         if (cfg.patrolMapIds != null) cfgPatrolMapIds = cfg.patrolMapIds;
     }
 
@@ -312,6 +448,8 @@
             targetMapId: cfgTargetMapId,
             heroHunterEnabled: cfgHeroHunterEnabled,
             heroHunterName: cfgHeroHunterName,
+            e2HunterEnabled: cfgE2HunterEnabled,
+            e2HunterName: cfgE2HunterName,
             patrolMapIds: cfgPatrolMapIds,
         };
     }

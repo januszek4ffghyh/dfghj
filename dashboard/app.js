@@ -1,769 +1,541 @@
 'use strict';
 
-const API_URL = '/api/state';
-const CONFIG_API_URL = '/api/config';
-const POLL_MS = 1000; // Poll every 1s for smoother dashboard feel
-const STALE_MS = 6000;
-const HIDE_AFTER_MS = 30000;
+/* ═══════════════════════════════════════════
+   MARGONEM E2 HUNTER — DASHBOARD APP.JS
+   ═══════════════════════════════════════════ */
 
-const $ = id => document.getElementById(id);
-let lastGoodState = null;
-let lastGoodUpdatedAt = 0;
-let mapsDb = {};
-let mapConnections = {};
-let hasInitialTargetSync = false;
+const API = window.location.origin; // http://127.0.0.1:3847
 
-async function initMapsDb() {
-    try {
-        const resp = await fetch('/hosted/maps.json');
-        if (resp.ok) {
-            mapsDb = await resp.json();
-            populateDatalist();
-        }
-    } catch (e) {
-        console.error('Failed to load maps.json:', e);
-    }
-    
-    try {
-        const resp = await fetch('/api/map/connections');
-        if (resp.ok) {
-            const data = await resp.json();
-            mapConnections = data.connections || {};
-        }
-    } catch (e) {
-        console.error('Failed to load map connections:', e);
-    }
-}
-
-function populateDatalist() {
-    const dl = $('maps-datalist');
-    if (!dl) return;
-    dl.innerHTML = '';
-    
-    const sorted = Object.values(mapsDb).sort((a, b) => a.name.localeCompare(b.name, 'pl'));
-    sorted.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = `[${m.id}] ${m.name}`;
-        dl.appendChild(opt);
-    });
-}
-
-function parseMapIdFromInput(val) {
-    if (!val) return null;
-    val = val.trim();
-    
-    // 1. Dopasowanie formatu "[ID] Nazwa"
-    const m = val.match(/^\[(\d+)\]/);
-    if (m) return parseInt(m[1], 10);
-    
-    // 2. Bezpośrednio surowa liczba ID
-    const id = parseInt(val, 10);
-    if (!isNaN(id) && String(id) === val) return id;
-    
-    // 3. Wyszukiwanie po nazwie w bazie map (case-insensitive)
-    const lower = val.toLowerCase();
-    const found = Object.values(mapsDb).find(map => map.name.toLowerCase() === lower)
-        || Object.values(mapsDb).find(map => map.name.toLowerCase().includes(lower));
-        
-    return found ? found.id : null;
-}
-
-function parsePatrolMapsToIds(text) {
-    if (!text) return [];
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const ids = [];
-    lines.forEach(line => {
-        const id = parseMapIdFromInput(line);
-        if (id) {
-            ids.push(id);
-        }
-    });
-    return ids;
-}
-
-function getMapNameById(id) {
-    const m = mapsDb[String(id)];
-    return m ? m.name : `Mapa #${id}`;
-}
-
-function findPathLocal(startId, targetId) {
-    startId = Number(startId);
-    targetId = Number(targetId);
-    if (startId === targetId) return [];
-    if (!mapConnections) return null;
-
-    const queue = [[startId, []]];
-    const visited = new Set([startId]);
-
-    while (queue.length > 0) {
-        const [currentId, path] = queue.shift();
-
-        const connections = mapConnections[String(currentId)] || [];
-        for (const conn of connections) {
-            const nextId = Number(conn.toMapId);
-            if (nextId === targetId) {
-                return [...path, conn];
-            }
-            if (!visited.has(nextId)) {
-                visited.add(nextId);
-                queue.push([nextId, [...path, conn]]);
-            }
-        }
-    }
-    return null;
-}
-
-function renderSimulatedPath(startId, targetId, path) {
-    const container = $('travel-path-container');
-    container.innerHTML = '';
-    
-    const startMap = mapsDb[String(startId)] || { id: startId, name: `Mapa #${startId}` };
-    const targetMap = mapsDb[String(targetId)] || { id: targetId, name: `Mapa #${targetId}` };
-    
-    const timeline = document.createElement('div');
-    timeline.className = 'route-timeline';
-    
-    // Start Step
-    const startStep = document.createElement('div');
-    startStep.className = 'route-step start';
-    startStep.innerHTML = `
-        <span class="route-step-name">${startMap.name}</span>
-        <span class="route-step-id">ID: ${startMap.id}</span>
-        <span class="route-step-meta">Punkt startowy</span>
-    `;
-    timeline.appendChild(startStep);
-    
-    if (!path || !path.length) {
-        if (startId === targetId) {
-            const step = document.createElement('div');
-            step.className = 'route-step end';
-            step.innerHTML = `
-                <span class="route-step-name">${targetMap.name}</span>
-                <span class="route-step-id">ID: ${targetMap.id}</span>
-                <span class="route-step-meta">Cel podróży (jesteś na miejscu)</span>
-            `;
-            timeline.appendChild(step);
-        } else {
-            const step = document.createElement('div');
-            step.className = 'route-step';
-            step.style.color = 'var(--red)';
-            step.innerHTML = `
-                <span class="route-step-name" style="color: var(--red); font-weight:700;">Brak znanej drogi w bazie</span>
-                <span class="route-step-meta">Postać musi najpierw przejść portale ręcznie, aby bot je zapamiętał.</span>
-            `;
-            timeline.appendChild(step);
-        }
-    } else {
-        path.forEach((conn, idx) => {
-            const isEnd = idx === path.length - 1;
-            const step = document.createElement('div');
-            step.className = 'route-step ' + (isEnd ? 'end' : 'regular');
-            
-            const stepMap = mapsDb[String(conn.toMapId)] || { id: conn.toMapId, name: conn.name || `Mapa #${conn.toMapId}` };
-            step.innerHTML = `
-                <span class="route-step-name">${stepMap.name}</span>
-                <span class="route-step-id">ID: ${stepMap.id}</span>
-                <span class="route-step-meta">Przejście z ${getMapNameById(conn.fromMapId || startId)} ➔ Portal: ${conn.gatewayId || 'przejście'} (${conn.tx},${conn.ty})</span>
-            `;
-            timeline.appendChild(step);
-        });
-    }
-    
-    container.appendChild(timeline);
-}
-
-// Caches for rendering lists to prevent DOM flickering & scroll resetting
-let lastRendered = {
-    mobs: '',
-    potions: '',
-    skills: '',
-    aiPlan: '',
-    travelPath: '',
+// ── STATE ──
+let state = {
+    chars: [],
+    activeChar: '',
+    timers: [],
+    drops: {},
+    botState: null,
+    schedule: { enabled: false, slots: '' },
+    connected: false,
+    logs: [],
 };
 
+// ── HELPERS ──
+function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+function fmtSeconds(secs) {
+    if (secs <= 0) return '✅ Aktywna!';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 function fmtNum(n) {
-    if (n == null || isNaN(n)) return '—';
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'g';
-    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'm';
-    if (n >= 1e3) return Math.round(n).toLocaleString('pl-PL');
+    if (!n || n === 0) return '0';
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000)    return (n / 1000).toFixed(1) + 'k';
     return String(n);
 }
 
-function fmtExp(n) {
-    if (n == null || isNaN(n)) return '—';
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'g';
-    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'm';
-    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
-    return String(n);
+function getHpClass(pct) {
+    if (pct < 30) return 'low';
+    if (pct < 60) return 'medium';
+    return '';
 }
 
-function setConn(status, text) {
-    const el = $('conn-badge');
-    if (!el) return;
-    el.textContent = text;
-    el.className = 'conn-badge ' + status; // ok, err, warn
+function classForIcon(prof) {
+    const icons = {
+        'warrior': '⚔️', 'knight': '🛡️', 'bladedancer': '🗡️',
+        'archer': '🏹', 'hunter': '🎯', 'ranger': '🌿',
+        'mage': '🔮', 'wizard': '✨', 'shaman': '🌀',
+        'druid': '🌳', 'bard': '🎵',
+    };
+    if (!prof) return '👤';
+    const key = String(prof).toLowerCase();
+    for (const [k, v] of Object.entries(icons)) if (key.includes(k)) return v;
+    return '👤';
 }
 
-function showNoData() {
-    $('no-data').classList.remove('hidden');
-    $('dashboard').classList.add('hidden');
+function parseTimeToMinutes(str) {
+    const [h, m] = str.trim().split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    return Math.min(h * 60 + m, 1440);
 }
 
-function showDashboard() {
-    $('no-data').classList.add('hidden');
-    $('dashboard').classList.remove('hidden');
-}
-
-let lastUserChangeTimes = {};
-
-function markUserChange(id) {
-    lastUserChangeTimes[id] = Date.now();
-}
-
-// Safely update input field values if the user is not actively typing
-function updateFieldVal(id, val, isCheckbox = false) {
-    const el = $(id);
-    if (!el) return;
-    if (document.activeElement === el) return; // Skip if user is editing
-    
-    // Skip if user recently changed this field manually (cooldown 3s)
-    const lastChange = lastUserChangeTimes[id];
-    if (lastChange && (Date.now() - lastChange < 3000)) return;
-
-    if (isCheckbox) {
-        el.checked = !!val;
-    } else {
-        el.value = val ?? '';
+function isScheduleActive(config) {
+    if (!config.enabled) return null;
+    const slots = (config.slots || '').split(',').map(s => s.trim()).filter(s => s);
+    const now = new Date();
+    const cur = now.getHours() * 60 + now.getMinutes();
+    for (const slot of slots) {
+        const parts = slot.split('-');
+        if (parts.length !== 2) continue;
+        const start = parseTimeToMinutes(parts[0]);
+        const end   = parseTimeToMinutes(parts[1]);
+        if (start === null || end === null) continue;
+        if (cur >= start && cur < end) return true;
     }
+    return false;
 }
 
-async function sendConfigPatch(patch) {
+// ── NAV (tabs) ──
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById(`tab-${item.dataset.tab}`).classList.add('active');
+    });
+});
+
+// ── CHARS TAB ──
+function renderChars() {
+    const grid = document.getElementById('chars-grid');
+    const { chars, activeChar, drops } = state;
+
+    if (!chars.length) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><div>Brak postaci — bot jeszcze nie zalogował się do gry</div></div>`;
+        return;
+    }
+
+    grid.innerHTML = '';
+    chars.forEach(ch => {
+        const nick = ch.nick || ch.name || '?';
+        const lvl  = ch.lvl  || ch.level || '?';
+        const prof = ch.prof || ch.profession || '';
+        const icon = classForIcon(prof);
+        const isActive = nick.toLowerCase() === (activeChar || '').toLowerCase();
+        const world = ch.world || 'luvia';
+        const mapName = ch.mapName || ch.map_name || ch.location || '';
+
+        // HP z aktualnego stanu bota (jeśli aktywna)
+        let hpPct = null;
+        if (isActive && state.botState && state.botState.hero) {
+            const h = state.botState.hero;
+            if (h.maxHp && h.hp) hpPct = Math.round(h.hp / h.maxHp * 100);
+            else if (h.hp !== undefined && h.hp <= 100) hpPct = h.hp;
+        }
+
+        // Dropy tej postaci
+        const d = drops[nick] || {};
+
+        const card = document.createElement('div');
+        card.className = 'char-card' + (isActive ? ' active-char' : '');
+        card.innerHTML = `
+            <div class="char-top">
+                <div class="char-avatar">${icon}</div>
+                <div class="char-info">
+                    <div class="char-name">${nick}</div>
+                    <div class="char-meta">Lv${lvl} ${prof} · ${world}</div>
+                </div>
+                ${isActive ? '<span class="char-bot-badge">🤖 BOT</span>' : ''}
+            </div>
+            ${hpPct !== null ? `
+            <div class="char-hp-row">
+                <div class="char-hp-label"><span>HP</span><span>${hpPct}%</span></div>
+                <div class="hp-bar-wrap"><div class="hp-bar-fill ${getHpClass(hpPct)}" style="width:${hpPct}%"></div></div>
+            </div>` : ''}
+            <div class="char-map">📍 ${mapName || 'Nieznana lokalizacja'}</div>
+            <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:#64748b">
+                <span title="Legendy">⭐ <b style="color:#c084fc">${d.leg || 0}</b></span>
+                <span title="Heroiki">💙 <b style="color:#60a5fa">${d.hero || 0}</b></span>
+                <span title="Unikaty">💛 <b style="color:#facc15">${d.uni || 0}</b></span>
+                <span title="Zabójstwa E2">⚔️ <b style="color:#22c55e">${d.e2kills || 0}</b> E2</span>
+            </div>
+            <div class="char-actions">
+                <button class="btn btn-success btn-sm btn-login" data-nick="${nick}">⚔️ Zaloguj bota</button>
+                ${isActive ? '<button class="btn btn-ghost btn-sm" disabled>✅ Aktywna</button>' : ''}
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    // Listeners
+    grid.querySelectorAll('.btn-login').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nick = btn.dataset.nick;
+            selectChar(nick);
+        });
+    });
+}
+
+async function selectChar(nick) {
     try {
-        const resp = await fetch(CONFIG_API_URL, {
+        const res = await fetch(`${API}/api/chars/select`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(patch)
+            body: JSON.stringify({ nick })
         });
-        if (!resp.ok) {
-            console.error('Failed to apply config patch:', resp.statusText);
+        const data = await res.json();
+        if (data.ok) {
+            state.activeChar = nick;
+            toast(`✅ Zlecono logowanie na: ${nick}`, 'success');
+            renderChars();
+        } else {
+            toast(`❌ Błąd: ${data.error}`, 'error');
         }
     } catch (e) {
-        console.error('Failed to send config update:', e);
+        toast('❌ Błąd połączenia z serwerem', 'error');
     }
 }
 
-function renderState(s) {
-    if (!s) return;
+// ── TIMERS TAB ──
+function renderTimers() {
+    const list = document.getElementById('timers-list');
+    let timers = [...state.timers];
 
-    // 1. Bohater
-    const hero = s.hero || {};
-    $('hero-name').textContent = hero.name || 'Bohater';
-    $('hero-sub').textContent = [
-        hero.level ? `Poziom ${hero.level}` : null,
-        hero.iface ? `Iface: ${hero.iface}` : null,
-        hero.tile ? `Kafel: ${hero.tile.x},${hero.tile.y}` : null,
-    ].filter(Boolean).join(' · ');
+    const search = document.getElementById('timer-search').value.toLowerCase();
+    const filter = document.getElementById('timer-filter').value;
 
-    const hpPct = hero.hpPct ?? 100;
-    const hpBar = $('hp-bar');
-    hpBar.style.width = hpPct + '%';
-    hpBar.className = 'bar bar-hp' + (hpPct <= 40 ? ' low' : hpPct <= 65 ? ' mid' : '');
-    $('hp-pct').textContent = hpPct + '%';
+    const now = Date.now() / 1000;
 
-    // 2. Mapa
-    const map = s.map || {};
-    $('map-name').textContent = map.name || 'Nieznana lokacja';
-    $('map-id').textContent = map.id != null ? `ID: ${map.id}` : 'ID: —';
-    $('map-slug').textContent = map.slug || '—';
+    if (search) timers = timers.filter(t => (t.name || t.npcName || '').toLowerCase().includes(search));
 
-    // 3. Bot Status Badge
-    const bot = s.bot || {};
-    const pill = $('bot-status-badge');
-    const running = !!bot.running;
-    pill.textContent = running ? 'ONLINE' : 'STOPPED';
-    pill.className = 'status-badge ' + (running ? 'running' : 'stopped');
-    $('bot-status').textContent = running ? '▶ Działa' : '⏹ Zatrzymany';
-    $('bot-phase').textContent = bot.phase || '—';
-    $('bot-status-txt').textContent = bot.statusText || '—';
-    $('bot-target').textContent = bot.target
-        ? `${bot.target.name} Lv${bot.target.lvl} (${bot.target.tx},${bot.target.ty})`
-        : 'brak';
+    // Parse timer do sekund
+    timers = timers.map(t => {
+        const rawSecs = typeof t.seconds === 'number' ? t.seconds
+                      : typeof t.timeLeft === 'number' ? t.timeLeft
+                      : typeof t.respawnAt === 'number' ? Math.round(t.respawnAt / 1000 - now)
+                      : null;
+        return { ...t, _secs: rawSecs };
+    });
 
-    // Enable/Disable dashboard button states based on running state
-    $('btn-start-bot').disabled = running;
-    $('btn-stop-bot').disabled = !running;
+    if (filter === 'soon')   timers = timers.filter(t => t._secs !== null && t._secs >= 0 && t._secs < 600);
+    if (filter === 'active') timers = timers.filter(t => t._secs !== null && t._secs <= 0);
 
-    // 4. Złoto
-    const gold = s.gold || {};
-    $('gold-cur').textContent = fmtNum(gold.current);
-    const gain = gold.sessionGain ?? 0;
-    $('gold-gain').textContent = gain !== 0 ? (gain > 0 ? '+' : '') + fmtNum(gain) : '0';
-    $('gold-gain').className = 'val ' + (gain > 0 ? 'green' : gain < 0 ? 'red' : '');
-    $('gold-rate').textContent = gold.ratePerHour > 0 ? fmtNum(gold.ratePerHour) + '/h' : '—';
+    // Sort: najpierw aktywne, potem najkrótszy czas
+    timers.sort((a, b) => {
+        const sa = a._secs ?? 99999;
+        const sb = b._secs ?? 99999;
+        return sa - sb;
+    });
 
-    // 5. Doświadczenie (EXP)
-    const exp = s.exp || {};
-    const pct = exp.progress != null ? exp.progress.toFixed(1) : 0;
-    $('exp-bar').style.width = pct + '%';
-    $('exp-pct').textContent = pct + '%';
-    $('exp-cur').textContent = fmtExp(exp.current) + ' / ' + fmtExp(exp.max);
-    $('exp-left').textContent = fmtExp(exp.left);
-    $('exp-session').textContent = fmtExp(exp.sessionGain);
-    $('exp-session-rate').textContent = exp.ratePerHour > 0 ? fmtExp(exp.ratePerHour) + '/h' : '—';
-    $('exp-eta').textContent = exp.timeToLevel || '—';
+    // Badge
+    const urgentCount = state.timers.filter(t => {
+        const s = typeof t.seconds === 'number' ? t.seconds : typeof t.timeLeft === 'number' ? t.timeLeft : 9999;
+        return s <= 600;
+    }).length;
+    const badge = document.getElementById('nav-badge-timers');
+    badge.textContent = state.timers.length;
+    if (urgentCount > 0) { badge.classList.add('urgent'); badge.textContent = `🔴 ${urgentCount}`; }
+    else badge.classList.remove('urgent');
 
-    // 6. Mob list (Cached rendering)
-    const mobList = $('mob-list');
-    const mobs = bot.mobs || [];
-    const mobsJson = JSON.stringify(mobs);
-    if (mobsJson !== lastRendered.mobs) {
-        lastRendered.mobs = mobsJson;
-        mobList.innerHTML = '';
-        if (!mobs.length) {
-            mobList.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-dim);">Brak potworów w filtrze</div>';
-        } else {
-            mobs.slice(0, 15).forEach(m => {
-                const div = document.createElement('div');
-                div.className = 'mob-item' + (bot.target && m.id === bot.target.id ? ' target' : '');
-                div.innerHTML = `<span>${m.name} (Lv${m.lvl})</span><span>${m.dist} kaf${m.grp ? ' ⚡' : ''}</span>`;
-                mobList.appendChild(div);
-            });
-        }
+    if (!timers.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">🟢</div><div>Brak timerów E2 do pokazania</div></div>`;
+        return;
     }
 
-    // 7. Torba (Bags & Potions)
-    const bag = s.bag || {};
-    $('bag-free').textContent = bag.freeSlots != null ? `${bag.freeSlots} / ${bag.totalSlots}` : '—';
-    $('bag-used').textContent = bag.usedSlots != null ? bag.usedSlots : '—';
-    if (bag.isFull) $('bag-free').className = 'val red';
-    else if (bag.freeSlots < 6) $('bag-free').className = 'val warn';
-    else $('bag-free').className = 'val green';
+    list.innerHTML = '';
+    timers.forEach(t => {
+        const name = t.name || t.npcName || t.nick || '?';
+        const map  = t.map || t.mapName || '';
+        const secs = t._secs;
 
-    const potList = $('pot-list');
-    const potions = bag.potions || [];
-    const potJson = JSON.stringify(potions);
-    if (potJson !== lastRendered.potions) {
-        lastRendered.potions = potJson;
-        potList.innerHTML = '';
-        if (!potions.length) {
-            potList.innerHTML = '<div style="color: var(--red); padding: 4px 0;">Brak potek leczących HP!</div>';
-        } else {
-            potions.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'pot-item';
-                div.innerHTML = `<span>${p.name}</span><span>×${p.qty} (${fmtExp(p.heal)} HP)</span>`;
-                potList.appendChild(div);
-            });
-        }
-    }
+        let dotClass = '', rowClass = '', cdClass = '';
+        if (secs === null)           { dotClass = ''; }
+        else if (secs <= 0)          { dotClass = 'danger'; rowClass = 'danger'; cdClass = 'danger'; }
+        else if (secs < 300)         { dotClass = 'danger'; rowClass = 'danger'; cdClass = 'danger'; }
+        else if (secs < 600)         { dotClass = 'soon';   rowClass = 'soon';   cdClass = 'soon'; }
+        else                         { dotClass = 'active'; rowClass = '';        cdClass = ''; }
 
-    // 8. Auto-F / CAPTCHA Statuses
-    const autof = s.autof || {};
-    $('autof-status').textContent = autof.status || '—';
-    const captcha = s.captcha || {};
-    $('captcha-status').textContent = captcha.status || '—';
-
-    // 9. AI Skills Plan (Cached rendering)
-    const aiPlan = s.aiPlan || null;
-    const aiPlanJson = JSON.stringify(aiPlan);
-    if (aiPlanJson !== lastRendered.aiPlan) {
-        lastRendered.aiPlan = aiPlanJson;
-        const aiContainer = $('ai-plan-container');
-        aiContainer.innerHTML = '';
-        if (!aiPlan || !aiPlan.allocations || !aiPlan.allocations.length) {
-            aiContainer.innerHTML = '<span class="placeholder">Brak wygenerowanego planu AI. Otwórz panel umiejętności i wygeneruj plan.</span>';
-        } else {
-            if (aiPlan.summary) {
-                const summary = document.createElement('div');
-                summary.className = 'ai-plan-summary';
-                summary.textContent = aiPlan.summary;
-                aiContainer.appendChild(summary);
-            }
-            aiPlan.allocations.forEach(a => {
-                const div = document.createElement('div');
-                div.className = 'ai-plan-item';
-                div.innerHTML = `
-                    <div>
-                        <div class="name">${a.name}</div>
-                        <div class="reason">${a.reason || ''}</div>
-                    </div>
-                    <span class="pts">+${a.points}</span>
-                `;
-                aiContainer.appendChild(div);
-            });
-            if (aiPlan.warnings && aiPlan.warnings.length) {
-                aiPlan.warnings.forEach(w => {
-                    const warnDiv = document.createElement('div');
-                    warnDiv.className = 'ai-plan-warn';
-                    warnDiv.textContent = `⚠ ${w}`;
-                    aiContainer.appendChild(warnDiv);
-                });
-            }
-        }
-    }
-
-    // 10. Skills (Cached rendering)
-    const skills = s.skills || {};
-    $('skill-pts').textContent = skills.points
-        ? `${skills.points.learnt}/${skills.points.total} (wolne: ${skills.points.free})`
-        : '—';
-    if (skills.points && skills.points.free > 0) $('skill-pts').className = 'stat-value green';
-    else $('skill-pts').className = 'stat-value accent';
-
-    const skillList = $('skill-list');
-    const skillItems = skills.list || [];
-    const skillsJson = JSON.stringify(skillItems);
-    if (skillsJson !== lastRendered.skills) {
-        lastRendered.skills = skillsJson;
-        skillList.innerHTML = '';
-        if (!skillItems.length) {
-            skillList.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 10px; font-size: 11px;">Brak danych umek. Otwórz panel umiejętności w grze (U)</div>';
-        } else {
-            skillItems.forEach(sk => {
-                const pct = sk.maxLvl > 0 ? (sk.curLvl / sk.maxLvl * 100) : 0;
-                const div = document.createElement('div');
-                div.className = 'skill-item';
-                div.innerHTML = `
-                    <span class="skill-name" title="${sk.name}">${sk.name}</span>
-                    <div class="skill-bar-wrap"><div class="skill-bar" style="width:${pct}%"></div></div>
-                    <span class="skill-lvl">${sk.curLvl}/${sk.maxLvl}</span>
-                `;
-                skillList.appendChild(div);
-            });
-        }
-    }
-
-    // 11. Konfiguracja (Synchronizacja pól formularza)
-    const cfg = s.config || {};
-    updateFieldVal('field-min-lvl', cfg.minLvl);
-    updateFieldVal('field-max-lvl', cfg.maxLvl);
-    updateFieldVal('field-range', cfg.range);
-    updateFieldVal('field-arr-dist', cfg.arrDist);
-    updateFieldVal('field-walk-delay', cfg.walkDelay);
-    updateFieldVal('field-atk-delay', cfg.atkDelay);
-    updateFieldVal('field-sort-by', cfg.sortBy);
-    updateFieldVal('field-grp-only', cfg.grpOnly, true);
-    updateFieldVal('field-stop-full', cfg.stopFull, true);
-    updateFieldVal('field-stop-no-pot', cfg.stopNoPot, true);
-    updateFieldVal('field-autof-enabled', cfg.autoFEnabled, true);
-    updateFieldVal('field-autof-minhp', cfg.autoFMinHP);
-    updateFieldVal('field-captcha-enabled', s.captcha ? s.captcha.enabled : null, true);
-    updateFieldVal('field-ai-skills-enabled', cfg.aiSkillsEnabled, true);
-    updateFieldVal('field-ai-apply-enabled', cfg.aiApplyEnabled, true);
-
-    // 12. Travel & Navigation rendering
-    const travelActive = !!cfg.travelEnabled;
-    
-    // Toggle start/stop panels
-    if (travelActive) {
-        $('btn-stop-travel-container').style.display = 'block';
-        $('btn-simulate-path').disabled = true;
-        $('btn-start-travel').disabled = true;
-        $('field-start-map').disabled = true;
-        $('field-target-map').disabled = true;
-    } else {
-        $('btn-stop-travel-container').style.display = 'none';
-        $('btn-simulate-path').disabled = false;
-        $('btn-start-travel').disabled = false;
-        $('field-start-map').disabled = false;
-        $('field-target-map').disabled = false;
-    }
-
-    // Status text
-    if (s.travelStatusText) {
-        $('travel-status-txt').textContent = s.travelStatusText;
-    } else {
-        $('travel-status-txt').textContent = travelActive ? 'W podróży' : 'nieaktywna';
-    }
-
-    // If bot is active traveling, render the current path as timeline!
-    if (travelActive) {
-        const pathContainer = $('travel-path-container');
-        const pathItems = s.travelPath || [];
-        const pathJson = JSON.stringify(pathItems);
-        if (pathJson !== lastRendered.travelPath) {
-            lastRendered.travelPath = pathJson;
-            pathContainer.innerHTML = '';
-            if (!pathItems.length) {
-                pathContainer.innerHTML = '<span style="color: var(--text-dim);">Trasa ukończona lub brak drogi w bazie.</span>';
-            } else {
-                const timeline = document.createElement('div');
-                timeline.className = 'route-timeline';
-                
-                // First step is current map
-                const startStep = document.createElement('div');
-                startStep.className = 'route-step active';
-                startStep.innerHTML = `
-                    <span class="route-step-name">${s.map.name || 'Bieżąca mapa'}</span>
-                    <span class="route-step-id">ID: ${s.map.id}</span>
-                    <span class="route-step-meta">Aktualna lokalizacja bota</span>
-                `;
-                timeline.appendChild(startStep);
-
-                pathItems.forEach((p, idx) => {
-                    const isEnd = idx === pathItems.length - 1;
-                    const step = document.createElement('div');
-                    step.className = 'route-step ' + (isEnd ? 'end' : 'regular');
-                    step.innerHTML = `
-                        <span class="route-step-name">${p.name}</span>
-                        <span class="route-step-id">ID: ${p.id}</span>
-                        <span class="route-step-meta">${isEnd ? 'Cel podróży' : 'Kolejny krok w trasie'}</span>
-                    `;
-                    timeline.appendChild(step);
-                });
-                pathContainer.appendChild(timeline);
-            }
-        }
-    } else {
-        // Jeśli podróż jest aktywna, wymuś poprawne wyświetlenie celu w zablokowanym polu
-        if (travelActive && cfg.targetMapId) {
-            const targetMapName = getMapNameById(cfg.targetMapId);
-            $('field-target-map').value = `[${cfg.targetMapId}] ${targetMapName}`;
-        } else {
-            // Zsynchronizuj cel przy pierwszym załadowaniu strony
-            const skipTargetSync = lastUserChangeTimes['field-target-map'] && (Date.now() - lastUserChangeTimes['field-target-map'] < 3000);
-            if (!hasInitialTargetSync && cfg.targetMapId && !skipTargetSync) {
-                hasInitialTargetSync = true;
-                const targetMapName = getMapNameById(cfg.targetMapId);
-                $('field-target-map').value = `[${cfg.targetMapId}] ${targetMapName}`;
-            }
-        }
-    }
-
-    // Ustaw placeholder dla mapy startowej bota
-    if (s.map && s.map.id) {
-        $('field-start-map').placeholder = `Bieżąca: [${s.map.id}] ${s.map.name || 'Nieznana mapa'}`;
-    } else {
-        $('field-start-map').placeholder = 'Bieżąca mapa bota';
-    }
-
-    // 13. Hero Hunter rendering
-    updateFieldVal('field-hero-hunter-enabled', cfg.heroHunterEnabled, true);
-    updateFieldVal('field-hero-hunter-name', cfg.heroHunterName);
-    
-    if (s.patrolStatusText) {
-        $('patrol-status-txt').textContent = s.patrolStatusText;
-    } else {
-        $('patrol-status-txt').textContent = cfg.heroHunterEnabled ? 'aktywny' : 'nieaktywny';
-    }
-
-    // Sync patrol maps textarea if user is not currently editing it
-    const patrolMapsEl = $('field-patrol-maps');
-    const lastPatrolChange = lastUserChangeTimes['field-patrol-maps'];
-    const skipPatrolSync = lastPatrolChange && (Date.now() - lastPatrolChange < 3000);
-
-    if (Array.isArray(cfg.patrolMapIds) && document.activeElement !== patrolMapsEl && !skipPatrolSync) {
-        const lines = cfg.patrolMapIds.map(id => {
-            const name = getMapNameById(id);
-            return name ? `[${id}] ${name}` : String(id);
-        });
-        const expectedText = lines.join('\n');
-        if (patrolMapsEl.value !== expectedText) {
-            patrolMapsEl.value = expectedText;
-        }
-    }
-
-    updateFieldVal('field-travel-enabled', cfg.travelEnabled, true);
-
-    const ts = s.ts ? new Date(s.ts).toLocaleTimeString('pl-PL') : '—';
-    $('last-update').textContent = `Ostatnia aktualizacja: ${ts}`;
+        const row = document.createElement('div');
+        row.className = `timer-row ${rowClass}`;
+        row.dataset.secs = secs;
+        row.innerHTML = `
+            <div class="timer-dot ${dotClass}"></div>
+            <div class="timer-info">
+                <div class="timer-name">${name}</div>
+                <div class="timer-map">📍 ${map}</div>
+            </div>
+            <div class="timer-countdown ${cdClass}" data-secs="${secs}">${secs !== null ? fmtSeconds(Math.max(0, secs)) : '—'}</div>
+        `;
+        list.appendChild(row);
+    });
 }
 
-async function poll() {
+// Live countdown tick
+function tickTimers() {
+    document.querySelectorAll('.timer-countdown[data-secs]').forEach(el => {
+        let s = parseInt(el.dataset.secs);
+        if (isNaN(s)) return;
+        s = Math.max(0, s - 1);
+        el.dataset.secs = s;
+        el.textContent = fmtSeconds(s);
+    });
+}
+setInterval(tickTimers, 1000);
+
+document.getElementById('timer-search').addEventListener('input', renderTimers);
+document.getElementById('timer-filter').addEventListener('change', renderTimers);
+
+// ── STATS TAB ──
+function renderStats() {
+    const grid = document.getElementById('stats-grid');
+    const { drops, chars, activeChar } = state;
+
+    const entries = Object.entries(drops);
+    if (!entries.length) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div>Brak danych — bot jeszcze nie grał w tej sesji</div></div>`;
+        return;
+    }
+
+    grid.innerHTML = '';
+    entries.sort((a, b) => {
+        if (a[0].toLowerCase() === (activeChar || '').toLowerCase()) return -1;
+        return 0;
+    });
+
+    entries.forEach(([nick, d]) => {
+        const isActive = nick.toLowerCase() === (activeChar || '').toLowerCase();
+        const updAt = d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString('pl-PL') : '—';
+        const card = document.createElement('div');
+        card.className = 'stat-char-card';
+        card.innerHTML = `
+            <div class="stat-char-name">
+                ${isActive ? '<span class="active-dot"></span>' : ''}
+                ${nick}
+                <span style="font-size:11px;color:#64748b;font-weight:400;margin-left:auto">🕐 ${updAt}</span>
+            </div>
+            <div class="stat-row"><span class="stat-lbl">⭐ Legendy (lega)</span><span class="stat-val leg">${d.leg || 0}</span></div>
+            <div class="stat-row"><span class="stat-lbl">💙 Heroiki (hero)</span><span class="stat-val hero">${d.hero || 0}</span></div>
+            <div class="stat-row"><span class="stat-lbl">💛 Unikaty (uni)</span><span class="stat-val uni">${d.uni || 0}</span></div>
+            <div class="stat-row"><span class="stat-lbl">⚔️ Zabójstwa E2</span><span class="stat-val green">${d.e2kills || 0}</span></div>
+            <div class="stat-row"><span class="stat-lbl">🗡️ Zabójstwa ogółem</span><span class="stat-val green">${d.kills || 0}</span></div>
+            <div class="stat-row"><span class="stat-lbl">✨ EXP zdobyte</span><span class="stat-val exp">${fmtNum(d.expGained || 0)}</span></div>
+            <div class="stat-row"><span class="stat-lbl">🪙 Złoto zdobyte</span><span class="stat-val gold">${fmtNum(d.goldGained || 0)}</span></div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+// ── MONITOR TAB ──
+function renderMonitor() {
+    const s = state.botState;
+    if (!s || !s.hero) return;
+    const h = s.hero;
+
+    document.getElementById('mon-name').textContent = h.name || '—';
+    document.getElementById('mon-lvl').textContent  = h.lvl ? `Lv${h.lvl}` : 'Lv?';
+    document.getElementById('mon-map').textContent  = h.mapName || '—';
+    document.getElementById('mon-pos').textContent  = (h.x !== undefined && h.y !== undefined) ? `[${h.x}, ${h.y}]` : '[?, ?]';
+
+    let hpPct = null;
+    if (h.maxHp && h.hp) hpPct = Math.round(h.hp / h.maxHp * 100);
+    else if (h.hp !== undefined && h.hp <= 100) hpPct = h.hp;
+    if (hpPct !== null) {
+        document.getElementById('mon-hp-pct').textContent = hpPct;
+        const bar = document.getElementById('mon-hp-bar');
+        bar.style.width = hpPct + '%';
+        bar.className = `hp-bar-fill ${getHpClass(hpPct)}`;
+    }
+
+    const phase = s.phase || 'idle';
+    const phaseBadge = document.getElementById('mon-phase');
+    phaseBadge.textContent = phase.toUpperCase();
+    phaseBadge.className = `phase-badge ${phase}`;
+}
+
+// LOG FEED
+function addLog(msg, type = 'info') {
+    state.logs.unshift({ msg, type, ts: new Date().toLocaleTimeString('pl-PL') });
+    if (state.logs.length > 40) state.logs.pop();
+    renderLogFeed();
+}
+
+function renderLogFeed() {
+    const feed = document.getElementById('log-feed');
+    if (!state.logs.length) { feed.innerHTML = '<div class="log-empty">Brak logów...</div>'; return; }
+    feed.innerHTML = state.logs.map(l => `
+        <div class="log-line ${l.type}"><span class="ts">${l.ts}</span>${l.msg}</div>
+    `).join('');
+}
+
+document.getElementById('btn-clear-log').addEventListener('click', () => {
+    state.logs = [];
+    renderLogFeed();
+});
+
+// SCREENSHOT
+async function refreshScreenshot() {
+    const wrap = document.getElementById('screenshot-wrap');
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div>Pobieranie...</div></div>';
     try {
-        const resp = await fetch(API_URL);
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-
-        const age = data.updatedAt ? Date.now() - data.updatedAt : Infinity;
-        // MUST check hero.name to avoid overwriting lastGoodState with empty payload during loading screen!
-        const hasState = data.state && data.state.hero && data.state.hero.name && data.updatedAt > 0;
-        const isFresh = age < STALE_MS;
-        const isTooOld = age > HIDE_AFTER_MS;
-
-        if (!hasState && !lastGoodState) {
-            setConn('err', 'Rozłączony');
-            showNoData();
-            const pill = $('bot-status-badge');
-            if (pill) {
-                pill.textContent = 'OFFLINE';
-                pill.className = 'status-badge stopped';
-            }
-            return;
-        }
-
-        if (hasState) {
-            lastGoodState = data.state;
-            lastGoodUpdatedAt = data.updatedAt;
-        }
-
-        showDashboard();
-        renderState(lastGoodState);
-
-        if (!isFresh && !isTooOld) {
-            setConn('warn', `Ostatni sygnał: ${Math.round(age / 1000)}s temu`);
-        } else if (isTooOld) {
-            setConn('err', `Bot offline: ${Math.round(age / 1000)}s`);
-            const pill = $('bot-status-badge');
-            if (pill) {
-                pill.textContent = 'DISCONNECTED';
-                pill.className = 'status-badge stopped';
-            }
+        const res = await fetch(`${API}/api/browser/screenshot`);
+        const data = await res.json();
+        if (data.ok && data.image) {
+            wrap.innerHTML = `<img src="data:image/jpeg;base64,${data.image}" alt="Screenshot" style="width:100%;border-radius:0 0 12px 12px">`;
         } else {
-            setConn('ok', 'Połączony z botem');
+            wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>Brak podglądu (bot nieaktywny?)</div></div>';
         }
+    } catch {
+        wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>Błąd połączenia</div></div>';
+    }
+}
+document.getElementById('btn-refresh-ss').addEventListener('click', refreshScreenshot);
+document.getElementById('btn-screenshot').addEventListener('click', refreshScreenshot);
+
+// ── SCHEDULE TAB ──
+async function loadSchedule() {
+    try {
+        const res = await fetch(`${API}/api/schedule`);
+        const data = await res.json();
+        if (data.ok) {
+            state.schedule = data.schedule;
+            document.getElementById('sched-enabled').checked = !!state.schedule.enabled;
+            document.getElementById('sched-slots').value = state.schedule.slots || '';
+            updateScheduleStatus();
+        }
+    } catch {}
+}
+
+function updateScheduleStatus() {
+    const active = isScheduleActive(state.schedule);
+    const statusEl = document.getElementById('sched-status-val');
+    const nextEl   = document.getElementById('sched-next');
+
+    if (!state.schedule.enabled) {
+        statusEl.textContent = '⏸ Harmonogram wyłączony';
+        statusEl.style.color = '#64748b';
+        nextEl.textContent = '';
+        return;
+    }
+
+    const now = new Date();
+    const nowStr = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+
+    if (active) {
+        statusEl.textContent = `✅ BOT POWINIEN DZIAŁAĆ (${nowStr})`;
+        statusEl.style.color = '#22c55e';
+    } else {
+        statusEl.textContent = `⛔ BOT POWINIEN STAĆ (${nowStr})`;
+        statusEl.style.color = '#ef4444';
+    }
+
+    // Następna akcja
+    const slots = (state.schedule.slots || '').split(',').map(s => s.trim()).filter(s => s);
+    const curMin = now.getHours() * 60 + now.getMinutes();
+    let nearest = null, nearestLabel = '';
+    for (const slot of slots) {
+        const parts = slot.split('-');
+        if (parts.length !== 2) continue;
+        const s = parseTimeToMinutes(parts[0]);
+        const e = parseTimeToMinutes(parts[1]);
+        if (s === null || e === null) continue;
+        if (s > curMin && (nearest === null || s < nearest)) {
+            nearest = s; nearestLabel = `▶ Start za ${s - curMin} min (${parts[0]})`;
+        }
+        if (e > curMin && (nearest === null || e < nearest)) {
+            nearest = e; nearestLabel = `⏹ Stop za ${e - curMin} min (${parts[1]})`;
+        }
+    }
+    nextEl.textContent = nearestLabel || '(brak zaplanowanych akcji dzisiaj)';
+}
+setInterval(updateScheduleStatus, 30000);
+
+document.getElementById('btn-sched-save').addEventListener('click', async () => {
+    const enabled = document.getElementById('sched-enabled').checked;
+    const slots   = document.getElementById('sched-slots').value.trim();
+    try {
+        const res = await fetch(`${API}/api/schedule`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled, slots })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            state.schedule = data.schedule;
+            updateScheduleStatus();
+            toast('✅ Harmonogram zapisany!', 'success');
+        } else {
+            toast('❌ Błąd zapisu harmonogramu', 'error');
+        }
+    } catch {
+        toast('❌ Błąd połączenia', 'error');
+    }
+});
+
+// ── RELOG / LOGOUT ──
+document.getElementById('btn-logout').addEventListener('click', async () => {
+    if (!confirm('Wylogować bota z gry (przejdzie na stronę główną Margonem)?')) return;
+    try {
+        const res = await fetch(`${API}/api/browser/logout`, { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) toast('✅ Bot wylogowany z gry', 'success');
+        else toast(`❌ Błąd: ${data.error}`, 'error');
+    } catch {
+        toast('❌ Błąd połączenia', 'error');
+    }
+});
+
+// ── STATUS DOT (połączenie) ──
+function setConnected(ok, server) {
+    state.connected = ok;
+    const dot = document.getElementById('conn-dot');
+    const lbl = document.getElementById('conn-label');
+    const srv = document.getElementById('conn-server');
+    dot.className = 'status-dot ' + (ok ? 'online' : 'offline');
+    lbl.textContent = ok ? 'Połączony' : 'Brak połączenia';
+    if (server) srv.textContent = server;
+}
+
+// ── MAIN DATA FETCH LOOP ──
+async function fetchAll() {
+    try {
+        const [charsRes, dropsRes, timersRes, stateRes] = await Promise.all([
+            fetch(`${API}/api/chars`),
+            fetch(`${API}/api/drops`),
+            fetch(`${API}/api/timers`),
+            fetch(`${API}/api/state`),
+        ]);
+
+        const [charsData, dropsData, timersData, stateData] = await Promise.all([
+            charsRes.json(), dropsRes.json(), timersRes.json(), stateRes.json()
+        ]);
+
+        if (charsData.ok) {
+            state.chars = charsData.chars || [];
+            state.activeChar = charsData.active || '';
+        }
+        if (dropsData.ok)  state.drops  = dropsData.drops  || {};
+        if (timersData.ok) state.timers = timersData.timers || [];
+        if (stateData.ok)  state.botState = stateData.state || null;
+
+        setConnected(true, `${window.location.host}`);
+
+        // Dodaj log jeśli bot działa
+        if (state.botState && state.botState.hero) {
+            const h = state.botState.hero;
+            const phase = state.botState.phase || 'idle';
+            addLog(`[${h.name}] ${phase} — ${h.mapName || '?'}`, phase === 'fighting' ? 'ok' : 'info');
+        }
+
+        // Render all
+        renderChars();
+        renderTimers();
+        renderStats();
+        renderMonitor();
+
     } catch (e) {
-        if (lastGoodState) {
-            setConn('warn', 'Serwer offline - pokazuję ostatnie dane');
-            showDashboard();
-            renderState(lastGoodState);
-            const age = lastGoodUpdatedAt ? Date.now() - lastGoodUpdatedAt : 0;
-            $('last-update').textContent = `Ostatnia aktualizacja: ${Math.round(age / 1000)}s temu`;
-            const pill = $('bot-status-badge');
-            if (pill) {
-                pill.textContent = 'SERVER OFFLINE';
-                pill.className = 'status-badge stopped';
-            }
-            return;
-        }
-        setConn('err', 'Serwer offline');
-        showNoData();
+        setConnected(false, '');
+        addLog('Błąd połączenia z serwerem bota', 'warn');
     }
 }
 
-// Bind event listeners to input elements to send updates to the bot
-function setupConfigListeners() {
-    const bindInput = (id, key, isCheckbox = false) => {
-        const el = $(id);
-        if (!el) return;
-        
-        const eventName = isCheckbox ? 'change' : 'change';
-        el.addEventListener(eventName, () => {
-            markUserChange(id);
-            const val = isCheckbox ? el.checked : (el.type === 'number' ? parseFloat(el.value) : el.value);
-            sendConfigPatch({ [key]: val });
-        });
-    };
+// ── INITIAL LOAD ──
+fetchAll();
+loadSchedule();
 
-    bindInput('field-min-lvl', 'minLvl');
-    bindInput('field-max-lvl', 'maxLvl');
-    bindInput('field-range', 'range');
-    bindInput('field-arr-dist', 'arrDist');
-    bindInput('field-walk-delay', 'walkDelay');
-    bindInput('field-atk-delay', 'atkDelay');
-    bindInput('field-sort-by', 'sortBy');
-    bindInput('field-grp-only', 'grpOnly', true);
-    bindInput('field-stop-full', 'stopFull', true);
-    bindInput('field-stop-no-pot', 'stopNoPot', true);
-    bindInput('field-autof-enabled', 'autoFEnabled', true);
-    bindInput('field-autof-minhp', 'autoFMinHP');
-    bindInput('field-captcha-enabled', 'captchaEnabled', true);
-    bindInput('field-ai-skills-enabled', 'aiSkillsEnabled', true);
-    bindInput('field-ai-apply-enabled', 'aiApplyEnabled', true);
+// ── POLLING every 5s ──
+setInterval(fetchAll, 5000);
+setInterval(updateScheduleStatus, 1000);
 
-    // Operational Buttons
-    $('btn-start-bot').addEventListener('click', () => {
-        sendConfigPatch({ botRunning: true });
-    });
-    $('btn-stop-bot').addEventListener('click', () => {
-        sendConfigPatch({ botRunning: false });
-    });
-
-    // AI Buttons
-    $('btn-ai-plan').addEventListener('click', () => {
-        sendConfigPatch({ triggerAiPlan: true });
-    });
-    $('btn-ai-apply').addEventListener('click', () => {
-        sendConfigPatch({ triggerAiApply: true });
-    });
-
-    // Travel Simulator & Execution Buttons
-    bindInput('field-travel-enabled', 'travelEnabled', true);
-
-    $('btn-simulate-path').addEventListener('click', () => {
-        fetch('/api/map/connections')
-            .then(resp => resp.json())
-            .then(data => {
-                mapConnections = data.connections || {};
-                
-                let startId = parseMapIdFromInput($('field-start-map').value);
-                if (!startId) {
-                    startId = lastGoodState && lastGoodState.map ? lastGoodState.map.id : null;
-                }
-                
-                if (!startId) {
-                    alert('Nie można określić mapy startowej (bot nie wysłał stanu lub brak wyboru)!');
-                    return;
-                }
-                
-                const targetId = parseMapIdFromInput($('field-target-map').value);
-                if (!targetId) {
-                    alert('Wybierz poprawną mapę docelową z listy lub wpisz jej ID!');
-                    return;
-                }
-                
-                const path = findPathLocal(startId, targetId);
-                lastRendered.travelPath = 'SIMULATED';
-                renderSimulatedPath(startId, targetId, path);
-            });
-    });
-
-    $('btn-start-travel').addEventListener('click', () => {
-        markUserChange('field-target-map');
-        const targetId = parseMapIdFromInput($('field-target-map').value);
-        if (!targetId) {
-            alert('Wybierz poprawną mapę docelową z listy lub wpisz jej ID!');
-            return;
-        }
-        sendConfigPatch({ travelEnabled: true, targetMapId: targetId });
-    });
-
-    $('btn-stop-travel').addEventListener('click', () => {
-        markUserChange('field-target-map');
-        sendConfigPatch({ travelEnabled: false });
-    });
-
-    // Hero Hunter Inputs
-    bindInput('field-hero-hunter-enabled', 'heroHunterEnabled', true);
-    bindInput('field-hero-hunter-name', 'heroHunterName');
-
-    $('field-patrol-maps').addEventListener('change', () => {
-        markUserChange('field-patrol-maps');
-        const text = $('field-patrol-maps').value;
-        const ids = parsePatrolMapsToIds(text);
-        sendConfigPatch({ patrolMapIds: ids });
-    });
-
-    $('btn-load-zmora-maps').addEventListener('click', () => {
-        markUserChange('field-patrol-maps');
-        const ZMORA_MAPS = [
-            "Skład Grabieżców",
-            "Schowek na Łupy",
-            "Pagórki Łupieżców",
-            "Przełęcz Łotrzyków",
-            "Kamienna Kryjówka",
-            "Dolina Rozbójników",
-            "Zapomniany Grobowiec p.5",
-            "Zapomniany Grobowiec p.4",
-            "Zapomniany Grobowiec p.3",
-            "Zapomniany Grobowiec p.2",
-            "Zapomniany Grobowiec p.1",
-            "Ghuli Mogilnik",
-            "Polana Ścierwojadów",
-            "Podmokła Dolina",
-            "Morwowe Przejście",
-            "Las Goblinów",
-            "Mokradła",
-            "Fort Eder"
-        ];
-        $('field-patrol-maps').value = ZMORA_MAPS.join('\n');
-        const ids = parsePatrolMapsToIds($('field-patrol-maps').value);
-        sendConfigPatch({ patrolMapIds: ids });
-    });
-}
-
-// Init
-initMapsDb();
-setupConfigListeners();
-poll();
-setInterval(poll, POLL_MS);
+// ── SCREENSHOT modal ──
+document.getElementById('modal-ss-close').addEventListener('click', () => {
+    document.getElementById('modal-ss').style.display = 'none';
+});

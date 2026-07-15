@@ -1,0 +1,678 @@
+﻿// ==UserScript==
+// @name         Margonem Unified Panel
+// @version      1.0.0
+// @description  Połączenie koloru relacji i Follow The Leader w jednym nowoczesnym panelu
+// @author       Copilot
+// @match        *://*.margonem.pl/*
+// @match        *://*.margonem.com/*
+// @match        *://margonem.pl/*
+// @match        *://margonem.com/*
+// @grant        none
+// @run-at       document-end
+// @noframes
+// ==/UserScript==
+
+(function () {
+  "use strict";
+
+  const page = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+
+  const STORAGE = {
+    colors: "marg-unified-colors",
+    ftl: "marg-unified-ftl",
+    minimized: "marg-unified-minimized",
+    pos: "marg-unified-pos",
+    combatMode: "marg-unified-combat-mode"
+  };
+
+  const RELATION_NAMES = {
+    fr: "Przyjaciele",
+    en: "Wrogowie",
+    cl: "Klanowiczy",
+    "cl-fr": "Sojusznicy",
+    "cl-en": "Rywale klanu",
+    rights: "Osoby funkcyjne",
+    grp: "Członkowie grupy"
+  };
+
+  const RELATION_COLORS = {
+    fr: "#22c55e",
+    en: "#ef4444",
+    cl: "#38bdf8",
+    "cl-fr": "#5eead4",
+    "cl-en": "#fb7185",
+    rights: "#facc15",
+    grp: "#8b5cf6"
+  };
+
+  function readStorage(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw == null) return fallback;
+      return raw === "1" || raw === "true";
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function writeStorage(key, value) {
+    try {
+      localStorage.setItem(key, value ? "1" : "0");
+    } catch (_) {}
+  }
+
+  function readStorageString(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw == null ? fallback : raw;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function writeStorageString(key, value) {
+    try {
+      localStorage.setItem(key, String(value));
+    } catch (_) {}
+  }
+
+  function loadPos() {
+    try {
+      const raw = localStorage.getItem(STORAGE.pos);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Number.isFinite(parsed?.left) && Number.isFinite(parsed?.top)) return parsed;
+    } catch (_) {}
+    return null;
+  }
+
+  function clamp(val, min, max) {
+    return Math.min(Math.max(val, min), max);
+  }
+
+  const state = {
+    colorsEnabled: readStorage(STORAGE.colors, true),
+    ftlEnabled: readStorage(STORAGE.ftl, true),
+    minimized: readStorage(STORAGE.minimized, false),
+    combatMode: readStorageString(STORAGE.combatMode, "follow"),
+    pos: loadPos(),
+    ui: null,
+    statusText: "Gotowy",
+    leaderText: "Brak lidera",
+    lastLeaderId: null,
+    blinkOn: false
+  };
+
+  function isInBattle() {
+    const battle = page.Engine?.battle;
+    if (battle && typeof battle.getShow === "function") {
+      try {
+        return !!battle.getShow();
+      } catch (_) {}
+    }
+
+    const el = document.querySelector(".battle-window, .battle-area");
+    return !!el && el.offsetParent !== null;
+  }
+
+  function getVisiblePartyRows() {
+    try {
+      return Array.from(document.querySelectorAll(".party-window .party-member[class*='other-party-id-']")).filter((row) => row.offsetParent !== null);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function getLeaderIdFromCrownDom() {
+    for (const row of getVisiblePartyRows()) {
+      const crown = row.querySelector(".party__crown");
+      if (crown && crown.style.display === "block") {
+        const match = row.className.match(/other-party-id-(\d+)/);
+        if (match) return match[1];
+      }
+    }
+    return null;
+  }
+
+  function getValidatedLeaderId() {
+    const crownLeader = getLeaderIdFromCrownDom();
+    if (crownLeader != null) {
+      state.lastLeaderId = crownLeader;
+      return crownLeader;
+    }
+    const hasAnyRoster = document.querySelector(".party-window .party-member[class*='other-party-id-']") != null;
+    if (!hasAnyRoster) {
+      state.lastLeaderId = null;
+      return null;
+    }
+    return state.lastLeaderId;
+  }
+
+  function getLeaderObj(leaderId) {
+    const others = page.Engine?.others;
+    if (!others || typeof others.getById !== "function") return null;
+    try {
+      return others.getById(leaderId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getLeaderNickFromDom(leaderId) {
+    try {
+      const row = document.querySelector(`.party-member.other-party-id-${leaderId}`);
+      const nick = row?.querySelector(".nickname .nickname-text")?.textContent?.trim();
+      return nick || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setStatus(text) {
+    if (state.statusText === text) return;
+    state.statusText = text;
+    if (state.ui?.status) state.ui.status.textContent = text;
+  }
+
+  function setLeaderLine(text) {
+    if (state.leaderText === text) return;
+    state.leaderText = text;
+    if (state.ui?.leader) state.ui.leader.textContent = text;
+  }
+
+  function getBattleTargets() {
+    try {
+      const nodes = Array.from(document.querySelectorAll(".battle-window .one-warrior, .battle-window .troop, .battle-area .one-warrior"));
+      return nodes.filter((node) => {
+        const cls = node.className || "";
+        return /one-warrior--npc|one-warrior--enemy|troop/i.test(cls) || cls.includes("other-id-battle--");
+      });
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function getPreferredCombatTarget() {
+    const selected = document.querySelector(".battle-window .one-warrior.selected, .battle-window .troop.selected, .battle-area .one-warrior.selected");
+    if (selected) return selected;
+    const targets = getBattleTargets();
+    return targets[0] || null;
+  }
+
+  function getTargetLabel(targetEl) {
+    const label = targetEl?.getAttribute("title") || targetEl?.dataset?.tip || targetEl?.textContent || "cel";
+    return String(label).replace(/\s+/g, " ").trim() || "cel";
+  }
+
+  function engageCombatTarget() {
+    const targetEl = getPreferredCombatTarget();
+    if (!targetEl) return false;
+    try {
+      targetEl.click?.();
+      targetEl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      targetEl.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      targetEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function applyRelationColors() {
+    if (!state.colorsEnabled) {
+      document.querySelectorAll(".party-member .nickname-text, .party-member .nickname, .nickname-text").forEach((node) => {
+        node.style.removeProperty("color");
+      });
+      return;
+    }
+
+    document.querySelectorAll(".party-window .party-member, .party-member").forEach((row) => {
+      const className = row.className || "";
+      const match = className.match(/\b(fr|en|cl|cl-fr|cl-en|rights|grp)\b/);
+      if (!match) return;
+      const key = match[1];
+      const color = RELATION_COLORS[key] || "#ffffff";
+      const target = row.querySelector(".nickname-text, .nickname, .name");
+      if (target) {
+        target.style.setProperty("color", color, "important");
+        target.style.setProperty("font-weight", "700", "important");
+      }
+    });
+  }
+
+  function heartbeat() {
+    state.blinkOn = !state.blinkOn;
+    if (state.ui?.dot) {
+      state.ui.dot.classList.toggle("blink", state.ftlEnabled && state.blinkOn);
+    }
+  }
+
+  function tick() {
+    heartbeat();
+    applyRelationColors();
+
+    if (isInBattle()) {
+      if (state.combatMode === "follow") {
+        setStatus("Walka: tryb Follow");
+        return;
+      }
+
+      const target = getPreferredCombatTarget();
+      if (target) {
+        const ok = engageCombatTarget();
+        setStatus(ok ? `Atakuję ${getTargetLabel(target)}` : "Atakuję cel");
+        return;
+      }
+
+      setStatus("Brak celu do ataku");
+      return;
+    }
+
+    if (!state.ftlEnabled) {
+      setStatus("FTL wyłączone");
+      return;
+    }
+
+    const heroD = page.Engine?.hero?.d;
+    if (heroD?.id == null) {
+      setStatus("Czekam na grę...");
+      return;
+    }
+    if (page.Engine?.dead) {
+      setStatus("Wstrzymano (martwy)");
+      return;
+    }
+
+    const leaderId = getValidatedLeaderId();
+    if (leaderId == null) {
+      setStatus("Brak grupy");
+      setLeaderLine("Brak lidera");
+      return;
+    }
+    if (String(leaderId) === String(heroD.id)) {
+      setStatus("Jesteś liderem");
+      setLeaderLine(`Lider: ${heroD.nick} (Ty)`);
+      return;
+    }
+
+    const leaderNick = getLeaderNickFromDom(leaderId) || `#${leaderId}`;
+    setLeaderLine(`Lider: ${leaderNick}`);
+
+    const leaderObj = getLeaderObj(leaderId);
+    if (!leaderObj?.d) {
+      setStatus("Lider poza zasięgiem");
+      return;
+    }
+
+    const leaderD = leaderObj.d;
+    const dx = Math.abs(leaderD.x - heroD.x);
+    const dy = Math.abs(leaderD.y - heroD.y);
+
+    if (dx <= 1 && dy <= 1) {
+      setStatus("Przy liderze");
+      return;
+    }
+
+    try {
+      page.Engine.hero.addAfterFollowAction(leaderObj);
+    } catch (_) {}
+
+    setStatus(`Podążam (${Math.max(dx, dy)}p)`);
+  }
+
+  function setColorsEnabled(next) {
+    state.colorsEnabled = next;
+    writeStorage(STORAGE.colors, next);
+    if (state.ui?.toggleColors) {
+      state.ui.toggleColors.classList.toggle("active", next);
+      state.ui.toggleColors.textContent = next ? "🟢 Kolory relacji" : "⚪ Kolory relacji";
+    }
+    setStatus(next ? "Kolory aktywne" : "Kolory wyłączone");
+  }
+
+  function setFtlEnabled(next) {
+    state.ftlEnabled = next;
+    writeStorage(STORAGE.ftl, next);
+    if (state.ui?.toggleFtl) {
+      state.ui.toggleFtl.classList.toggle("active", next);
+      state.ui.toggleFtl.textContent = next ? "🟢 Follow The Leader" : "⚪ Follow The Leader";
+    }
+    setStatus(next ? "FTL aktywne" : "FTL wyłączone");
+    if (!next) setLeaderLine("Brak lidera");
+  }
+
+  function savePos(left, top) {
+    state.pos = { left, top };
+    try {
+      localStorage.setItem(STORAGE.pos, JSON.stringify(state.pos));
+    } catch (_) {}
+  }
+
+  function setCombatMode(next) {
+    state.combatMode = next;
+    writeStorageString(STORAGE.combatMode, next);
+    if (state.ui?.modeButtons) {
+      Object.entries(state.ui.modeButtons).forEach(([key, btn]) => {
+        btn.classList.toggle("active", key === next);
+      });
+    }
+    if (state.ui?.combatModeLabel) {
+      const label = next === "nearest" ? "Tryb: Najbliższy" : next === "selected" ? "Tryb: Wybrany" : "Tryb: Follow";
+      state.ui.combatModeLabel.textContent = label;
+    }
+  }
+
+  function makeDraggable(panel, handle) {
+    let offsetX = 0;
+    let offsetY = 0;
+
+    function onMove(e) {
+      const left = clamp(e.clientX - offsetX, 0, window.innerWidth - panel.offsetWidth);
+      const top = clamp(e.clientY - offsetY, 0, window.innerHeight - panel.offsetHeight);
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+    }
+
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      savePos(parseInt(panel.style.left, 10), parseInt(panel.style.top, 10));
+    }
+
+    handle.addEventListener("mousedown", (e) => {
+      const rect = panel.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      e.preventDefault();
+    });
+  }
+
+  function setMinimized(next) {
+    state.minimized = next;
+    writeStorage(STORAGE.minimized, next);
+    if (state.ui?.panel) {
+      state.ui.panel.classList.toggle("minimized", next);
+      if (state.ui?.minBtn) {
+        state.ui.minBtn.textContent = next ? "▢" : "▁";
+        state.ui.minBtn.title = next ? "Rozwiń" : "Zwiń";
+      }
+    }
+  }
+
+  function injectUi() {
+    const existing = document.getElementById("marg-unified-panel");
+    if (existing) {
+      existing.style.display = "block";
+      return;
+    }
+
+    const root = document.querySelector(".game-window-positioner") || document.body || document.documentElement;
+    if (!root) return;
+
+    const style = document.createElement("style");
+    style.textContent = `
+      #marg-unified-panel {
+        position: absolute;
+        z-index: 2147483647;
+        width: 250px;
+        border-radius: 18px;
+        overflow: hidden;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        background: rgba(6, 10, 20, 0.94);
+        border: 1px solid rgba(255,255,255,0.16);
+        box-shadow: 0 18px 45px rgba(0,0,0,0.5);
+        color: #f5f7ff;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        user-select: none;
+        pointer-events: auto;
+      }
+      #marg-unified-panel.minimized .panel-body {
+        display: none;
+      }
+      #marg-unified-panel .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: linear-gradient(135deg, rgba(124,58,237,0.98), rgba(59,130,246,0.95));
+        cursor: move;
+      }
+      #marg-unified-panel .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.3px;
+      }
+      #marg-unified-panel .panel-icon { font-size: 15px; }
+      #marg-unified-panel .panel-actions { display: flex; gap: 6px; }
+      #marg-unified-panel .panel-btn {
+        border: 0;
+        background: rgba(255,255,255,0.18);
+        color: #fff;
+        border-radius: 999px;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      #marg-unified-panel .panel-btn:hover { background: rgba(255,255,255,0.28); }
+      #marg-unified-panel .panel-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #marg-unified-panel .toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #dce3ff;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      #marg-unified-panel .toggle:hover { transform: translateY(-1px); background: rgba(255,255,255,0.12); }
+      #marg-unified-panel .toggle.active { background: rgba(34,197,94,0.18); border-color: rgba(74,222,128,0.35); }
+      #marg-unified-panel .mode-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      #marg-unified-panel .mode-btn {
+        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.06);
+        color: #dce3ff;
+        border-radius: 10px;
+        padding: 7px 6px;
+        font-size: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      #marg-unified-panel .mode-btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.12); }
+      #marg-unified-panel .mode-btn.active { background: rgba(59,130,246,0.24); border-color: rgba(96,165,250,0.35); }
+      #marg-unified-panel .panel-line {
+        font-size: 11px;
+        color: #b7c0e0;
+        padding: 6px 8px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.05);
+      }
+      #marg-unified-panel .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #64748b;
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+      }
+      #marg-unified-panel .dot.blink { background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,0.7); }
+    `;
+    document.head.appendChild(style);
+
+    const panel = document.createElement("div");
+    panel.id = "marg-unified-panel";
+
+    if (root.classList.contains("game-window-positioner")) {
+      panel.style.position = "absolute";
+      panel.style.right = "18px";
+      panel.style.top = "18px";
+    } else {
+      panel.style.position = "fixed";
+      panel.style.right = "18px";
+      panel.style.bottom = "120px";
+    }
+
+    if (state.pos) {
+      panel.style.left = `${state.pos.left}px`;
+      panel.style.top = `${state.pos.top}px`;
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+    }
+
+    if (state.minimized) panel.classList.add("minimized");
+
+    const head = document.createElement("div");
+    head.className = "panel-head";
+
+    const title = document.createElement("div");
+    title.className = "panel-title";
+    title.innerHTML = '<span class="panel-icon">⚔</span><span>Margonem Panel</span>';
+
+    const actions = document.createElement("div");
+    actions.className = "panel-actions";
+
+    const minBtn = document.createElement("button");
+    minBtn.className = "panel-btn";
+    minBtn.textContent = state.minimized ? "▢" : "▁";
+    minBtn.title = state.minimized ? "Rozwiń" : "Zwiń";
+    minBtn.addEventListener("click", () => {
+      const next = !state.minimized;
+      setMinimized(next);
+    });
+
+    const body = document.createElement("div");
+    body.className = "panel-body";
+
+    const colorsToggle = document.createElement("button");
+    colorsToggle.className = "toggle";
+    colorsToggle.classList.toggle("active", state.colorsEnabled);
+    colorsToggle.textContent = state.colorsEnabled ? "🟢 Kolory relacji" : "⚪ Kolory relacji";
+    colorsToggle.addEventListener("click", () => {
+      setColorsEnabled(!state.colorsEnabled);
+    });
+
+    const ftlToggle = document.createElement("button");
+    ftlToggle.className = "toggle";
+    ftlToggle.classList.toggle("active", state.ftlEnabled);
+    ftlToggle.textContent = state.ftlEnabled ? "🟢 Follow The Leader" : "⚪ Follow The Leader";
+    ftlToggle.addEventListener("click", () => {
+      setFtlEnabled(!state.ftlEnabled);
+    });
+
+    const modeRow = document.createElement("div");
+    modeRow.className = "mode-row";
+
+    const modeButtons = {};
+    [
+      { key: "follow", label: "Follow" },
+      { key: "nearest", label: "Najbliższy" },
+      { key: "selected", label: "Wybrany" }
+    ].forEach(({ key, label }) => {
+      const btn = document.createElement("button");
+      btn.className = "mode-btn";
+      btn.textContent = label;
+      btn.addEventListener("click", () => setCombatMode(key));
+      modeButtons[key] = btn;
+      modeRow.appendChild(btn);
+    });
+
+    const status = document.createElement("div");
+    status.className = "panel-line";
+    status.textContent = "Status: Gotowy";
+
+    const leader = document.createElement("div");
+    leader.className = "panel-line";
+    leader.textContent = "Lider: brak";
+
+    const modeLine = document.createElement("div");
+    modeLine.className = "panel-line";
+    modeLine.textContent = "Tryb: Follow";
+
+    const footer = document.createElement("div");
+    footer.className = "panel-line";
+    footer.innerHTML = '<span style="display:flex;align-items:center;gap:6px;"><span class="dot"></span>Moduły: 2</span>';
+
+    actions.appendChild(minBtn);
+    head.appendChild(title);
+    head.appendChild(actions);
+    body.appendChild(colorsToggle);
+    body.appendChild(ftlToggle);
+    body.appendChild(modeRow);
+    body.appendChild(status);
+    body.appendChild(leader);
+    body.appendChild(modeLine);
+    body.appendChild(footer);
+    panel.appendChild(head);
+    panel.appendChild(body);
+
+    root.appendChild(panel);
+
+    state.ui = {
+      panel,
+      minBtn,
+      toggleColors: colorsToggle,
+      toggleFtl: ftlToggle,
+      modeButtons,
+      combatModeLabel: modeLine,
+      status,
+      leader,
+      dot: footer.querySelector(".dot")
+    };
+
+    makeDraggable(panel, head);
+    setColorsEnabled(state.colorsEnabled);
+    setFtlEnabled(state.ftlEnabled);
+    setCombatMode(state.combatMode);
+    setStatus(state.statusText);
+    setLeaderLine(state.leaderText);
+  }
+
+  function init() {
+    injectUi();
+    applyRelationColors();
+    if (!window.__margUnifiedTimer) {
+      window.__margUnifiedTimer = setInterval(tick, 450);
+      window.__margUnifiedColorTimer = setInterval(applyRelationColors, 1200);
+    }
+  }
+
+  function boot() {
+    const hostOk = /margonem\.(pl|com)$/i.test(location.hostname) || location.hostname.endsWith(".margonem.pl") || location.hostname.endsWith(".margonem.com");
+    if (!hostOk) return;
+
+    if (document.body || document.documentElement) {
+      init();
+      return;
+    }
+
+    setTimeout(boot, 250);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+})();

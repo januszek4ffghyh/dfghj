@@ -1,0 +1,318 @@
+<div class="site-top">
+                        <div class="wrapper">
+    <script>
+        var paidWorlds = {"#pandora":1500};
+    </script>
+
+    <div class="menu-container hide-for-mobile" role="navigation" aria-label="Nawigacja">
+        <ul class="menu">
+            <li><a href="/"><img class="logo-mini" src="/_i/pl/logo-mini.svg" alt="Najmniejsze logo Margonem"></a></li>
+            <li><a href="/art/world">Świat</a></li>
+            <li><a href="/ladder">Gracze</a></li>
+            <li><a href="https://support.garmory.pl/s/margonem.pl/pl">Support</a></li>
+            <li><a href="https://forum.margonem.pl/">Forum</a></li>
+                                                <li class="expandable last-item">
+                        <a href="/profile/view,9192384">Profil</a>
+                        <ul>
+                            <li class="display-for-mobile"><a href="/mobile-client-settings">Edytuj ustawienia aplikacji</a></li>
+                            <li><a href="/config">Edytuj ustawienia</a></li>
+                            <li><a href="/payments">Doładuj Smocze Łuski</a></li>
+                                                                                                                <li class="display-for-mobile"><a href="https://margonem.com/#mainContent">Przejdź do Margonem.com</a></li>
+                            
+                                                        <li class="js-account-logout">Wyloguj</li>
+                        </ul>
+                    </li>
+                                        <li class="burger-icon">
+                <img src="/_i/pl/burger-icon.png" alt="burger-icon">
+            </li>
+        </ul>
+    </div>
+            <h1 class="logo-small" role="heading" aria-level="1">
+            <a href="/">
+                <img src="/_i/pl/logo-small.svg?v=2" alt="Małe logo Margonem">
+            </a>
+        </h1>
+
+                  <div class="box-trnsp header-box header-box--logged" role="region" aria-label="Panel logowania">
+              <div id="js-login-box">
+                                <div class="heading heading--left">Witaj, Królowa kocurów!</div>
+                <div class="info-container mt-30">
+                  <div class="label mb-10">Wybierz Postać:</div>
+                </div>
+                <div class="select-char">
+                                      <div class="charimg-container">
+                      <div class="charFitWrapper"><span id="charimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/mage/40/f_mag10.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;"></span></div>
+                      <img id="charimg-loader" src="https://micc.garmory-cdn.cloud/obrazki/postacie/mage/40/f_mag10.gif" alt="spinner">
+                    </div>
+                    <div class="char-description">
+                      <div>
+                        <span id="chnick">Niszczycielka Marzeń</span>
+                      </div>
+                      <div>
+                        <span id="charprof-name">Mag</span>,
+                        lvl: <span id="chlvl">52</span>
+                      </div>
+                      <div>
+                        Świat: <span id="chworld">Luvia</span><br>
+                      </div>
+                      <input type="hidden" id="chid" value="3060" autocomplete="off">
+                      <input type="hidden" id="chlast" value="1783783288" autocomplete="off">
+                    </div>
+                                  </div>
+                
+              
+
+
+                                                          <div class="box-enter">
+                  <div class="info-container">
+                    <div class="c-btn enter-game">Wejdź do gry</div>
+                                                          </div>
+                </div>
+                                                      </div>
+            <div class="ban-box" id="js-ban-box" style="display: none;" role="region" aria-label="Kod weryfikacyjny">
+              <div class="ban-box__info" id="js-ban-box-info">
+                Konto zostało zablokowane
+                <div class="c-btn mt-2" id="js-show-ban-details">Szczegóły blokady</div>
+              </div>
+              <div class="ban-box__bottom">
+                <p>W przypadku odwołania od blokady możesz skorzystać z kodu weryfikacyjnego.</p>
+                <div class="c-btn mt-2" id="js-show-ban-verification-code">Wyświetl</div>
+              </div>
+            </div>
+          </div>
+        
+
+    </div>
+                    </div>  
+
+<div class="light-brown-box news-container no-footer">
+        <div class="header-underline">Wybierz Postać</div>
+
+        <div class="row justify-content-end">
+            <div class="col-12 col-sm-5">
+                <div class="form-group form-inline">
+                    <label for="char-sort" class="label-control">Sortuj wg</label>
+                    <select class="form-select sort-character-select" id="char-sort">
+                        <option data-sort="nick" data-sort-order="asc">Nazwy (alfabetycznie)</option>
+                        <option data-sort="lvl" data-sort-order="asc">Poziomu (rosnąco)</option>
+                        <option data-sort="lvl" data-sort-order="desc">Poziomu (malejąco)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="news-body">
+            <div class="char-container">
+                                                            <h3>
+                            Światy specjalne                        </h3>
+                        <div class="charlist">
+                            <div class="charc" data-lvl="1" data-id="180282" data-world="experimental" data-nick="sdfrgg">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/noob/hm.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="180282"><input type="hidden" name="nick" value="sdfrgg"><input type="hidden" name="lvl" value="1">
+                                    <input type="hidden" name="clan" value=""><input type="hidden" name="world" value="Experimental"><input type="hidden" name="prof" value="h">
+                                    <input type="hidden" name="profname" value="Łowca">
+                                    <input type="hidden" name="last" value="1742656991">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        sdfrgg                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Łowca,
+                                                    </span>
+                                        <span class="clvl h">lvl 1</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: experimental</span>
+                                    </div>
+                                </div>
+                                </div>                        </div>
+                                                                                <h3>
+                            Światy publiczne                        </h3>
+                        <div class="charlist">
+                            <div class="charc" data-lvl="1" data-id="1441261" data-world="lelwani" data-nick="Łowczynie skarbów">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/noob/mm.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="1441261"><input type="hidden" name="nick" value="Łowczynie skarbów"><input type="hidden" name="lvl" value="1">
+                                    <input type="hidden" name="clan" value=""><input type="hidden" name="world" value="Lelwani"><input type="hidden" name="prof" value="m">
+                                    <input type="hidden" name="profname" value="Mag">
+                                    <input type="hidden" name="last" value="1742805818">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Łowczynie skarbów                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Mag,
+                                                    </span>
+                                        <span class="clvl m">lvl 1</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: lelwani</span>
+                                    </div>
+                                </div>
+                                </div><div class="charc" data-lvl="64" data-id="9506" data-world="luvia" data-nick="Królowa Kocurów">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/bd/60/f_bd16.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="9506"><input type="hidden" name="nick" value="Królowa Kocurów"><input type="hidden" name="lvl" value="64">
+                                    <input type="hidden" name="clan" value=""><input type="hidden" name="world" value="Luvia"><input type="hidden" name="prof" value="b">
+                                    <input type="hidden" name="profname" value="Tancerz ostrzy">
+                                    <input type="hidden" name="last" value="1783778675">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Królowa Kocurów                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Tancerz ostrzy,
+                                                    </span>
+                                        <span class="clvl b">lvl 64</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: luvia</span>
+                                    </div>
+                                </div>
+                                </div><div class="charc" data-lvl="11" data-id="24494" data-world="luvia" data-nick="Magdakot">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/noob/bk.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="24494"><input type="hidden" name="nick" value="Magdakot"><input type="hidden" name="lvl" value="11">
+                                    <input type="hidden" name="clan" value=""><input type="hidden" name="world" value="Luvia"><input type="hidden" name="prof" value="b">
+                                    <input type="hidden" name="profname" value="Tancerz ostrzy">
+                                    <input type="hidden" name="last" value="1783778660">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Magdakot                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Tancerz ostrzy,
+                                                    </span>
+                                        <span class="clvl b">lvl 11</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: luvia</span>
+                                    </div>
+                                </div>
+                                </div><div class="charc" data-lvl="52" data-id="3060" data-world="luvia" data-nick="Niszczycielka Marzeń">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/mage/40/f_mag10.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="3060"><input type="hidden" name="nick" value="Niszczycielka Marzeń"><input type="hidden" name="lvl" value="52">
+                                    <input type="hidden" name="clan" value="Garbusy"><input type="hidden" name="world" value="Luvia"><input type="hidden" name="prof" value="m">
+                                    <input type="hidden" name="profname" value="Mag">
+                                    <input type="hidden" name="last" value="1783783288">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Niszczycielka Marzeń                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Mag,
+                                                    </span>
+                                        <span class="clvl m">lvl 52</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: luvia</span>
+                                    </div>
+                                </div>
+                                </div><div class="charc" data-lvl="70" data-id="1582770" data-world="telawel" data-nick="Magdakot">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/pal/60/f_pal16.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="1582770"><input type="hidden" name="nick" value="Magdakot"><input type="hidden" name="lvl" value="70">
+                                    <input type="hidden" name="clan" value="niszczyciele"><input type="hidden" name="world" value="Telawel"><input type="hidden" name="prof" value="p">
+                                    <input type="hidden" name="profname" value="Paladyn">
+                                    <input type="hidden" name="last" value="1783002411">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Magdakot                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Paladyn,
+                                                    </span>
+                                        <span class="clvl p">lvl 70</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: telawel</span>
+                                    </div>
+                                </div>
+                                </div><div class="charc" data-lvl="43" data-id="1585261" data-world="telawel" data-nick="Mispalamta">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/mage/20/f_mag06.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="1585261"><input type="hidden" name="nick" value="Mispalamta"><input type="hidden" name="lvl" value="43">
+                                    <input type="hidden" name="clan" value="niszczyciele"><input type="hidden" name="world" value="Telawel"><input type="hidden" name="prof" value="m">
+                                    <input type="hidden" name="profname" value="Mag">
+                                    <input type="hidden" name="last" value="1782991382">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Mispalamta                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Mag,
+                                                    </span>
+                                        <span class="clvl m">lvl 43</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: telawel</span>
+                                    </div>
+                                </div>
+                                </div>                        </div>
+                                                                                <h3>
+                            Światy prywatne                        </h3>
+                        <div class="charlist">
+                            <div class="charc" data-lvl="147" data-id="137388" data-world="syberia" data-nick="Kocia Zabójczyni">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/kuf/kuf_zim_trop_d.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="137388"><input type="hidden" name="nick" value="Kocia Zabójczyni"><input type="hidden" name="lvl" value="147">
+                                    <input type="hidden" name="clan" value=""><input type="hidden" name="world" value="Syberia"><input type="hidden" name="prof" value="m">
+                                    <input type="hidden" name="profname" value="Mag">
+                                    <input type="hidden" name="last" value="1781277164">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Kocia Zabójczyni                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Mag,
+                                                    </span>
+                                        <span class="clvl m">lvl 147</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: syberia</span>
+                                    </div>
+                                </div>
+                                </div><div class="charc" data-lvl="217" data-id="134843" data-world="syberia" data-nick="Królowa kocurów">
+                                <div class="charFitWrapper"><div class="cimg" style="background-image: url(&quot;https://micc.garmory-cdn.cloud/obrazki/postacie/kuf/prof_xxviii_low_k.gif&quot;); opacity: 1; background-size: 128px 192px; width: 32px; height: 48px;">
+                                    <input type="hidden" name="id" value="134843"><input type="hidden" name="nick" value="Królowa kocurów"><input type="hidden" name="lvl" value="217">
+                                    <input type="hidden" name="clan" value=""><input type="hidden" name="world" value="Syberia"><input type="hidden" name="prof" value="w">
+                                    <input type="hidden" name="profname" value="Wojownik">
+                                    <input type="hidden" name="last" value="1781277118">
+                                </div></div>
+                                <div class="char-description">
+                                    <div>
+                                                    <span class="character-name">
+                                                        Królowa kocurów                                                    </span>
+                                    </div>
+                                    <div>
+                                                    <span class="character-prof">
+                                                        Wojownik,
+                                                    </span>
+                                        <span class="clvl w">lvl 217</span>
+                                    </div>
+                                    <div>
+                                        <span class="world">Świat: syberia</span>
+                                    </div>
+                                </div>
+                                </div>                        </div>
+                                                </div>
+        </div>
+    </div>

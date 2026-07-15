@@ -1,0 +1,945 @@
+'use strict';
+
+// ═══ Dotenv — ładuj PRZED innymi importami ═══
+const fs = require('fs');
+const path = require('path');
+
+const ENV_FILE = path.join(__dirname, '.env');
+if (fs.existsSync(ENV_FILE)) {
+    const raw = fs.readFileSync(ENV_FILE, 'utf8');
+    raw.split(/\r?\n/).forEach(line => {
+        const clean = line.trim();
+        if (!clean || clean.startsWith('#')) return;
+        const idx = clean.indexOf('=');
+        if (idx === -1) return;
+        const key = clean.slice(0, idx).trim();
+        const value = clean.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+        if (key && process.env[key] == null) process.env[key] = value;
+    });
+}
+
+const http = require('http');
+const puppeteer = require('puppeteer');
+const db = require('./database');
+const ai = require('./openrouter');
+const redis = require('./redis');
+const captchaSolver = require('./capthat');
+
+
+// ═══ Konfiguracja ═══
+const PORT = Number(process.env.MAW_DEV_PORT) || 3847;
+const ROOT = __dirname;
+const HOSTED_DIR = path.join(ROOT, 'hosted');
+const DASHBOARD_DIR = path.join(ROOT, 'dashboard');
+const HEADLESS = String(process.env.MAW_HEADLESS || 'false').toLowerCase() === 'true';
+const GAME_SERVER = process.env.MAW_GAME_SERVER || 'tempest';
+const GAME_URL = process.env.MAW_GAME_URL || 'https://www.margonem.pl/intro/';
+
+let botState = null;
+let stateUpdatedAt = 0;
+let pendingConfigPatch = {};
+let page = null; // ref do Puppeteer page
+let browserInstance = null; // ref do instancji przeglądarki
+let isStartingBrowser = false; // flaga zapobiegająca jednoczesnym restartom
+let introWaitStarted = 0; // znacznik czasu rozpoczęcia czekania na /intro/
+
+// ═══ Nowy stan rozszerzony ═══
+let dropsPerChar = {};    // { nick: { leg: 0, hero: 0, uni: 0, kills: 0, e2kills: 0 } }
+let charsCache = [];      // lista postaci z konta
+let timersCache = [];     // timery E2 ze gry
+let scheduleConfig = {    // harmonogram
+    enabled: false,
+    slots: '06:00-12:00, 14:00-24:00'
+};
+let activeChar = process.env.MARGONEM_START_CHAR || '';
+
+
+// ═══ Harmonogram start/stop bota ═══
+let scheduleSlots = []; 
+let watchdogInterval = null;
+let scheduleEnabled = true; // możesz wyłączyć jeśli chcesz
+
+function parseSchedule(raw) {
+    if (!raw) return [];
+    return raw.split(',').map(slot => {
+        const [start, end] = slot.trim().split('-');
+        return { start, end };
+    });
+}
+
+function timeToMinutes(t) {
+    if (!t) return 0;
+    const [h, m] = t.split(':').map(Number);
+    if (h === 24) return 24 * 60; // 24:00 = koniec dnia
+    return h * 60 + m;
+}
+
+function isInSlot(nowMin, slot) {
+    const s = timeToMinutes(slot.start);
+    const e = timeToMinutes(slot.end);
+    if (s <= e) {
+        return nowMin >= s && nowMin < e;
+    }
+    // slot nocny: np. 22:00-03:00
+    return nowMin >= s || nowMin < e;
+}
+
+async function stopBotBrowser() {
+    try {
+        if (browserInstance) {
+            console.log('[WATCHDOG] Zamykam przeglądarkę — poza harmonogramem');
+            await browserInstance.close();
+        }
+    } catch (e) {
+        console.error('[WATCHDOG] Błąd zamykania:', e);
+    } finally {
+        browserInstance = null;
+        page = null;
+    }
+}
+
+async function watchdogStart() {
+    if (watchdogInterval) return;
+
+    watchdogInterval = setInterval(async () => {
+        if (!scheduleEnabled) return;
+
+        const settings = db.getAllSettings();
+        const raw = settings.maw_schedule || '';
+        scheduleSlots = parseSchedule(raw);
+
+        if (!scheduleSlots.length) return;
+
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+
+        const active = scheduleSlots.some(slot => isInSlot(nowMin, slot));
+
+        if (active) {
+            if (!browserInstance && !isStartingBrowser) {
+                console.log('[WATCHDOG] Aktywny slot — uruchamiam bota');
+                startBotBrowser().catch(e => console.error('[WATCHDOG] Start error:', e));
+            }
+        } else {
+            if (browserInstance) {
+                await stopBotBrowser();
+            }
+        }
+    }, 30000);
+
+    console.log('[WATCHDOG] Harmonogram aktywny — sprawdzanie co 30s');
+}
+
+// ═══ Inicjalizacja ═══
+db.init();
+console.log(`
+╔══════════════════════════════════════════════════════════╗
+║   🤖  MARGONEM STANDALONE BOT  v4.0                     ║
+║   Puppeteer + SQLite + OpenRouter AI + Redis             ║
+╚══════════════════════════════════════════════════════════╝
+`);
+console.log(`[CFG] Port: ${PORT} | Headless: ${HEADLESS} | Serwer: ${GAME_SERVER}`);
+console.log(`[CFG] AI Model: ${process.env.MAW_AI_MODEL || 'meta-llama/llama-3-8b-instruct:free'}`);
+console.log(`[CFG] Redis: ${process.env.MAW_REDIS_ENABLED !== 'false' ? 'ON' : 'OFF (in-memory)'}`);
+
+// ═══ MIME types ═══
+const MIME = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.png': 'image/png',
+    '.woff2': 'font/woff2',
+};
+
+function corsHeaders(res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function sendJson(res, status, data) {
+    corsHeaders(res);
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(data));
+}
+
+function readBody(req) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on('data', chunk => chunks.push(chunk));
+        req.on('end', () => {
+            const raw = Buffer.concat(chunks).toString('utf8');
+            if (!raw) return resolve(null);
+            try { resolve(JSON.parse(raw)); }
+            catch (e) { reject(e); }
+        });
+        req.on('error', reject);
+    });
+}
+
+function resolveStatic(urlPath) {
+    const clean = urlPath.split('?')[0];
+    if (clean === '/' || clean === '/dashboard' || clean === '/dashboard/') {
+        return path.join(DASHBOARD_DIR, 'index.html');
+    }
+    if (clean.startsWith('/dashboard/')) {
+        const rel = clean.slice('/dashboard/'.length);
+        const safe = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
+        return path.join(DASHBOARD_DIR, safe);
+    }
+    if (clean.startsWith('/hosted/')) {
+        const rel = clean.slice('/hosted/'.length);
+        const safe = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
+        return path.join(HOSTED_DIR, safe);
+    }
+
+    // Jeśli plik istnieje w folderze dashboard/ (np. /app.js, /style.css, gdy strona ładowana z root /)
+    const fallbackPath = path.join(DASHBOARD_DIR, clean.slice(1));
+    if (fs.existsSync(fallbackPath) && fs.statSync(fallbackPath).isFile()) {
+        return fallbackPath;
+    }
+
+    return null;
+}
+
+function serveFile(res, filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    const mime = MIME[ext] || 'application/octet-stream';
+    fs.readFile(filePath, (err, data) => {
+        corsHeaders(res);
+        if (err) {
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('404 Not Found');
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': mime });
+        res.end(data);
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  HTTP API SERVER
+// ════════════════════════════════════════════════════════════
+const server = http.createServer(async (req, res) => {
+    const urlPath = req.url || '/';
+
+    if (req.method === 'OPTIONS') {
+        corsHeaders(res);
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
+    // ── Stan bota ──
+    if (urlPath.startsWith('/api/state')) {
+        if (req.method === 'GET') {
+            sendJson(res, 200, {
+                ok: true,
+                updatedAt: stateUpdatedAt,
+                stale: stateUpdatedAt === 0 || Date.now() - stateUpdatedAt > 10000,
+                state: botState,
+            });
+            return;
+        }
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                botState = body;
+                stateUpdatedAt = Date.now();
+
+                // Zapisz w Redis (cache 30s TTL)
+                await redis.setJson('maw:state', body, 30);
+
+                if (body && body.hero) {
+                    db.logEvent('STATE_UPDATE', `Postać: ${body.hero.name}, HP: ${body.hero.hp || '?'}%`);
+                }
+
+                const patchToSend = pendingConfigPatch;
+                pendingConfigPatch = {};
+                sendJson(res, 200, {
+                    ok: true,
+                    updatedAt: stateUpdatedAt,
+                    configPatch: Object.keys(patchToSend).length ? patchToSend : null
+                });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: 'Invalid JSON' });
+            }
+            return;
+        }
+    }
+
+    // ── Konfiguracja bota ──
+    if (urlPath.startsWith('/api/config')) {
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                if (body && typeof body === 'object') {
+                    pendingConfigPatch = { ...pendingConfigPatch, ...body };
+                    for (const [k, v] of Object.entries(body)) {
+                        db.saveSetting(k, v);
+                    }
+                    sendJson(res, 200, { ok: true });
+                } else {
+                    sendJson(res, 400, { ok: false, error: 'Invalid config payload' });
+                }
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: 'Invalid JSON' });
+            }
+            return;
+        }
+        if (req.method === 'GET') {
+            sendJson(res, 200, { ok: true, settings: db.getAllSettings() });
+            return;
+        }
+    }
+
+    // ── Postacie (lista + wybor) ──
+    if (urlPath.startsWith('/api/chars')) {
+        if (req.method === 'GET') {
+            sendJson(res, 200, { ok: true, chars: charsCache, active: activeChar });
+            return;
+        }
+        if (urlPath === '/api/chars/select' && req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                const nick = (body && body.nick) ? String(body.nick) : '';
+                if (!nick) { sendJson(res, 400, { ok: false, error: 'Brak nicku' }); return; }
+                activeChar = nick;
+                // Wstrzyknij zmianę do przeglądarki przez localStorage
+                if (page && !page.isClosed()) {
+                    await page.evaluate((charName) => {
+                        localStorage.setItem('e2h_target_char', charName);
+                        localStorage.setItem('e2h_target_char_time', String(Date.now()));
+                    }, nick);
+                }
+                pendingConfigPatch.forceRelogToChar = nick;
+                console.log(`[API] Zmiana postaci na: ${nick}`);
+                sendJson(res, 200, { ok: true, nick });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
+            return;
+        }
+        // POST /api/chars — bot synchronizuje listę postaci
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                if (Array.isArray(body)) { charsCache = body; }
+                sendJson(res, 200, { ok: true });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
+            return;
+        }
+    }
+
+    // ── Dropy per postać ──
+    if (urlPath.startsWith('/api/drops')) {
+        if (req.method === 'GET') {
+            sendJson(res, 200, { ok: true, drops: dropsPerChar });
+            return;
+        }
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                // { nick, leg, hero, uni, kills, e2kills } — pełny snapshot
+                if (body && body.nick) {
+                    dropsPerChar[body.nick] = {
+                        leg:     body.leg     || 0,
+                        hero:    body.hero    || 0,
+                        uni:     body.uni     || 0,
+                        kills:   body.kills   || 0,
+                        e2kills: body.e2kills || 0,
+                        expGained:  body.expGained  || 0,
+                        goldGained: body.goldGained || 0,
+                        updatedAt:  Date.now()
+                    };
+                }
+                sendJson(res, 200, { ok: true });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
+            return;
+        }
+    }
+
+    // ── Timery E2 ──
+    if (urlPath.startsWith('/api/timers')) {
+        if (req.method === 'GET') {
+            sendJson(res, 200, { ok: true, timers: timersCache });
+            return;
+        }
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                if (Array.isArray(body)) { timersCache = body; }
+                sendJson(res, 200, { ok: true });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
+            return;
+        }
+    }
+
+    // ── Harmonogram ──
+    if (urlPath.startsWith('/api/schedule')) {
+        if (req.method === 'GET') {
+            sendJson(res, 200, { ok: true, schedule: scheduleConfig });
+            return;
+        }
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                if (body && typeof body === 'object') {
+                    if (typeof body.enabled !== 'undefined') scheduleConfig.enabled = !!body.enabled;
+                    if (typeof body.slots !== 'undefined') scheduleConfig.slots = String(body.slots);
+                }
+                // Przekaż do bota przez pendingConfigPatch
+                pendingConfigPatch.scheduleEnabled = scheduleConfig.enabled;
+                pendingConfigPatch.scheduleSlots   = scheduleConfig.slots;
+                sendJson(res, 200, { ok: true, schedule: scheduleConfig });
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
+            return;
+        }
+    }
+
+    // ── Wyloguj z gry (relog) ──
+    if (urlPath === '/api/browser/logout' && req.method === 'POST') {
+        if (page && !page.isClosed()) {
+            try {
+                await page.goto('https://www.margonem.pl/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+                sendJson(res, 200, { ok: true });
+            } catch (e) {
+                sendJson(res, 500, { ok: false, error: e.message });
+            }
+        } else {
+            sendJson(res, 503, { ok: false, error: 'Brak przeglądarki' });
+        }
+        return;
+    }
+
+
+    // ── AI Chat (OpenRouter) ──
+    if (urlPath.startsWith('/api/ai/chat')) {
+        if (req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                const { author, message, channel } = body || {};
+
+                if (!author || !message) {
+                    sendJson(res, 400, { ok: false, error: 'Brak nadawcy lub wiadomości' });
+                    return;
+                }
+
+                // Zapisz w SQLite
+                db.saveChatMessage(channel || 'GROUP', author, message);
+
+                // Zapisz w Redis (lista ostatnich wiadomości)
+                await redis.pushList('maw:chat:recent', JSON.stringify({
+                    ts: Date.now(), channel, author, message
+                }));
+
+                // Zdecyduj czy odpowiedzieć
+                const shouldReply = ai.shouldReplyToChat(message);
+
+                if (shouldReply) {
+                    const history = db.getRecentChatHistory(10);
+                    const reply = await ai.generateResponse(author, message, history);
+
+                    if (reply) {
+                        db.saveChatMessage(channel || 'GROUP', process.env.MAW_BOT_NICK || 'Certyfikowany Janusz', reply, message);
+                        await redis.publish('maw:chat:reply', JSON.stringify({ channel, reply }));
+                        sendJson(res, 200, { ok: true, shouldReply: true, reply });
+                        return;
+                    }
+                }
+
+                sendJson(res, 200, { ok: true, shouldReply: false });
+            } catch (err) {
+                console.error('[API] Błąd w obsłudze AI chat:', err);
+                sendJson(res, 500, { ok: false, error: err.message });
+            }
+            return;
+        }
+    }
+
+    // ── Logi bota ──
+    if (urlPath.startsWith('/api/logs')) {
+        if (req.method === 'GET') {
+            try {
+                const logs = db.getRecentLogs ? db.getRecentLogs(50) : [];
+                sendJson(res, 200, { ok: true, logs });
+            } catch (e) {
+                sendJson(res, 200, { ok: true, logs: [] });
+            }
+            return;
+        }
+    }
+
+    // ── Puppeteer: wykonaj komendę w przeglądarce ──
+    if (urlPath.startsWith('/api/browser/eval')) {
+        if (req.method === 'POST' && page) {
+            try {
+                const body = await readBody(req);
+                const result = await page.evaluate(body.code);
+                sendJson(res, 200, { ok: true, result });
+            } catch (err) {
+                sendJson(res, 500, { ok: false, error: err.message });
+            }
+            return;
+        }
+    }
+
+    // ── Puppeteer: screenshot ──
+    if (urlPath === '/api/browser/screenshot' && req.method === 'GET') {
+        if (page) {
+            try {
+                const buf = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 70 });
+                sendJson(res, 200, { ok: true, image: buf });
+            } catch (err) {
+                sendJson(res, 500, { ok: false, error: err.message });
+            }
+        } else {
+            sendJson(res, 503, { ok: false, error: 'Przeglądarka nie uruchomiona' });
+        }
+        return;
+    }
+
+    // ── Pliki statyczne (hosted/, dashboard/) ──
+    const filePath = resolveStatic(urlPath);
+    if (!filePath || !filePath.startsWith(ROOT)) {
+        corsHeaders(res);
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('404 Not Found');
+        return;
+    }
+    serveFile(res, filePath);
+});
+
+// ════════════════════════════════════════════════════════════
+//  PUPPETEER — Chromium z wstrzykiwaniem bota
+// ════════════════════════════════════════════════════════════
+async function startBotBrowser() {
+    if (isStartingBrowser) {
+        console.log('[Puppeteer] Próba uruchomienia przeglądarki zignorowana — start w toku.');
+        return;
+    }
+    isStartingBrowser = true;
+
+    try {
+        console.log('[Puppeteer] Uruchamianie Chromium...');
+        const userDataDir = path.join(ROOT, 'browser_profile');
+
+        if (browserInstance) {
+            try {
+                await browserInstance.close();
+            } catch {}
+            browserInstance = null;
+        }
+
+        const browser = await puppeteer.launch({
+            headless: HEADLESS,
+            userDataDir,
+            defaultViewport: HEADLESS ? { width: 1280, height: 960 } : null,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--window-size=1280,960',
+            ],
+        });
+        browserInstance = browser;
+
+        const pages = await browser.pages();
+        page = pages[0] || await browser.newPage();
+
+    // Udawanie przeglądarki Mozilla Firefox
+    await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
+    );
+
+    // ── GM_* polyfille + MAW_NODE_API ──
+    await page.evaluateOnNewDocument((port) => {
+        // Ukrywanie/nadpisywanie flagi automatyzacji navigator.webdriver
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+
+        window.MAW_NODE_API = `http://127.0.0.1:${port}`;
+        window.MAW_STANDALONE = true;
+
+        // Polyfill dla window._g - wywoływanie akcji sieciowych bezpośrednio przez silnik gry Margonem
+        window._g = function(query, callback) {
+            if (window.g && typeof window.g._g === 'function') {
+                return window.g._g(query, callback);
+            }
+            if (window.Engine && window.Engine.communication && typeof window.Engine.communication.send === 'function') {
+                // Alternatywny parser dla silnika NI
+                return window.Engine.communication.send(query, callback);
+            }
+            console.warn('[MAW] window._g wywołane, ale silnik gry nie jest gotowy:', query);
+            return false;
+        };
+
+        window.GM_getValue = function(key, defaultValue) {
+            try {
+                const val = localStorage.getItem('GM_' + key);
+                return val !== null ? JSON.parse(val) : defaultValue;
+            } catch { return defaultValue; }
+        };
+
+        window.GM_setValue = function(key, value) {
+            try { localStorage.setItem('GM_' + key, JSON.stringify(value)); }
+            catch {}
+        };
+
+        window.GM_deleteValue = function(key) {
+            try { localStorage.removeItem('GM_' + key); }
+            catch {}
+        };
+
+        window.GM_listValues = function() {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('GM_')) keys.push(k.slice(3));
+            }
+            return keys;
+        };
+
+        window.GM_xmlhttpRequest = function(details) {
+            const method = details.method || 'GET';
+            const url = details.url;
+            const headers = details.headers || {};
+            const data = details.data;
+
+            fetch(url, { method, headers, body: data })
+                .then(res => res.text().then(text => ({ res, text })))
+                .then(({ res, text }) => {
+                    if (details.onload) {
+                        details.onload({
+                            status: res.status,
+                            statusText: res.statusText,
+                            responseText: text,
+                            responseHeaders: [...res.headers.entries()]
+                                .map(([k, v]) => `${k}: ${v}`).join('\r\n'),
+                        });
+                    }
+                })
+                .catch(err => {
+                    if (details.onerror) details.onerror(err);
+                });
+        };
+
+        window.GM_addStyle = function(css) {
+            const style = document.createElement('style');
+            style.textContent = css;
+            (document.head || document.documentElement).appendChild(style);
+        };
+
+        window.GM_registerMenuCommand = function() {}; // noop w Puppeteer
+        window.GM_getResourceText = function() { return ''; };
+        window.GM_getResourceURL = function() { return ''; };
+        window.GM_info = { script: { name: 'MAW Standalone', version: '4.0.0' } };
+
+        // Globalny wrapper unsafeWindow (w Puppeteer = window)
+        window.unsafeWindow = window;
+    }, PORT);
+
+    // ── Wstrzyknięcie e2-hunter-bot.user.js ──
+    const loaderPath = path.join(ROOT, 'tampermonkey', 'e2-hunter-bot.user.js');
+    if (!fs.existsSync(loaderPath)) {
+        console.error(`[Puppeteer] BRAK pliku: ${loaderPath}`);
+        console.error('[Puppeteer] Upewnij się, że plik tampermonkey/e2-hunter-bot.user.js istnieje');
+        return;
+    }
+
+    const loaderCode = fs.readFileSync(loaderPath, 'utf8');
+
+    // Wstrzyknij po załadowaniu strony gry (nie na stronie logowania)
+    await page.evaluateOnNewDocument((code) => {
+        // Czekaj na DOMContentLoaded, żeby strona gry miała czas się załadować
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => injectLoader(code));
+        } else {
+            injectLoader(code);
+        }
+
+        function injectLoader(src) {
+            // Nie wstrzykuj na stronie logowania / forum
+            const host = window.location.hostname || '';
+            const path = window.location.pathname || '';
+            // Całkowicie pomiń wstrzykiwanie na domenie głównej (logowanie, forum, intro, rejestracja)
+            if (host === 'www.margonem.pl' || host === 'margonem.pl') {
+                console.log('[MAW] Ekran główny/logowanie/intro — pomijam wstrzykiwanie bota');
+                return;
+            }
+
+            console.log('[MAW] 🚀 Wstrzykiwanie Standalone Bota...');
+            try {
+                // Bezpośrednie eval w kontekście strony
+                const fn = new Function(src);
+                fn();
+                console.log('[MAW] ✓ Bot załadowany pomyślnie');
+            } catch (e) {
+                console.error('[MAW] ✗ Błąd wstrzykiwania:', e);
+            }
+        }
+    }, loaderCode);
+
+    // ── Navigacja ──
+    console.log(`[Puppeteer] Nawigacja → ${GAME_URL}`);
+    
+    try {
+        await page.goto(GAME_URL, { 
+            waitUntil: 'domcontentloaded', 
+            timeout: 20000 
+        });
+    } catch (err) {
+        // Auto-fix ERR_TOO_MANY_REDIRECTS (zgodnie z RULE[user_global])
+        if (err.message.includes('ERR_TOO_MANY_REDIRECTS') || err.message.includes('net::ERR_')) {
+            console.warn('[Puppeteer] Redirect loop wykryty — czyszczę cookies i ponawiam...');
+            const context = browser.defaultBrowserContext();
+            // Puppeteer nie ma context.clearCookies() bezpośrednio, więc czyścimy przez CDP
+            const client = await page.createCDPSession();
+            await client.send('Network.clearBrowserCookies');
+            await client.detach();
+            
+            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        } else {
+            throw err;
+        }
+    }
+
+    console.log('[Puppeteer] ✓ Strona załadowana:', await page.title());
+
+    let autoLoginInterval;
+    let loginTimeout;
+
+    // ── Automatyczne logowanie i wybór postaci ──
+    if (process.env.MARGONEM_LOGIN && process.env.MARGONEM_PASSWORD) {
+        console.log('[Puppeteer] Przygotowanie pętli logowania...');
+        
+        loginTimeout = setTimeout(() => {
+            if (!page || page.isClosed() || !browserInstance) return;
+            
+            console.log('[Puppeteer] Uruchamiam pętlę automatycznego logowania...');
+            autoLoginInterval = setInterval(async () => {
+            if (!page || page.isClosed()) {
+                clearInterval(autoLoginInterval);
+                return;
+            }
+            
+            try {
+                // 0. Obsługa ekranu rejestracji /intro/ - czekamy 15 sekund
+                const currentUrl = page.url() || '';
+                const hasRegisterBox = await page.$('.landing-register');
+                if (currentUrl.includes('/intro') || hasRegisterBox) {
+                    if (!introWaitStarted) {
+                        introWaitStarted = Date.now();
+                        console.log('[Puppeteer] Wykryto ekran rejestracji/intro. Oczekiwanie 15 sekund przed przejściem do logowania...');
+                        return;
+                    }
+                    const elapsed = Date.now() - introWaitStarted;
+                    if (elapsed < 15000) {
+                        return;
+                    }
+                    console.log('[Puppeteer] Odczekano 15 sekund. Wymuszam twarde przejście na stronę logowania...');
+                    introWaitStarted = 0;
+                    await page.goto('https://www.margonem.pl/', { waitUntil: 'domcontentloaded', timeout: 20000 });
+                    return;
+                }
+                
+                introWaitStarted = 0;
+
+                // 1. Sprawdzamy czy formularz logowania jest widoczny
+                const hasLoginForm = await page.$('#login-form');
+                if (hasLoginForm) {
+                    const loginInput = await page.$('#login-input');
+                    const passInput = await page.$('#login-password');
+                    
+                    if (loginInput && passInput) {
+                        const currentLoginVal = await page.evaluate(el => el ? el.value : '', loginInput);
+                        if (!currentLoginVal) {
+                            console.log('[Puppeteer] Wpisywanie danych logowania...');
+                            await page.type('#login-input', process.env.MARGONEM_LOGIN, { delay: 50 + Math.random() * 50 });
+                            await page.type('#login-password', process.env.MARGONEM_PASSWORD, { delay: 50 + Math.random() * 50 });
+                            
+                            if (process.env.MARGONEM_TOTP) {
+                                const totpShow = await page.$('#totp-show');
+                                if (totpShow) {
+                                    await totpShow.click();
+                                    await page.waitForSelector('#totp-input', { visible: true });
+                                    await page.type('#totp-input', process.env.MARGONEM_TOTP, { delay: 50 + Math.random() * 50 });
+                                }
+                            }
+                            
+                            console.log('[Puppeteer] Klikam "Zaloguj się"...');
+                            await page.click('#js-login-btn');
+                        }
+                    }
+                    return;
+                }
+
+                // 2. Sprawdzamy czy jesteśmy na ekranie wyboru postaci (intro)
+                const hasCharList = await page.$('.char-container, .charlist');
+                if (hasCharList) {
+                    let targetChar = await page.evaluate(() => {
+                        const target = localStorage.getItem('e2h_target_char');
+                        const targetTime = localStorage.getItem('e2h_target_char_time');
+                        if (target && targetTime) {
+                            // Jeśli cel jest świeży (np. ustawiony w ciągu ostatnich 5 minut)
+                            if (Date.now() - parseInt(targetTime) < 300000) {
+                                return target;
+                            }
+                        }
+                        return null;
+                    });
+
+                    if (!targetChar) {
+                        targetChar = process.env.MARGONEM_START_CHAR || '';
+                    }
+
+                    if (targetChar) {
+                        const clicked = await page.evaluate((charName) => {
+                            const chars = Array.from(document.querySelectorAll('.charc'));
+                            const found = chars.find(c => {
+                                const nick = c.getAttribute('data-nick') || '';
+                                return nick.toLowerCase() === charName.toLowerCase();
+                            });
+                            
+                            if (found) {
+                                found.click();
+                                return true;
+                            }
+                            return false;
+                        }, targetChar);
+
+                        if (clicked) {
+                            console.log(`[Puppeteer] Wybrano postać: ${targetChar}. Wchodzę do gry...`);
+                            await page.click('.enter-game');
+                            clearInterval(autoLoginInterval);
+                        } else {
+                            if (!global._loggedCharNotFound || global._lastLoggedCharName !== targetChar) {
+                                console.warn(`[Puppeteer] Nie znaleziono postaci: "${targetChar}" na liście wyboru.`);
+                                global._loggedCharNotFound = true;
+                                global._lastLoggedCharName = targetChar;
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // 3. Wyłączenie pętli jeśli jesteśmy już w grze (Engine gotowy)
+                const isGameLoaded = await page.evaluate(() => {
+                    return typeof window.Engine !== 'undefined' && typeof window.Engine.hero !== 'undefined';
+                });
+                if (isGameLoaded) {
+                    console.log('[Puppeteer] Gra załadowana. Wyłączam pętlę logowania.');
+                    clearInterval(autoLoginInterval);
+                }
+
+            } catch (err) {
+                if (!err.message.includes('Execution context was destroyed')) {
+                    console.error('[Puppeteer] Błąd logowania:', err.message);
+                }
+            }
+        }, 2000);
+        }, 20000);
+    }
+
+    // ── Konsola przeglądarki → logi Node ──
+    page.on('console', msg => {
+        const type = msg.type();
+        const text = msg.text();
+        if (text.includes('[MAW]') || text.includes('[CHAT]') || text.includes('[SKILL]') || text.includes('[E2H]')) {
+            console.log(`[Browser:${type}] ${text}`);
+        }
+    });
+
+    // ── Obserwuj crashe ──
+    page.on('error', err => {
+        console.error('[Puppeteer] Błąd strony:', err.message);
+        db.logEvent('PAGE_ERROR', err.message);
+    });
+
+    page.on('pageerror', err => {
+        console.error('[Puppeteer] JS Error:', err.message);
+    });
+
+let pageStateInterval;
+
+    browser.on('disconnected', () => {
+        if (browser !== browserInstance) return;
+        console.error('[Puppeteer] ⚠ Przeglądarka rozłączona! Restart za 5s...');
+        db.logEvent('BROWSER_DISCONNECT', 'Przeglądarka się zamknęła');
+        
+        if (typeof autoLoginInterval !== 'undefined') clearInterval(autoLoginInterval);
+        if (typeof loginTimeout !== 'undefined') clearTimeout(loginTimeout);
+        if (pageStateInterval) clearInterval(pageStateInterval);
+        
+        setTimeout(() => {
+            console.log('[Puppeteer] Ponowne uruchamianie...');
+            startBotBrowser().catch(e => console.error('[Puppeteer] Restart failed:', e));
+        }, 5000);
+    });
+
+    
+    pageStateInterval = setInterval(async () => {
+        if (!page || page.isClosed()) return;
+        try {
+            const state = await page.evaluate(() => {
+                if (!window.Engine || !window.Engine.hero) return null;
+                const h = window.Engine.hero.d;
+                return {
+                    hero: {
+                        name: h.nick || h.name,
+                        lvl: h.lvl,
+                        hp: h.warrior_stats ? Math.round(h.warrior_stats.hp / h.warrior_stats.maxhp * 100) : null,
+                        x: h.x, y: h.y,
+                        mapId: window.Engine.map?.d?.id,
+                        mapName: window.Engine.map?.d?.name,
+                    },
+                    timestamp: Date.now(),
+                };
+            });
+            if (state) {
+                botState = state;
+                stateUpdatedAt = Date.now();
+                await redis.setJson('maw:state', state, 30);
+            }
+
+            await captchaSolver.checkAndSolveCaptcha(page);
+            await captchaSolver.tryAutoRelog(page);
+        } catch (e) {}
+    }, 7200);
+
+    console.log('[Puppeteer] ✓ Bot gotowy! Trwa automatyczne logowanie i wybieranie postaci...');
+    console.log(`[API] Dashboard: http://127.0.0.1:${PORT}/dashboard`);
+    } catch (e) {
+        console.error('[Puppeteer] Fatalny błąd przy uruchamianiu przeglądarki:', e);
+        throw e;
+    } finally {
+        isStartingBrowser = false;
+    }
+}
+
+async function main() {
+    await redis.connect();
+    server.listen(PORT, '127.0.0.1', () => {
+        console.log(`[API] Serwer HTTP → http://127.0.0.1:${PORT}`);
+    });
+    if (process.env.MAW_WATCHDOG_ACTIVE !== 'true') {
+    await startBotBrowser();
+}
+}
+
+main().catch(err => {
+    console.error('[FATAL]', err);
+    process.exit(1);
+});
