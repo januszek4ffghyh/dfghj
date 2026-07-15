@@ -28,6 +28,8 @@ const captchaSolver = require('./capthat');
 
 // ═══ Konfiguracja ═══
 const PORT = Number(process.env.MAW_DEV_PORT) || 3847;
+const LISTEN_HOST = '0.0.0.0';          // ← DODANE — publiczny dostęp
+const ROOT = __dirname;
 const ROOT = __dirname;
 const HOSTED_DIR = path.join(ROOT, 'hosted');
 const DASHBOARD_DIR = path.join(ROOT, 'dashboard');
@@ -186,8 +188,9 @@ const MIME = {
 
 function corsHeaders(res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
 }
 
 function sendJson(res, status, data) {
@@ -1105,12 +1108,17 @@ let pageStateInterval;
 
 async function main() {
     await redis.connect();
-    server.listen(PORT, '127.0.0.1', () => {
-        console.log(`[API] Serwer HTTP → http://127.0.0.1:${PORT}`);
+    
+    // PUBLICZNY NASŁUCH — kluczowa zmiana
+    server.listen(PORT, LISTEN_HOST, () => {
+        console.log(`[API] Serwer nasłuchuje na http://${LISTEN_HOST}:${PORT}`);
+        console.log(`[API] Dashboard → http://botmargo.duckdns.org:${PORT}/dashboard`);
+        console.log(`[API] IP → http://83.29.135.191:${PORT}/dashboard`);
     });
+
     if (process.env.MAW_WATCHDOG_ACTIVE !== 'true') {
-    await startBotBrowser();
-}
+        await startBotBrowser();
+    }
 }
 
 main().catch(err => {
