@@ -581,12 +581,21 @@ async function startBotBrowser() {
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--window-size=1280,960',
+                '--proxy-server=http://p.webshare.io:80',   // ← Webshare Proxy
             ],
         });
         browserInstance = browser;
 
         const pages = await browser.pages();
         page = pages[0] || await browser.newPage();
+
+        // === AUTORYZACJA PROXY WEB SHARE ===
+        await page.authenticate({
+            username: 'vgdtbnwe',
+            password: 'wvod8zy267j8'
+        });
+
+        console.log('[Puppeteer] ✅ Proxy Webshare włączony (UK)');
 
     // Udawanie przeglądarki Mozilla Firefox
     await page.setUserAgent(
