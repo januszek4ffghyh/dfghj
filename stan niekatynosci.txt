@@ -1,0 +1,5 @@
+<div class="stasis-incoming-overlay map-overlay" style="display: none;">
+        <dev class="stasis-incoming-overlay__caption">
+            <div class="stasis-incoming-overlay__text" data-trans="stasis-incoming">Za %val%s wejdziesz w stan nieaktywności.<br>Wykonaj ruch, aby Postać była aktywna.</div>
+        </dev>
+    </div> JESLI WIDZISZ TO TO NIECH ZRROBI BOT KROK DO PRZODU XD 

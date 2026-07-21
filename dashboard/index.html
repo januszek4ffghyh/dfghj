@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🤖 Margonem E2 Bot — Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -60,9 +61,18 @@
 
             <!-- TAB: POSTACIE -->
             <div class="tab-page active" id="tab-chars">
-                <div class="page-header">
-                    <h1 class="page-title">👤 Postacie na koncie</h1>
-                    <p class="page-sub">Kliknij postać aby zlecić botowi logowanie na nią do E2</p>
+                <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <h1 class="page-title">Postacie na koncie</h1>
+                        <p class="page-sub">Kliknij postać aby zlecić botowi logowanie na nią do E2</p>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+                        <span style="font-size:12px;font-weight:600;color:#e2e8f0;">🔄 Auto-powrót do E2</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-return-toggle" checked>
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
                 </div>
                 <div class="chars-grid" id="chars-grid">
                     <div class="empty-state">
@@ -75,7 +85,7 @@
             <!-- TAB: TIMERY E2 -->
             <div class="tab-page" id="tab-timers">
                 <div class="page-header">
-                    <h1 class="page-title">⏱️ Timery E2</h1>
+                    <h1 class="page-title">Timery E2</h1>
                     <p class="page-sub">Live countdown z LootLog — odświeżanie co 30s</p>
                 </div>
                 <div class="filters-row">
@@ -97,7 +107,7 @@
             <!-- TAB: STATSY -->
             <div class="tab-page" id="tab-stats">
                 <div class="page-header">
-                    <h1 class="page-title">📊 Statystyki sesji</h1>
+                    <h1 class="page-title">Statystyki sesji</h1>
                     <p class="page-sub">Dropy i kill/death per postać — aktualizacja co 15s</p>
                 </div>
                 <div class="stats-grid" id="stats-grid">
@@ -111,7 +121,7 @@
             <!-- TAB: MONITOR -->
             <div class="tab-page" id="tab-monitor">
                 <div class="page-header">
-                    <h1 class="page-title">🖥️ Monitor na żywo</h1>
+                    <h1 class="page-title">Monitor na żywo</h1>
                     <p class="page-sub">Aktualny stan bohatera i bota</p>
                 </div>
 
@@ -161,7 +171,7 @@
             <!-- TAB: HARMONOGRAM -->
             <div class="tab-page" id="tab-schedule">
                 <div class="page-header">
-                    <h1 class="page-title">⏰ Harmonogram działania</h1>
+                    <h1 class="page-title">Harmonogram działania</h1>
                     <p class="page-sub">Bot automatycznie startuje i zatrzymuje się według godzin</p>
                 </div>
 
@@ -205,6 +215,24 @@
             </div>
 
         </main>
+    </div>
+
+    <!-- SLIDING E2 SELECT DRAWER -->
+    <div class="drawer-overlay" id="drawer-e2" style="display:none">
+        <div class="drawer">
+            <div class="drawer-hdr">
+                <h3>Przypisz E2 do postaci</h3>
+                <button class="drawer-close" id="drawer-e2-close">✕</button>
+            </div>
+            <div class="drawer-body">
+                <div class="selected-char-info">
+                    Postać: <strong id="drawer-char-name">—</strong>
+                </div>
+                <div class="e2-select-list" id="drawer-e2-list">
+                    <!-- Wybory E2 zostaną wstawione dynamicznie -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- SCREENSHOT MODAL -->

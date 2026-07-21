@@ -1,0 +1,458 @@
+<div class="c-window border-window ui-draggable c-window--with-bottom-bar window-on-peak" style="position: absolute; z-index: 12; left: 0px; top: 143.5px; display: block;">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Sklep">Sklep</div>
+            </div>
+        </div>
+        <div class="content content--padding-false">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            <div class="inner-content"><div class="shop-wrapper">
+        <div class="shop-background normal-shop-zl">
+            <div class="interface-element-middle-1-background-stretch"></div>
+            <div class="interface-element-vertical-wood"></div>
+            <div class="canopy"></div>
+            <div class="outfit-pet-scene"></div>
+        </div>
+        <div class="shop-content normal-shop-zl">
+            <!--<div class="header" data-trans="#shop_head#shop"></div>-->
+            <!--<div class="close-button"></div>-->
+            <!--<div class="for-you-plug"></div>-->
+            
+            <div class="shop-items interface-element-grid-border items-grid scroll-wrapper small-bar">
+                <div class="interface-element-item-slot-grid-stretch"></div>
+                <div class="scroll-pane"><div class="item item-id-41876 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="609" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41877 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="610" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41878 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="611" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41879 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="612" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41880 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="613" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41881 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="614" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41882 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="615" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41883 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="616" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41884 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="617" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41885 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="618" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41886 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="619" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41887 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="620" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41888 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="621" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41889 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="622" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41890 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="623" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41891 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="624" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41892 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="625" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41893 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="626" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41894 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="627" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div><div class="item item-id-41895 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="628" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    <div class="amount">5</div></div></div>
+                <div class="shop-info-wrapper">Ceny sprzedaży: normalnie | Cena skupu: 70%<br>Maks. za przedmiot: 20 000<br><span class="purchase-cl">Skupuje: Konsumpcyjne, Leczące</span></div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle"></div>
+        </div>
+    </div></div>
+            <div class="shop-right-column">
+                <div class="buy-items interface-element-grid-border items-grid ui-droppable">
+                    <div class="interface-element-item-slot-grid-stretch"></div>
+                    <span class="label interface-element-grid-border" data-trans="#buying_items#shop">Kup</span>
+                </div>
+                <div class="sell-items interface-element-grid-border items-grid ui-droppable">
+                    <!--<span class="label" data-trans="#selling_items#shop"></span>-->
+                    <div class="interface-element-item-slot-grid-stretch"></div>
+                    <span class="label interface-element-grid-border">Sprzedaj</span>
+                    <canvas class="SHOP_CANVAS" width="165px" height="115px"></canvas>
+                </div>
+                <div class="great-merchamp btns-spacing" style="display: block;"><div class="button green small btn-num grab-bag-1" tip-id="586">
+        <div class="background"></div>
+        <div class="label">1</div>
+    </div><div class="button green small btn-num grab-bag-2" tip-id="587">
+        <div class="background"></div>
+        <div class="label">2</div>
+    </div><div class="button green small btn-num grab-bag-3" tip-id="588">
+        <div class="background"></div>
+        <div class="label">3</div>
+    </div><div class="button green small btn-num" tip-id="585">
+        <div class="background"></div>
+        <div class="label"></div>
+    <div class="add-bck config"></div></div></div>
+    
+                <div class="for-you-txt" data-trans="#badged#extManager">Proponowane</div>
+                <div class="for-you-plug-disabled">
+                    <div class="disabled-text" data-trans="#for_you_alert">Proponowane przedmioty nie są w tej chwili dostępne.</div>
+                </div>
+                
+                <div class="finalize-button btns-spacing"><div class="button green small">
+        <div class="background"></div>
+        <div class="label">Akceptuj</div>
+    </div></div>
+                <div class="filters-heading" data-trans="#filters#shop">Filtry</div>
+                <div class="show-items-filter checkbox-list"><div class="checkbox-custom c-checkbox" tip-id="582">
+            <input type="checkbox" id="own-profession_0" name="own-profession" value="1">
+            <label for="own-profession_0" class="c-checkbox__label c-checkbox__label--highlight"><div><div class="filter-label filter-label--max">Profesja</div><div class="filter-label filter-label--min">Prof.</div></div></label>
+        </div><div class="checkbox-custom c-checkbox" tip-id="583">
+            <input type="checkbox" id="own-level_1" name="own-level" value="2">
+            <label for="own-level_1" class="c-checkbox__label c-checkbox__label--highlight"><div><div class="filter-label filter-label--max">Poziom</div><div class="filter-label filter-label--min">Poz.</div></div></label>
+        </div><div class="checkbox-custom c-checkbox" tip-id="584">
+            <input type="checkbox" id="can-afford_2" name="can-afford" value="4">
+            <label for="can-afford_2" class="c-checkbox__label c-checkbox__label--highlight"><div><div class="filter-label filter-label--max">Cena</div><div class="filter-label filter-label--min">Cena</div></div></label>
+        </div></div>
+                <div class="shop-balance">
+                    <div class="sell">0</div>
+                    <div class="buy">0</div>
+                    <div class="balance">0</div>
+                    <div class="total-price" data-trans="#total-price">Bilans:</div>
+                </div>
+            </div>
+
+            <div class="more-gold-button"></div>
+        </div>
+    </div></div>
+            <div class="window-controlls">
+            </div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        <div class="premium-footer">
+    <div class="premium-footer__chest ie-chest ie-chest--gold"></div>
+    <div class="premium-footer__label">Brakuje Ci złota?</div>
+    <div class="premium-footer__buttons"><div class="button small purple">
+        <div class="background"></div>
+        <div class="label">Dokup złoto</div>
+    </div><div class="button small purple">
+        <div class="background"></div>
+        <div class="label">Odzyskaj przedmioty</div>
+    </div></div>
+</div></div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="581"></button>
+        </div>
+    </div>
+
+
+<div class="c-window border-window ui-draggable c-window--with-bottom-bar window-on-peak" style="position: absolute; z-index: 17; left: 313px; top: 159.5px; display: block;">
+        <!--<div class="border-image"></div>-->
+        <div class="header-label-positioner">
+            <div class="draggable-window-element ui-draggable-handle"></div>
+            <div class="header-label">
+                <div class="left-decor"></div>
+                <div class="right-decor"></div>
+                <div class="text" name="Sklep">Sklep</div>
+            </div>
+        </div>
+        <div class="content content--padding-false">
+            <!--<div class="decoration-label">-->
+                <!--<div class="decoration"></div>-->
+                <!--<div class="label">-->
+                <!--</div>-->
+            <!--</div>-->
+            <div class="inner-content"><div class="shop-wrapper">
+        <div class="shop-background normal-shop-zl">
+            <div class="interface-element-middle-1-background-stretch"></div>
+            <div class="interface-element-vertical-wood"></div>
+            <div class="canopy"></div>
+            <div class="outfit-pet-scene"></div>
+        </div>
+        <div class="shop-content normal-shop-zl">
+            <!--<div class="header" data-trans="#shop_head#shop"></div>-->
+            <!--<div class="close-button"></div>-->
+            <!--<div class="for-you-plug"></div>-->
+            
+            <div class="shop-items interface-element-grid-border items-grid scroll-wrapper small-bar">
+                <div class="interface-element-item-slot-grid-stretch"></div>
+                <div class="scroll-pane"><div class="item item-id-33610 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="9" tip-id="599" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33611 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="9" tip-id="600" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33612 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="9" tip-id="601" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33619 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="9" tip-id="602" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33620 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="9" tip-id="603" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33621 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="9" tip-id="604" data-tip-type="t_item" data-item-type="t-norm" style="left: 165px; top: 0px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33622 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="10" tip-id="605" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33623 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="10" tip-id="606" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33624 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="10" tip-id="607" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33626 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="10" tip-id="608" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33627 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="10" tip-id="609" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33628 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="10" tip-id="610" data-tip-type="t_item" data-item-type="t-norm" style="left: 165px; top: 33px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33629 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="11" tip-id="611" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33630 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="11" tip-id="612" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33631 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="11" tip-id="613" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33632 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="11" tip-id="614" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33634 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="11" tip-id="615" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33635 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="11" tip-id="616" data-tip-type="t_item" data-item-type="t-norm" style="left: 165px; top: 66px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33636 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="617" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33637 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="618" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33638 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="619" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33639 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="620" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33640 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="621" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33641 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="622" data-tip-type="t_item" data-item-type="t-norm" style="left: 165px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33642 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="623" data-tip-type="t_item" data-item-type="t-norm" style="left: 198px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33643 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="12" tip-id="624" data-tip-type="t_item" data-item-type="t-norm" style="left: 231px; top: 99px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33644 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="625" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33645 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="626" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33646 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="627" data-tip-type="t_item" data-item-type="t-norm" style="left: 66px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33647 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="628" data-tip-type="t_item" data-item-type="t-norm" style="left: 99px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33648 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="629" data-tip-type="t_item" data-item-type="t-norm" style="left: 132px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33649 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="630" data-tip-type="t_item" data-item-type="t-norm" style="left: 165px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-33650 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" data-cl="13" tip-id="631" data-tip-type="t_item" data-item-type="t-norm" style="left: 198px; top: 132px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1525 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="596" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 165px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-1526 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="597" data-tip-type="t_item" data-item-type="t-norm" style="left: 33px; top: 165px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div><div class="item item-id-4429 item-tpl-undefined ui-draggable ui-draggable-handle shop-item" tip-id="598" data-tip-type="t_item" data-item-type="t-norm" style="left: 0px; top: 198px;">
+        <div class="highlight t-norm h-exist"></div>
+        <canvas class="icon canvas-icon" width="32" height="32"></canvas>
+        <canvas class="canvas-notice" width="32" height="32"></canvas>
+    </div></div>
+                <div class="shop-info-wrapper">Ceny sprzedaży: normalnie | Cena skupu: 75%<br>Maks. za przedmiot: 100 000<br><span class="purchase-cl">Skupuje: wszystko</span></div>
+            <div class="scrollbar-wrapper">
+        <div class="background"></div>
+        <div class="arrow-up"></div>
+        <div class="arrow-down"></div>
+        <div class="track">
+            <div class="handle ui-draggable ui-draggable-handle"></div>
+        </div>
+    </div></div>
+            <div class="shop-right-column">
+                <div class="buy-items interface-element-grid-border items-grid ui-droppable">
+                    <div class="interface-element-item-slot-grid-stretch"></div>
+                    <span class="label interface-element-grid-border" data-trans="#buying_items#shop">Kup</span>
+                </div>
+                <div class="sell-items interface-element-grid-border items-grid ui-droppable">
+                    <!--<span class="label" data-trans="#selling_items#shop"></span>-->
+                    <div class="interface-element-item-slot-grid-stretch"></div>
+                    <span class="label interface-element-grid-border">Sprzedaj</span>
+                    <canvas class="SHOP_CANVAS" width="165px" height="115px"></canvas>
+                </div>
+                <div class="great-merchamp btns-spacing" style="display: block;"><div class="button green small btn-num grab-bag-1" tip-id="593">
+        <div class="background"></div>
+        <div class="label">1</div>
+    </div><div class="button green small btn-num grab-bag-2" tip-id="594">
+        <div class="background"></div>
+        <div class="label">2</div>
+    </div><div class="button green small btn-num grab-bag-3" tip-id="595">
+        <div class="background"></div>
+        <div class="label">3</div>
+    </div><div class="button green small btn-num" tip-id="592">
+        <div class="background"></div>
+        <div class="label"></div>
+    <div class="add-bck config"></div></div></div>
+    
+                <div class="for-you-txt" data-trans="#badged#extManager">Proponowane</div>
+                <div class="for-you-plug-disabled">
+                    <div class="disabled-text" data-trans="#for_you_alert">Proponowane przedmioty nie są w tej chwili dostępne.</div>
+                </div>
+                
+                <div class="finalize-button btns-spacing"><div class="button green small">
+        <div class="background"></div>
+        <div class="label">Akceptuj</div>
+    </div></div>
+                <div class="filters-heading" data-trans="#filters#shop">Filtry</div>
+                <div class="show-items-filter checkbox-list"><div class="checkbox-custom c-checkbox" tip-id="589">
+            <input type="checkbox" id="own-profession_0" name="own-profession" value="1">
+            <label for="own-profession_0" class="c-checkbox__label c-checkbox__label--highlight"><div><div class="filter-label filter-label--max">Profesja</div><div class="filter-label filter-label--min">Prof.</div></div></label>
+        </div><div class="checkbox-custom c-checkbox" tip-id="590">
+            <input type="checkbox" id="own-level_1" name="own-level" value="2">
+            <label for="own-level_1" class="c-checkbox__label c-checkbox__label--highlight"><div><div class="filter-label filter-label--max">Poziom</div><div class="filter-label filter-label--min">Poz.</div></div></label>
+        </div><div class="checkbox-custom c-checkbox" tip-id="591">
+            <input type="checkbox" id="can-afford_2" name="can-afford" value="4">
+            <label for="can-afford_2" class="c-checkbox__label c-checkbox__label--highlight"><div><div class="filter-label filter-label--max">Cena</div><div class="filter-label filter-label--min">Cena</div></div></label>
+        </div></div>
+                <div class="shop-balance">
+                    <div class="sell">0</div>
+                    <div class="buy">0</div>
+                    <div class="balance">0</div>
+                    <div class="total-price" data-trans="#total-price">Bilans:</div>
+                </div>
+            </div>
+
+            <div class="more-gold-button"></div>
+        </div>
+    </div></div>
+            <div class="window-controlls">
+            </div>
+        </div>
+        <div class="c-window__bottom-bar">
+          <div class="interface-element-bottom-bar-background-stretch"></div>
+        <div class="premium-footer">
+    <div class="premium-footer__chest ie-chest ie-chest--gold"></div>
+    <div class="premium-footer__label">Brakuje Ci złota?</div>
+    <div class="premium-footer__buttons"><div class="button small purple">
+        <div class="background"></div>
+        <div class="label">Dokup złoto</div>
+    </div><div class="button small purple">
+        <div class="background"></div>
+        <div class="label">Odzyskaj przedmioty</div>
+    </div></div>
+</div></div>
+        <div class="close-button-corner-decor">
+            <button type="button" class="close-button" tip-id="588"></button>
+        </div>
+    </div>  TUTAJ  KLIKA W NR ROTB 1 2 3 I TEDY ITEMY IDA NA SELL I KLIKASZ AKCETUJE I TYLE I ZMAKYAKSZ OKNO XD

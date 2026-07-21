@@ -1,201 +1,258 @@
 'use strict';
 
-/**
- * Canvas-aware Captcha Solver dla Margonem
- */
+// ═══════════════════════════════════════════════════════════════
+//  MARGONEM CAPTCHA SOLVER — Puppeteer mouse-click version
+//  Klikanie MYSZKĄ (page.mouse.click) bo gra jest na canvas
+// ═══════════════════════════════════════════════════════════════
+
 async function checkAndSolveCaptcha(page) {
-    if (!page || page.isClosed()) return;
+    if (!page || page.isClosed()) return false;
 
     try {
-        const hasCaptcha = await page.evaluate(() => {
-            const wnd = document.querySelector('.captcha-window, .captcha');
-            if (!wnd || wnd.style.display === 'none') return false;
+        // ═══ 1. WYKRYWANIE CAPTCHY ═══
+        // Prawdziwy selektor w Margonem: div.captcha (NIE .captcha-window!)
+        const captchaInfo = await page.evaluate(() => {
+            const captcha = document.querySelector('.captcha');
+            if (!captcha) return null;
 
-            if (wnd.hasAttribute('data-solving')) return false;
-            wnd.setAttribute('data-solving', '1');
-            return true;
+            // Sprawdź widoczność
+            const style = window.getComputedStyle(captcha);
+            if (style.display === 'none' || style.visibility === 'hidden') return null;
+
+            // Nie rozwiązuj dwa razy naraz
+            if (captcha.hasAttribute('data-maw-solving')) return null;
+            captcha.setAttribute('data-maw-solving', '1');
+
+            // Pytanie
+            const questionEl = captcha.querySelector('.captcha__question');
+            const question = questionEl ? questionEl.textContent.trim() : '';
+
+            // Próby
+            const triesEl = captcha.querySelector('.captcha__triesleft');
+            const tries = triesEl ? triesEl.textContent.trim() : '';
+
+            // Przyciski z ich labelami i POZYCJAMI EKRANOWYMI
+            const buttons = [];
+            captcha.querySelectorAll('.captcha__buttons .button').forEach((btn, i) => {
+                const labelEl = btn.querySelector('.label');
+                const label = labelEl ? labelEl.textContent.trim() : '';
+                const rect = btn.getBoundingClientRect();
+                buttons.push({
+                    index: i,
+                    label: label,
+                    x: Math.round(rect.x + rect.width / 2),
+                    y: Math.round(rect.y + rect.height / 2),
+                });
+            });
+
+            // Przycisk "Potwierdzam" — pozycja ekranowa
+            let confirmPos = null;
+            const confirmBtn = captcha.querySelector('.captcha__confirm .button');
+            if (confirmBtn) {
+                const rect = confirmBtn.getBoundingClientRect();
+                confirmPos = {
+                    x: Math.round(rect.x + rect.width / 2),
+                    y: Math.round(rect.y + rect.height / 2),
+                };
+            }
+
+            return { question, tries, buttons, confirmPos };
         });
 
-        if (!hasCaptcha) return;
+        if (!captchaInfo) return false;
 
-        console.log('[Puppeteer:Captcha] 🧩 Wykryto captcha (canvas) – rozwiązuję...');
+        // ═══ CAPTCHA WYKRYTA! ═══
+        console.log('[Captcha] 🧩 ═══════════════════════════════════════');
+        console.log(`[Captcha] ❗ CAPTCHA WYKRYTA!`);
+        console.log(`[Captcha] Pytanie: "${captchaInfo.question}"`);
+        console.log(`[Captcha] ${captchaInfo.tries}`);
+        console.log(`[Captcha] Przyciski: ${captchaInfo.buttons.map(b => b.label).join(' | ')}`);
 
-        await delay(600 + Math.random() * 400);   // <-- ZAMIENIONE
+        // Screenshot na debug
+        try {
+            await page.screenshot({ path: 'captcha_debug.png', fullPage: false });
+            console.log('[Captcha] 📷 Screenshot zapisany → captcha_debug.png');
+        } catch {}
 
-        // 1. Pobierz pytanie
-        const question = await page.evaluate(() => {
-            const q = document.querySelector('.captcha__question');
-            return q ? q.textContent.trim().toLowerCase() : '';
-        });
+        // ═══ 2. PARSOWANIE PYTANIA — jaki symbol szukamy? ═══
+        const symbol = getSymbol(captchaInfo.question.toLowerCase());
 
-        const symbol = getSymbol(question);
         if (!symbol) {
-            console.warn(`[Captcha] Nieznane pytanie: ${question}`);
+            console.error(`[Captcha] ❌ Nie rozpoznano pytania! Nie klikam.`);
+            console.error(`[Captcha] Pytanie: "${captchaInfo.question}"`);
             await cleanup(page);
-            return;
+            return false;
         }
 
-        console.log(`[Captcha] Symbol: "${symbol}"`);
+        console.log(`[Captcha] 🔍 Szukam symbolu: "${symbol}"`);
 
-        // 2. Klikaj przyciski
-        const buttons = await page.$$('.captcha__buttons .button, .captcha__buttons .btn');
+        // ═══ 3. KLIKANIE PRZYCISKÓW — page.mouse.click() ═══
+        // Czekamy chwilę żeby wyglądało naturalnie
+        await delay(800 + Math.floor(Math.random() * 600));
 
-        for (let i = 0; i < buttons.length; i++) {
-            const text = await buttons[i].evaluate(el => el.textContent.trim());
-            if (text.includes(symbol)) {
-                await buttons[i].click({ delay: 60 + Math.random() * 90 });
-                console.log(`[Captcha] Klik: ${text}`);
-                await delay(380 + Math.random() * 320);
+        let clickedCount = 0;
+        for (const btn of captchaInfo.buttons) {
+            if (btn.label.includes(symbol)) {
+                // ★ KLUCZOWE: klikamy MYSZKĄ Puppeteer, nie DOM .click()!
+                await page.mouse.click(btn.x, btn.y);
+                clickedCount++;
+                console.log(`[Captcha] ✅ Kliknąłem: "${btn.label}" @ [${btn.x}, ${btn.y}]`);
+                // Krótka pauza między klikami (naturalność)
+                await delay(150 + Math.floor(Math.random() * 250));
             }
         }
 
-        // 3. Potwierdź
-        await delay(550 + Math.random() * 450);
-        const confirm = await page.$('.captcha__confirm .button, .captcha__confirm .btn');
-        if (confirm) {
-            await confirm.click({ delay: 80 });
-            console.log('[Captcha] ✓ Potwierdzono!');
+        console.log(`[Captcha] Kliknięto ${clickedCount}/${captchaInfo.buttons.length} przycisków`);
+
+        if (clickedCount === 0) {
+            console.warn('[Captcha] ⚠ Żaden przycisk nie pasował do symbolu!');
+            await cleanup(page);
+            return false;
         }
 
-        await delay(1800);
+        // ═══ 4. POTWIERDZENIE ═══
+        await delay(500 + Math.floor(Math.random() * 400));
+
+        if (captchaInfo.confirmPos) {
+            await page.mouse.click(captchaInfo.confirmPos.x, captchaInfo.confirmPos.y);
+            console.log(`[Captcha] 📨 Potwierdzono @ [${captchaInfo.confirmPos.x}, ${captchaInfo.confirmPos.y}]`);
+        } else {
+            console.warn('[Captcha] ⚠ Nie znaleziono przycisku "Potwierdzam"!');
+        }
+
+        // ═══ 5. WERYFIKACJA ═══
+        await delay(2500);
+
+        const stillThere = await page.evaluate(() => {
+            const c = document.querySelector('.captcha');
+            if (!c) return false;
+            const s = window.getComputedStyle(c);
+            return s.display !== 'none' && s.visibility !== 'hidden';
+        });
+
+        if (stillThere) {
+            console.warn('[Captcha] ⚠ Captcha nadal widoczna — mogło się nie udać (złe odpowiedzi?)');
+        } else {
+            console.log('[Captcha] ✅✅✅ Captcha ROZWIĄZANA! Gra idzie dalej.');
+        }
+
         await cleanup(page);
+        return !stillThere;
 
     } catch (err) {
-        if (!err.message.includes('Execution context') && !err.message.includes('Target closed')) {
-            console.error('[Captcha] Błąd:', err.message);
-        }
+        console.error('[Captcha] ❌ Błąd:', err.message);
         await cleanup(page).catch(() => {});
+        return false;
     }
 }
 
-// Pomocnicza funkcja delay (zamiast page.waitForTimeout)
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
+// ═══════════════════════════════════════════════════════════════
+//  PARSOWANIE PYTANIA → SYMBOL
+// ═══════════════════════════════════════════════════════════════
 function getSymbol(q) {
-    if (/gwiazdk|gwiazde|gwiazd/.test(q)) return '*';
-    if (/kratk|płotk|hash|kratce/.test(q)) return '#';
+    // Gwiazdka / asterisk — najczęstszy typ
+    if (/gwiazd/.test(q)) return '*';
+    // Kratka / hash
+    if (/kratk|płotk|hash/.test(q)) return '#';
+    // Małpa / at
     if (/małp/.test(q)) return '@';
+    // Wykrzyknik
     if (/wykrzyknik/.test(q)) return '!';
+    // Dolar
     if (/dolar/.test(q)) return '$';
+    // Procent
     if (/procent/.test(q)) return '%';
-    if (/daszk|daszek/.test(q)) return '^';
+    // Daszek / karetka
+    if (/daszk|daszek|karetk/.test(q)) return '^';
+    // Ukośnik / slash
     if (/ukośnik|slash/.test(q)) return '/';
-    if (/pytajnik|zapytania/.test(q)) return '?';
-    if (/ampersand|and|&/.test(q)) return '&';
+    // Pytajnik
+    if (/pytajnik|znak zapytania/.test(q)) return '?';
+    // Ampersand
+    if (/ampersand/.test(q)) return '&';
+    // Plus
+    if (/plus/.test(q)) return '+';
+    // Minus / myślnik
+    if (/minus|myślnik/.test(q)) return '-';
+    // Podkreślenie
+    if (/podkreśl/.test(q)) return '_';
+    // Tylda
+    if (/tyld/.test(q)) return '~';
+    // Nawias
+    if (/nawias.*okrągł|okrągł.*nawias/.test(q)) return '(';
+    if (/nawias.*kwadrat|kwadrat.*nawias/.test(q)) return '[';
+    // Średnik
+    if (/średnik/.test(q)) return ';';
+    // Dwukropek
+    if (/dwukropek/.test(q)) return ':';
+
     return null;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  CLEANUP — zdejmij flagę "solving"
+// ═══════════════════════════════════════════════════════════════
 async function cleanup(page) {
-    await page.evaluate(() => {
-        const w = document.querySelector('.captcha-window, .captcha, .captcha-layer');
-        if (w) w.removeAttribute('data-solving');
-    });
+    try {
+        await page.evaluate(() => {
+            const c = document.querySelector('.captcha');
+            if (c) c.removeAttribute('data-maw-solving');
+        });
+    } catch {}
 }
 
-
+// ═══════════════════════════════════════════════════════════════
+//  AUTO RELOG Z MINUTNIKA
+// ═══════════════════════════════════════════════════════════════
 async function tryAutoRelog(page) {
     try {
-        // 1. Sprawdź czy userscript zapisał cel relogu w localStorage
+        // 1. Userscript już zapisał cel
         const relogRequest = await page.evaluate(() => {
-            const targetName = localStorage.getItem('e2h_relog_e2name');
-            const targetTime = parseInt(localStorage.getItem('e2h_relog_e2name_time') || '0');
-            // Cel jest aktualny jeśli zapisany w ciągu ostatnich 30 sekund
-            if (targetName && (Date.now() - targetTime) < 30000) {
-                return { name: targetName, fromUserscript: true };
-            }
-            // 2. Fallback: Sam szukaj w minutniku E2 z timerem <= 10s
-            const rows = Array.from(document.querySelectorAll('.elite-timer .row'));
-            for (const row of rows) {
-                const nameEl = row.querySelector('.name-val');
-                const timeEl = row.querySelector('.time-val');
-                if (!nameEl || !timeEl) continue;
-                const rawName = nameEl.textContent.trim();
-                const timeStr = timeEl.textContent.trim();
-                const parts = timeStr.split(':').map(Number);
-                let seconds = 0;
-                if (parts.length === 3) seconds = parts[0]*3600 + parts[1]*60 + parts[2];
-                else if (parts.length === 2) seconds = parts[0]*60 + parts[1];
-                else seconds = parseInt(timeStr) || 999;
-                if (seconds <= 10) {
-                    return { name: rawName, seconds, fromUserscript: false };
-                }
+            const name = localStorage.getItem('e2h_relog_e2name');
+            const time = parseInt(localStorage.getItem('e2h_relog_e2name_time') || '0');
+            if (name && (Date.now() - time) < 40000) {
+                return { name, fromUserscript: true };
             }
             return null;
         });
 
         if (!relogRequest) return false;
 
-        console.log(`[Puppeteer:Relogger] 🎯 Cel: "${relogRequest.name}" (źródło: ${relogRequest.fromUserscript ? 'userscript' : 'auto-scan'})`);
+        console.log(`[Puppeteer:Relogger] 🎯 Cel: "${relogRequest.name}"`);
 
-        // 3. Znajdź wiersz minutnika pasujący do nazwy E2
-        const rowSelector = await page.evaluate((targetName) => {
-            const cleanTarget = targetName.replace(/^\[E2?\]\s*/i, '').trim().toLowerCase();
-            const nameElements = Array.from(document.querySelectorAll('.elite-timer .name-val, .elite-timer .name'));
-            for (const el of nameElements) {
-                const rowName = el.textContent.trim().replace(/^\[E2?\]\s*/i, '').trim().toLowerCase();
-                if (rowName === cleanTarget || rowName.includes(cleanTarget) || cleanTarget.includes(rowName)) {
-                    el.setAttribute('data-puppeteer-target-relog', '1');
-                    return '[data-puppeteer-target-relog="1"]';
+        // Klik na wiersz minutnika — MYSZKĄ Puppeteer
+        const targetRow = await page.evaluate((target) => {
+            const rows = Array.from(document.querySelectorAll('.elite-timer .row, .elite-timer-wnd .row'));
+            for (const row of rows) {
+                const nameEl = row.querySelector('.name-val, .name');
+                if (nameEl && nameEl.textContent.includes(target)) {
+                    const rect = row.getBoundingClientRect();
+                    return {
+                        x: Math.round(rect.x + rect.width / 2),
+                        y: Math.round(rect.y + rect.height / 2),
+                    };
                 }
             }
             return null;
         }, relogRequest.name);
 
-        if (!rowSelector) {
-            console.log('[Puppeteer:Relogger] ⚠️ Nie znaleziono wiersza minutnika (być może okno jest zamknięte)');
-            return false;
+        if (targetRow) {
+            // Dwuklik MYSZKĄ
+            await page.mouse.click(targetRow.x, targetRow.y, { clickCount: 2 });
+            console.log('[Puppeteer:Relogger] ✓ Dwuklik na minutnik wykonany');
+            await page.evaluate(() => {
+                localStorage.removeItem('e2h_relog_e2name');
+                localStorage.removeItem('e2h_relog_e2name_time');
+            });
+            await delay(2500);
+            return true;
         }
-
-        console.log(`[Puppeteer:Relogger] 🖱️ Dwuklik na minutnik: "${relogRequest.name}"`);
-
-        // 4. PRAWDZIWY klik Puppeteera (isTrusted: true!) — dwuklik
-        await page.click(rowSelector, { clickCount: 2, delay: 30 + Math.random() * 40 });
-
-        console.log('[Puppeteer:Relogger] ✓ Dwuklik wykonany (prawdziwy klik przeglądarki)');
-
-        // Oczyszczanie atrybutu i celu
-        await page.evaluate(() => {
-            const el = document.querySelector('[data-puppeteer-target-relog="1"]');
-            if (el) el.removeAttribute('data-puppeteer-target-relog');
-            localStorage.removeItem('e2h_relog_e2name');
-            localStorage.removeItem('e2h_relog_e2name_time');
-        }).catch(() => {});
-
-        // 5. Poczekaj na reakcję gry (okno relogu / przekierowanie)
-        await delay(2000);
-
-        // 6. Sprawdź czy pojawiło się okno wylogowywania i kliknij "Przeloguj"
-        const relogBtnClicked = await page.evaluate(() => {
-            const logOffWnd = document.querySelector('.log-off-wnd, .log-off');
-            if (!logOffWnd) return false;
-            const btn = Array.from(logOffWnd.querySelectorAll('.button, .btn'))
-                .find(b => b.textContent.includes('Przeloguj'));
-            return !!btn;
-        });
-
-        if (relogBtnClicked) {
-            // Kliknij przycisk "Przeloguj" PRAWDZIWYM klikiem Puppeteera
-            const przelogujBtn = await page.$x("//div[contains(@class,'log-off')]//div[contains(@class,'button') or contains(@class,'btn')][contains(text(),'Przeloguj')]");
-            if (przelogujBtn.length > 0) {
-                await przelogujBtn[0].click({ delay: 80 });
-                console.log('[Puppeteer:Relogger] ✓ Kliknięto [Przeloguj] prawdziwym klikiem');
-            }
-        }
-
-        return true;
     } catch (e) {
-        if (!e.message.includes('Execution context') && !e.message.includes('Target closed') && !e.message.includes('No element found')) {
-            console.error('[Puppeteer:Relogger] Błąd:', e.message);
-        }
+        console.error('[Relogger] Błąd:', e.message);
     }
     return false;
 }
 
-
-function delay(ms) {
-    return new Promise(r => setTimeout(r, ms));
-}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 module.exports = { checkAndSolveCaptcha, tryAutoRelog };

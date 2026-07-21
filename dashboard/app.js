@@ -16,6 +16,7 @@ let state = {
     schedule: { enabled: false, slots: '' },
     connected: false,
     logs: [],
+    charBossMap: {},
 };
 
 // ── HELPERS ──
@@ -97,7 +98,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
 // ── CHARS TAB ──
 function renderChars() {
     const grid = document.getElementById('chars-grid');
-    const { chars, activeChar, drops } = state;
+    const { chars, activeChar, drops, charBossMap } = state;
 
     if (!chars.length) {
         grid.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><div>Brak postaci — bot jeszcze nie zalogował się do gry</div></div>`;
@@ -113,6 +114,7 @@ function renderChars() {
         const isActive = nick.toLowerCase() === (activeChar || '').toLowerCase();
         const world = ch.world || 'luvia';
         const mapName = ch.mapName || ch.map_name || ch.location || '';
+        const assignedBoss = charBossMap[nick.toLowerCase()] || 'Brak (nieaktywny)';
 
         // HP z aktualnego stanu bota (jeśli aktywna)
         let hpPct = null;
@@ -127,9 +129,15 @@ function renderChars() {
 
         const card = document.createElement('div');
         card.className = 'char-card' + (isActive ? ' active-char' : '');
+        
+        let avatarHtml = `<div class="char-avatar">${icon}</div>`;
+        if (ch.avatarUrl) {
+            avatarHtml = `<div class="char-avatar" style="background-image: url('${ch.avatarUrl}'); background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: 50%;"></div>`;
+        }
+
         card.innerHTML = `
             <div class="char-top">
-                <div class="char-avatar">${icon}</div>
+                ${avatarHtml}
                 <div class="char-info">
                     <div class="char-name">${nick}</div>
                     <div class="char-meta">Lv${lvl} ${prof} · ${world}</div>
@@ -142,6 +150,9 @@ function renderChars() {
                 <div class="hp-bar-wrap"><div class="hp-bar-fill ${getHpClass(hpPct)}" style="width:${hpPct}%"></div></div>
             </div>` : ''}
             <div class="char-map">📍 ${mapName || 'Nieznana lokalizacja'}</div>
+            <div class="char-card-boss">
+                🎯 E2: <strong>${assignedBoss}</strong>
+            </div>
             <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:#64748b">
                 <span title="Legendy">⭐ <b style="color:#c084fc">${d.leg || 0}</b></span>
                 <span title="Heroiki">💙 <b style="color:#60a5fa">${d.hero || 0}</b></span>
@@ -149,8 +160,9 @@ function renderChars() {
                 <span title="Zabójstwa E2">⚔️ <b style="color:#22c55e">${d.e2kills || 0}</b> E2</span>
             </div>
             <div class="char-actions">
-                <button class="btn btn-success btn-sm btn-login" data-nick="${nick}">⚔️ Zaloguj bota</button>
-                ${isActive ? '<button class="btn btn-ghost btn-sm" disabled>✅ Aktywna</button>' : ''}
+                <button class="btn btn-success btn-sm btn-login" data-nick="${nick}">⚔️ Zaloguj</button>
+                <button class="btn btn-ghost btn-sm btn-set-boss" data-nick="${nick}">🎯 Ustaw E2</button>
+                ${isActive ? '<button class="btn btn-ghost btn-sm" disabled style="margin-left:auto">✅ Aktywna</button>' : ''}
             </div>
         `;
         grid.appendChild(card);
@@ -163,10 +175,18 @@ function renderChars() {
             selectChar(nick);
         });
     });
+
+    grid.querySelectorAll('.btn-set-boss').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nick = btn.dataset.nick;
+            openE2Drawer(nick);
+        });
+    });
 }
 
 async function selectChar(nick) {
     try {
+        toast(`🔄 Zlecam logowanie na: ${nick}...`, 'info');
         const res = await fetch(`${API}/api/chars/select`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -174,103 +194,120 @@ async function selectChar(nick) {
         });
         const data = await res.json();
         if (data.ok) {
+            toast(`✅ Logowanie na ${nick} zlecone`, 'success');
             state.activeChar = nick;
-            toast(`✅ Zlecono logowanie na: ${nick}`, 'success');
             renderChars();
         } else {
-            toast(`❌ Błąd: ${data.error}`, 'error');
+            toast(`❌ ${data.error || 'Nieznany błąd'}`, 'error');
         }
     } catch (e) {
-        toast('❌ Błąd połączenia z serwerem', 'error');
+        toast('❌ Brak połączenia z botem', 'error');
     }
 }
 
 // ── TIMERS TAB ──
+let lastTimersData = []; // zapamiętujemy ostatnie dane z serwera
+
 function renderTimers() {
     const list = document.getElementById('timers-list');
-    let timers = [...state.timers];
+    let timers = [...(state.timers || [])];
 
-    const search = document.getElementById('timer-search').value.toLowerCase();
+    const search = document.getElementById('timer-search').value.toLowerCase().trim();
     const filter = document.getElementById('timer-filter').value;
 
-    const now = Date.now() / 1000;
+    if (search) {
+        timers = timers.filter(t => {
+            const name = (t.name || t.rawName || t.npcName || '').toLowerCase();
+            return name.includes(search);
+        });
+    }
 
-    if (search) timers = timers.filter(t => (t.name || t.npcName || '').toLowerCase().includes(search));
-
-    // Parse timer do sekund
+    // Parsowanie + zachowanie stanu
     timers = timers.map(t => {
-        const rawSecs = typeof t.seconds === 'number' ? t.seconds
-                      : typeof t.timeLeft === 'number' ? t.timeLeft
-                      : typeof t.respawnAt === 'number' ? Math.round(t.respawnAt / 1000 - now)
-                      : null;
-        return { ...t, _secs: rawSecs };
+        let secs = null;
+        if (typeof t.seconds === 'number') secs = t.seconds;
+        else if (typeof t.timeLeft === 'number') secs = t.timeLeft;
+        else if (typeof t.respawnAt === 'number') secs = Math.round(t.respawnAt / 1000 - (Date.now() / 1000));
+
+        return { ...t, _secs: secs };
     });
 
-    if (filter === 'soon')   timers = timers.filter(t => t._secs !== null && t._secs >= 0 && t._secs < 600);
+    if (filter === 'soon') timers = timers.filter(t => t._secs !== null && t._secs >= 0 && t._secs < 600);
     if (filter === 'active') timers = timers.filter(t => t._secs !== null && t._secs <= 0);
 
-    // Sort: najpierw aktywne, potem najkrótszy czas
-    timers.sort((a, b) => {
-        const sa = a._secs ?? 99999;
-        const sb = b._secs ?? 99999;
-        return sa - sb;
-    });
+    timers.sort((a, b) => (a._secs ?? 999999) - (b._secs ?? 999999));
 
     // Badge
-    const urgentCount = state.timers.filter(t => {
-        const s = typeof t.seconds === 'number' ? t.seconds : typeof t.timeLeft === 'number' ? t.timeLeft : 9999;
-        return s <= 600;
-    }).length;
+    const urgentCount = timers.filter(t => t._secs !== null && t._secs >= 0 && t._secs <= 600).length;
     const badge = document.getElementById('nav-badge-timers');
-    badge.textContent = state.timers.length;
-    if (urgentCount > 0) { badge.classList.add('urgent'); badge.textContent = `🔴 ${urgentCount}`; }
-    else badge.classList.remove('urgent');
+    badge.textContent = state.timers.length || 0;
+    if (urgentCount > 0) {
+        badge.classList.add('urgent');
+        badge.textContent = `🔴 ${urgentCount}`;
+    } else badge.classList.remove('urgent');
 
     if (!timers.length) {
-        list.innerHTML = `<div class="empty-state"><div class="empty-icon">🟢</div><div>Brak timerów E2 do pokazania</div></div>`;
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><div>Brak timerów E2</div></div>`;
         return;
     }
 
     list.innerHTML = '';
     timers.forEach(t => {
-        const name = t.name || t.npcName || t.nick || '?';
-        const map  = t.map || t.mapName || '';
+        const name = t.name || t.rawName || '?';
+        const map = t.map || t.mapName || '—';
         const secs = t._secs;
 
         let dotClass = '', rowClass = '', cdClass = '';
-        if (secs === null)           { dotClass = ''; }
-        else if (secs <= 0)          { dotClass = 'danger'; rowClass = 'danger'; cdClass = 'danger'; }
-        else if (secs < 300)         { dotClass = 'danger'; rowClass = 'danger'; cdClass = 'danger'; }
-        else if (secs < 600)         { dotClass = 'soon';   rowClass = 'soon';   cdClass = 'soon'; }
-        else                         { dotClass = 'active'; rowClass = '';        cdClass = ''; }
+        if (secs === null) dotClass = '';
+        else if (secs <= 0) { dotClass = 'danger'; rowClass = 'danger'; cdClass = 'danger'; }
+        else if (secs < 300) { dotClass = 'danger'; rowClass = 'danger'; cdClass = 'danger'; }
+        else if (secs < 600) { dotClass = 'soon'; rowClass = 'soon'; cdClass = 'soon'; }
+        else { dotClass = 'active'; }
 
         const row = document.createElement('div');
         row.className = `timer-row ${rowClass}`;
-        row.dataset.secs = secs;
+        row.dataset.secs = secs !== null ? secs : '';
         row.innerHTML = `
             <div class="timer-dot ${dotClass}"></div>
             <div class="timer-info">
                 <div class="timer-name">${name}</div>
                 <div class="timer-map">📍 ${map}</div>
             </div>
-            <div class="timer-countdown ${cdClass}" data-secs="${secs}">${secs !== null ? fmtSeconds(Math.max(0, secs)) : '—'}</div>
+            <div class="timer-countdown ${cdClass}" data-secs="${secs !== null ? secs : ''}">
+                ${secs !== null ? fmtSeconds(Math.max(0, secs)) : '—'}
+            </div>
         `;
         list.appendChild(row);
     });
 }
 
-// Live countdown tick
+// Live countdown (lokalne odliczanie)
 function tickTimers() {
     document.querySelectorAll('.timer-countdown[data-secs]').forEach(el => {
         let s = parseInt(el.dataset.secs);
         if (isNaN(s)) return;
+
         s = Math.max(0, s - 1);
         el.dataset.secs = s;
         el.textContent = fmtSeconds(s);
+
+        const row = el.closest('.timer-row');
+        if (s <= 0) {
+            row.classList.add('danger');
+            el.classList.add('danger');
+        } else if (s < 300) {
+            row.classList.add('danger');
+            el.classList.add('danger');
+        } else if (s < 600) {
+            row.classList.add('soon');
+            el.classList.add('soon');
+        }
     });
 }
+
 setInterval(tickTimers, 1000);
 
+// Event listeners
 document.getElementById('timer-search').addEventListener('input', renderTimers);
 document.getElementById('timer-filter').addEventListener('change', renderTimers);
 
@@ -318,7 +355,9 @@ function renderStats() {
 function renderMonitor() {
     const s = state.botState;
     if (!s || !s.hero) return;
+
     const h = s.hero;
+    const phase = s.phase || 'idle';
 
     document.getElementById('mon-name').textContent = h.name || '—';
     document.getElementById('mon-lvl').textContent  = h.lvl ? `Lv${h.lvl}` : 'Lv?';
@@ -328,6 +367,7 @@ function renderMonitor() {
     let hpPct = null;
     if (h.maxHp && h.hp) hpPct = Math.round(h.hp / h.maxHp * 100);
     else if (h.hp !== undefined && h.hp <= 100) hpPct = h.hp;
+
     if (hpPct !== null) {
         document.getElementById('mon-hp-pct').textContent = hpPct;
         const bar = document.getElementById('mon-hp-bar');
@@ -335,10 +375,66 @@ function renderMonitor() {
         bar.className = `hp-bar-fill ${getHpClass(hpPct)}`;
     }
 
-    const phase = s.phase || 'idle';
     const phaseBadge = document.getElementById('mon-phase');
     phaseBadge.textContent = phase.toUpperCase();
     phaseBadge.className = `phase-badge ${phase}`;
+
+    // === AUTO RETURN TO E2 BUTTON ===
+    let returnBtn = document.getElementById('btn-auto-return');
+    if (!returnBtn) {
+        const monitorCard = document.querySelector('.monitor-hero-card');
+        if (monitorCard) {
+            returnBtn = document.createElement('button');
+            returnBtn.id = 'btn-auto-return';
+            returnBtn.className = 'btn btn-ghost';
+            returnBtn.style.marginTop = '16px';
+            returnBtn.style.width = '100%';
+            returnBtn.innerHTML = `🔄 <span id="return-text">Auto Return to E2</span> <span id="return-status" style="margin-left:8px; font-size:12px;"></span>`;
+            monitorCard.appendChild(returnBtn);
+
+            returnBtn.addEventListener('click', async () => {
+                const enabled = returnBtn.dataset.enabled === 'true';
+                const newState = !enabled;
+
+                try {
+                    const res = await fetch(`${API}/api/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ autoReturnToE2: newState })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        returnBtn.dataset.enabled = newState;
+                        updateReturnButton(returnBtn);
+                        toast(`✅ Auto Return to E2 ${newState ? 'WŁĄCZONY' : 'WYŁĄCZONY'}`, 'success');
+                    }
+                } catch (e) {
+                    toast('❌ Błąd połączenia', 'error');
+                }
+            });
+        }
+    }
+
+    // Aktualizuj stan przycisku
+    if (returnBtn) updateReturnButton(returnBtn);
+}
+
+function updateReturnButton(btn) {
+    const enabled = btn.dataset.enabled === 'true';
+    const statusEl = document.getElementById('return-status');
+    const textEl = document.getElementById('return-text');
+
+    if (enabled) {
+        btn.style.borderColor = '#35d488';
+        btn.style.color = '#35d488';
+        statusEl.textContent = '✅ AKTYWNY';
+        statusEl.style.color = '#35d488';
+    } else {
+        btn.style.borderColor = '';
+        btn.style.color = '';
+        statusEl.textContent = '⭕ WYŁĄCZONY';
+        statusEl.style.color = '#94a3b8';
+    }
 }
 
 // LOG FEED
@@ -513,6 +609,17 @@ async function fetchAll() {
             const h = state.botState.hero;
             const phase = state.botState.phase || 'idle';
             addLog(`[${h.name}] ${phase} — ${h.mapName || '?'}`, phase === 'fighting' ? 'ok' : 'info');
+
+if (timersData.ok) {
+            const newTimers = timersData.timers || [];
+            // Jeśli timer zniknął — znaczy ktoś zabił E2
+            if (lastTimersData.length > 0 && newTimers.length < lastTimersData.length) {
+                addLog('⚠️ Któryś E2 został zabity — odświeżam timery', 'warn');
+            }
+            lastTimersData = newTimers;
+            state.timers = newTimers;
+        }
+
         }
 
         // Render all
@@ -539,3 +646,123 @@ setInterval(updateScheduleStatus, 1000);
 document.getElementById('modal-ss-close').addEventListener('click', () => {
     document.getElementById('modal-ss').style.display = 'none';
 });
+
+// ── E2 DRAWER SELECTION ──
+const BOSSES_LIST = [
+    "Mushita", "Kotołak Tropiciel", "Shae Phu", "Zorg Jednooki Baron", "Władca rzek", 
+    "Gobbos", "Tyrtajos", "Tollok Shimger", "Szczęt alias Gładki", "Agar", 
+    "Razuglag Oklash", "Foverk Turrim", "Owadzia Matka", "Furruk Kozug", "Vari Kruger"
+];
+
+function openE2Drawer(nick) {
+    const drawer = document.getElementById('drawer-e2');
+    const charNameEl = document.getElementById('drawer-char-name');
+    const listEl = document.getElementById('drawer-e2-list');
+
+    charNameEl.textContent = nick;
+    const currentBoss = state.charBossMap[nick.toLowerCase()] || '';
+
+    listEl.innerHTML = '';
+
+    // Option "Brak"
+    const noneItem = document.createElement('div');
+    noneItem.className = 'e2-select-item none-option' + (!currentBoss ? ' selected' : '');
+    noneItem.innerHTML = '<span>❌ Brak przypisanego E2</span>';
+    noneItem.addEventListener('click', () => saveCharBossMapping(nick, ''));
+    listEl.appendChild(noneItem);
+
+    // List of bosses
+    BOSSES_LIST.forEach(boss => {
+        const isSelected = currentBoss.toLowerCase() === boss.toLowerCase();
+        const item = document.createElement('div');
+        item.className = 'e2-select-item' + (isSelected ? ' selected' : '');
+        item.innerHTML = `
+            <span>${boss}</span>
+            ${isSelected ? '<span>✔</span>' : ''}
+        `;
+        item.addEventListener('click', () => saveCharBossMapping(nick, boss));
+        listEl.appendChild(item);
+    });
+
+    drawer.style.display = 'flex';
+}
+
+async function saveCharBossMapping(nick, boss) {
+    const newMapping = { ...state.charBossMap };
+    if (!boss) {
+        delete newMapping[nick.toLowerCase()];
+    } else {
+        newMapping[nick.toLowerCase()] = boss;
+    }
+
+    try {
+        const res = await fetch(`${API}/api/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ char_boss_map: newMapping })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            state.charBossMap = newMapping;
+            toast(`✅ Przypisano ${boss || 'Brak'} do postaci ${nick}`, 'success');
+            document.getElementById('drawer-e2').style.display = 'none';
+            renderChars();
+        } else {
+            toast('❌ Błąd zapisu konfiguracji', 'error');
+        }
+    } catch (e) {
+        toast('❌ Błąd połączenia', 'error');
+    }
+}
+
+async function loadConfig() {
+    try {
+        const res = await fetch(`${API}/api/config`);
+        const data = await res.json();
+        if (data.ok && data.settings) {
+            let mapping = data.settings.char_boss_map || {};
+            if (typeof mapping === 'string') {
+                try {
+                    mapping = JSON.parse(mapping);
+                } catch {
+                    mapping = {};
+                }
+            }
+            state.charBossMap = mapping;
+
+            const autoReturnToggle = document.getElementById('auto-return-toggle');
+            if (autoReturnToggle && typeof data.settings.autoReturnToE2 !== 'undefined') {
+                autoReturnToggle.checked = !!data.settings.autoReturnToE2;
+            }
+
+            renderChars();
+        }
+    } catch {}
+}
+
+const autoReturnToggle = document.getElementById('auto-return-toggle');
+if (autoReturnToggle) {
+    autoReturnToggle.addEventListener('change', async () => {
+        const val = autoReturnToggle.checked;
+        try {
+            const res = await fetch(`${API}/api/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ autoReturnToE2: val })
+            });
+            if (res.ok) {
+                toast(`🔄 Auto-powrót do E2: ${val ? 'WŁĄCZONY' : 'WYŁĄCZONY'}`, 'info');
+            }
+        } catch (e) {
+            toast('❌ Błąd zapisu ustawień', 'error');
+        }
+    });
+}
+
+document.getElementById('drawer-e2-close').addEventListener('click', () => {
+    document.getElementById('drawer-e2').style.display = 'none';
+});
+
+// Run loadConfig
+loadConfig();
+

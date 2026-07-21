@@ -30,7 +30,6 @@ const captchaSolver = require('./capthat');
 const PORT = Number(process.env.MAW_DEV_PORT) || 3847;
 const LISTEN_HOST = '0.0.0.0';          // ← DODANE — publiczny dostęp
 const ROOT = __dirname;
-const ROOT = __dirname;
 const HOSTED_DIR = path.join(ROOT, 'hosted');
 const DASHBOARD_DIR = path.join(ROOT, 'dashboard');
 const HEADLESS = String(process.env.MAW_HEADLESS || 'false').toLowerCase() === 'true';
@@ -53,36 +52,65 @@ let scheduleConfig = {    // harmonogram
     enabled: false,
     slots: '06:00-12:00, 14:00-24:00'
 };
-let activeChar = process.env.MARGONEM_START_CHAR || '';
+let activeChar = process.env.MARGONUM_START_CHAR || process.env.MARGONEM_START_CHAR || '';
 
-// Scala nowe dane o postaciach z charsCache (upsert po nicku), zamiast nadpisywać całość
+// ── Ładowanie listy postaci z bazy przy starcie ──
+function loadCharsFromDB() {
+    try {
+        const saved = db.getSetting('charsCache');
+        if (Array.isArray(saved) && saved.length > 0) {
+            charsCache = saved;
+            console.log(`[DB] 👥 Wczytano ${charsCache.length} postaci z bazy SQLite`);
+        }
+    } catch (e) {
+        console.error('[DB] Błąd wczytywania charsCache:', e.message);
+    }
+}
+
+// ── Zapis listy postaci do bazy ──
+function saveCharsToDB() {
+    try {
+        db.saveSetting('charsCache', charsCache);
+    } catch (e) {
+        console.error('[DB] Błąd zapisu charsCache:', e.message);
+    }
+}
+
+// Scala nowe dane o postaciach z charsCache (upsert po ID lub nick+świat)
+// Po scaleniu automatycznie zapisuje do SQLite
 function mergeChars(newChars) {
     if (!newChars || !newChars.length) return;
 
-    const byNick = new Map();
-    const byId = new Map();
+    const byKey = new Map();
     charsCache.forEach((c, idx) => {
-        if (c.nick) byNick.set(String(c.nick).toLowerCase(), idx);
-        if (c.id != null && c.id !== '') byId.set(String(c.id), idx);
+        const key = (c.id != null && c.id !== '')
+            ? `id_${c.id}`
+            : `nick_${String(c.nick).toLowerCase()}_${String(c.world || '').toLowerCase()}`;
+        byKey.set(key, idx);
     });
 
+    let changed = false;
     for (const c of newChars) {
         if (!c) continue;
-        let idx = null;
-        if (c.id != null && c.id !== '' && byId.has(String(c.id))) idx = byId.get(String(c.id));
-        else if (c.nick && byNick.has(String(c.nick).toLowerCase())) idx = byNick.get(String(c.nick).toLowerCase());
+        const key = (c.id != null && c.id !== '')
+            ? `id_${c.id}`
+            : `nick_${String(c.nick).toLowerCase()}_${String(c.world || '').toLowerCase()}`;
 
-        if (idx !== null) {
+        if (byKey.has(key)) {
+            const idx = byKey.get(key);
             const existing = charsCache[idx];
             const cleanNew = Object.fromEntries(Object.entries(c).filter(([, v]) => v !== '' && v != null));
             charsCache[idx] = { ...existing, ...cleanNew };
+            changed = true;
         } else if (c.nick || (c.id != null && c.id !== '')) {
             charsCache.push(c);
             const newIdx = charsCache.length - 1;
-            if (c.nick) byNick.set(String(c.nick).toLowerCase(), newIdx);
-            if (c.id != null && c.id !== '') byId.set(String(c.id), newIdx);
+            byKey.set(key, newIdx);
+            changed = true;
         }
     }
+
+    if (changed) saveCharsToDB();
 }
 
 
@@ -164,6 +192,7 @@ async function watchdogStart() {
 
 // ═══ Inicjalizacja ═══
 db.init();
+loadCharsFromDB();
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║   🤖  MARGONEM STANDALONE BOT  v4.0                     ║
@@ -287,6 +316,9 @@ const server = http.createServer(async (req, res) => {
                 await redis.setJson('maw:state', body, 30);
 
                 if (body && body.hero) {
+                    if (body.hero.name) {
+                        activeChar = body.hero.name;
+                    }
                     db.logEvent('STATE_UPDATE', `Postać: ${body.hero.name}, HP: ${body.hero.hp || '?'}%`);
                 }
 
@@ -304,35 +336,61 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
-    // ── Konfiguracja bota ──
-    if (urlPath.startsWith('/api/config')) {
-        if (req.method === 'POST') {
-            try {
-                const body = await readBody(req);
-                if (body && typeof body === 'object') {
-                    pendingConfigPatch = { ...pendingConfigPatch, ...body };
-                    for (const [k, v] of Object.entries(body)) {
-                        db.saveSetting(k, v);
-                    }
-                    sendJson(res, 200, { ok: true });
-                } else {
-                    sendJson(res, 400, { ok: false, error: 'Invalid config payload' });
+// ── Konfiguracja bota ──
+if (urlPath.startsWith('/api/config')) {
+    if (req.method === 'POST') {
+        try {
+            const body = await readBody(req);
+            if (body && typeof body === 'object') {
+                pendingConfigPatch = { ...pendingConfigPatch, ...body };
+
+                for (const [k, v] of Object.entries(body)) {
+                    db.saveSetting(k, v);
                 }
-            } catch (e) {
-                sendJson(res, 400, { ok: false, error: 'Invalid JSON' });
+
+                // === NOWA FUNKCJONALNOŚĆ: Auto Return to E2 ===
+                if (typeof body.autoReturnToE2 !== 'undefined' && page && !page.isClosed()) {
+                    await page.evaluate((enabled) => {
+                        window.AUTO_RETURN_TO_E2 = !!enabled;
+                        console.log(`[MAW] Auto Return to E2 → ${enabled ? 'WŁĄCZONY' : 'WYŁĄCZONY'}`);
+                    }, body.autoReturnToE2);
+                }
+
+                sendJson(res, 200, { ok: true });
+            } else {
+                sendJson(res, 400, { ok: false, error: 'Invalid config payload' });
             }
-            return;
+        } catch (e) {
+            sendJson(res, 400, { ok: false, error: 'Invalid JSON' });
         }
-        if (req.method === 'GET') {
-            sendJson(res, 200, { ok: true, settings: db.getAllSettings() });
-            return;
-        }
+        return;
     }
+    if (req.method === 'GET') {
+        sendJson(res, 200, { ok: true, settings: db.getAllSettings() });
+        return;
+    }
+}
 
     // ── Postacie (lista + wybor) ──
     if (urlPath.startsWith('/api/chars')) {
         if (req.method === 'GET') {
             sendJson(res, 200, { ok: true, chars: charsCache, active: activeChar });
+            return;
+        }
+        if (urlPath === '/api/chars' && req.method === 'POST') {
+            try {
+                const body = await readBody(req);
+                const charList = Array.isArray(body) ? body : (body && Array.isArray(body.chars) ? body.chars : null);
+                if (charList && charList.length > 0) {
+                    mergeChars(charList);
+                    console.log(`[API] 👥 Zaktualizowano charsCache z bota (${charsCache.length} postaci)`);
+                    sendJson(res, 200, { ok: true, count: charsCache.length, chars: charsCache });
+                } else {
+                    sendJson(res, 400, { ok: false, error: 'Brak postaci w payloadzie' });
+                }
+            } catch (e) {
+                sendJson(res, 400, { ok: false, error: e.message });
+            }
             return;
         }
         if (urlPath === '/api/chars/select' && req.method === 'POST') {
@@ -572,16 +630,44 @@ async function startBotBrowser() {
             browserInstance = null;
         }
 
-        const browser = await puppeteer.launch({
+                // Na Linuksie (np. VPS) użyj systemowego Chromium, jeśli istnieje.
+                // Na Windowsie (albo gdy ścieżka nie istnieje) Puppeteer użyje
+                // własnej, wbudowanej przeglądarki pobranej przy npm install.
+                const linuxChromiumPath = '/usr/bin/chromium-browser';
+                const useSystemChromium =
+                    process.platform === 'linux' && fs.existsSync(linuxChromiumPath);
+
+                const browser = await puppeteer.launch({
             headless: HEADLESS,
             userDataDir,
             defaultViewport: HEADLESS ? { width: 1280, height: 960 } : null,
+            ...(useSystemChromium ? { executablePath: linuxChromiumPath } : {}),
+            // Usuwamy --enable-automation z domyślnych flag Chromium
+            ignoreDefaultFlags: false,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--window-size=1280,960',
-                '--proxy-server=http://p.webshare.io:80',   // ← Webshare Proxy
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+                // ═══ STEALTH: ukrywanie automatyzacji ═══
+                '--disable-blink-features=AutomationControlled',  // Kluczowe! Usuwa navigator.webdriver
+                '--disable-infobars',                             // Ukrywa "Chrome is being controlled..."
+                '--excludeSwitches=enable-automation',             // Usuwa flagę automatyzacji
+                '--disable-component-extensions-with-background-pages',
+                '--disable-default-apps',
+                '--disable-extensions',
+                '--disable-hang-monitor',
+                '--disable-popup-blocking',
+                '--disable-prompt-on-repost',
+                '--disable-sync',
+                '--disable-translate',
+                '--metrics-recording-only',
+                '--no-first-run',
+                '--password-store=basic',
+                '--use-mock-keychain',
+                '--lang=pl-PL,pl',
             ],
         });
         browserInstance = browser;
@@ -589,18 +675,336 @@ async function startBotBrowser() {
         const pages = await browser.pages();
         page = pages[0] || await browser.newPage();
 
-        // === AUTORYZACJA PROXY WEB SHARE ===
-        await page.authenticate({
-            username: 'vgdtbnwe',
-            password: 'wvod8zy267j8'
+        console.log('[Puppeteer] ✅ Połączenie bez proxy (bezpośrednio)');
+
+    // ═══════════════════════════════════════════════════════════
+    //  STEALTH: Ukrywanie WebDriver na 100%
+    // ═══════════════════════════════════════════════════════════
+
+    // Realistyczny Chrome User-Agent (pasujący do Chrome, nie Firefox!)
+    await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    );
+
+    // Dodatkowe nagłówki HTTP imitujące prawdziwą przeglądarkę
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
+        'sec-ch-ua': '"Chromium";v="126", "Google Chrome";v="126", "Not-A.Brand";v="8"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+    });
+
+    // ── Główny skrypt stealth (wstrzykiwany PRZED załadowaniem jakiejkolwiek strony) ──
+    await page.evaluateOnNewDocument(() => {
+        // ────────────────────────────────────────
+        // 1. navigator.webdriver = undefined
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+            configurable: true,
+        });
+        // Usuń też z prototype
+        try {
+            const proto = Object.getPrototypeOf(navigator);
+            if (proto && Object.getOwnPropertyDescriptor(proto, 'webdriver')) {
+                delete proto.webdriver;
+            }
+        } catch {}
+
+        // ────────────────────────────────────────
+        // 2. window.chrome — prawdziwy obiekt Chrome
+        // ────────────────────────────────────────
+        if (!window.chrome) {
+            window.chrome = {};
+        }
+        window.chrome.app = {
+            isInstalled: false,
+            InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+            RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+            getDetails: function() { return null; },
+            getIsInstalled: function() { return false; },
+            installState: function(cb) { if (cb) cb('not_installed'); },
+            runningState: function() { return 'cannot_run'; },
+        };
+        window.chrome.runtime = {
+            OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+            OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+            PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+            PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+            PlatformOs: { ANDROID: 'android', CROS: 'cros', FUCHSIA: 'fuchsia', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+            RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
+            connect: function() { return { onDisconnect: { addListener: function() {} }, onMessage: { addListener: function() {} }, postMessage: function() {} }; },
+            sendMessage: function() {},
+            id: undefined,
+        };
+        window.chrome.csi = function() {
+            return {
+                startE: Date.now(),
+                onloadT: Date.now(),
+                pageT: Math.random() * 1000 + 500,
+                tran: 15,
+            };
+        };
+        window.chrome.loadTimes = function() {
+            return {
+                commitLoadTime: Date.now() / 1000,
+                connectionInfo: 'h2',
+                finishDocumentLoadTime: Date.now() / 1000 + 0.5,
+                finishLoadTime: Date.now() / 1000 + 1.2,
+                firstPaintAfterLoadTime: 0,
+                firstPaintTime: Date.now() / 1000 + 0.3,
+                navigationType: 'Other',
+                npnNegotiatedProtocol: 'h2',
+                requestTime: Date.now() / 1000 - 0.2,
+                startLoadTime: Date.now() / 1000,
+                wasAlternateProtocolAvailable: false,
+                wasFetchedViaSpdy: true,
+                wasNpnNegotiated: true,
+            };
+        };
+
+        // ────────────────────────────────────────
+        // 3. navigator.plugins — realistyczna lista
+        // ────────────────────────────────────────
+        function makePluginArray(pluginData) {
+            const plugins = [];
+            pluginData.forEach((pd, i) => {
+                const plugin = Object.create(Plugin.prototype);
+                Object.defineProperties(plugin, {
+                    name: { value: pd.name, enumerable: true },
+                    description: { value: pd.description, enumerable: true },
+                    filename: { value: pd.filename, enumerable: true },
+                    length: { value: pd.mimeTypes ? pd.mimeTypes.length : 0, enumerable: true },
+                });
+                plugins.push(plugin);
+            });
+            // Imitujemy PluginArray
+            const pluginArray = Object.create(PluginArray.prototype);
+            plugins.forEach((p, i) => {
+                Object.defineProperty(pluginArray, i, { value: p, enumerable: true });
+                Object.defineProperty(pluginArray, p.name, { value: p, enumerable: false });
+            });
+            Object.defineProperty(pluginArray, 'length', { value: plugins.length, enumerable: true });
+            Object.defineProperty(pluginArray, 'item', { value: function(idx) { return this[idx] || null; } });
+            Object.defineProperty(pluginArray, 'namedItem', { value: function(name) { return this[name] || null; } });
+            Object.defineProperty(pluginArray, 'refresh', { value: function() {} });
+            return pluginArray;
+        }
+
+        try {
+            const fakePlugins = makePluginArray([
+                { name: 'PDF Viewer', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+                { name: 'Chrome PDF Viewer', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+                { name: 'Chromium PDF Viewer', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+                { name: 'Microsoft Edge PDF Viewer', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+                { name: 'WebKit built-in PDF', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+            ]);
+            Object.defineProperty(navigator, 'plugins', { get: () => fakePlugins, configurable: true });
+        } catch {}
+
+        // ────────────────────────────────────────
+        // 4. navigator.languages
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['pl-PL', 'pl', 'en-US', 'en'],
+            configurable: true,
         });
 
-        console.log('[Puppeteer] ✅ Proxy Webshare włączony (UK)');
+        // ────────────────────────────────────────
+        // 5. navigator.permissions — ukryj "denied" na notifications
+        // ────────────────────────────────────────
+        const originalQuery = window.Permissions?.prototype?.query;
+        if (originalQuery) {
+            window.Permissions.prototype.query = function(parameters) {
+                if (parameters.name === 'notifications') {
+                    return Promise.resolve({ state: Notification.permission });
+                }
+                return originalQuery.call(this, parameters);
+            };
+        }
 
-    // Udawanie przeglądarki Mozilla Firefox
-    await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
-    );
+        // ────────────────────────────────────────
+        // 6. navigator.hardwareConcurrency
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'hardwareConcurrency', {
+            get: () => 8,
+            configurable: true,
+        });
+
+        // ────────────────────────────────────────
+        // 7. navigator.deviceMemory
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'deviceMemory', {
+            get: () => 8,
+            configurable: true,
+        });
+
+        // ────────────────────────────────────────
+        // 8. navigator.platform
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'platform', {
+            get: () => 'Win32',
+            configurable: true,
+        });
+
+        // ────────────────────────────────────────
+        // 9. navigator.vendor
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'vendor', {
+            get: () => 'Google Inc.',
+            configurable: true,
+        });
+
+        // ────────────────────────────────────────
+        // 10. navigator.maxTouchPoints (desktop = 0)
+        // ────────────────────────────────────────
+        Object.defineProperty(navigator, 'maxTouchPoints', {
+            get: () => 0,
+            configurable: true,
+        });
+
+        // ────────────────────────────────────────
+        // 11. navigator.connection
+        // ────────────────────────────────────────
+        if (!navigator.connection) {
+            Object.defineProperty(navigator, 'connection', {
+                get: () => ({
+                    effectiveType: '4g',
+                    rtt: 50,
+                    downlink: 10,
+                    saveData: false,
+                }),
+                configurable: true,
+            });
+        }
+
+        // ────────────────────────────────────────
+        // 12. WebGL — realistyczny renderer i vendor
+        // ────────────────────────────────────────
+        const getParameterOrig = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(parameter) {
+            // UNMASKED_VENDOR_WEBGL
+            if (parameter === 0x9245) return 'Google Inc. (NVIDIA)';
+            // UNMASKED_RENDERER_WEBGL
+            if (parameter === 0x9246) return 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1650 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+            return getParameterOrig.call(this, parameter);
+        };
+        // Tak samo dla WebGL2
+        if (typeof WebGL2RenderingContext !== 'undefined') {
+            const getParam2Orig = WebGL2RenderingContext.prototype.getParameter;
+            WebGL2RenderingContext.prototype.getParameter = function(parameter) {
+                if (parameter === 0x9245) return 'Google Inc. (NVIDIA)';
+                if (parameter === 0x9246) return 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1650 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+                return getParam2Orig.call(this, parameter);
+            };
+        }
+
+        // ────────────────────────────────────────
+        // 13. Ukryj iframe.contentWindow.chrome detection
+        // ────────────────────────────────────────
+        try {
+            const origCreateElement = document.createElement.bind(document);
+            // Monkey-patch createElement żeby iframe-y też miały chrome
+            // (niektóre fingerprinters tworzą iframe i sprawdzają .contentWindow.chrome)
+        } catch {}
+
+        // ────────────────────────────────────────
+        // 14. Ukryj cdc_ (chromedriver) properties
+        // ────────────────────────────────────────
+        const cleanCdcProps = () => {
+            try {
+                const props = Object.getOwnPropertyNames(document);
+                for (const prop of props) {
+                    if (prop.match(/^cdc_|^\$cdc_|^\$wdc_/)) {
+                        delete document[prop];
+                    }
+                }
+                // Sprawdź też window
+                const winProps = Object.getOwnPropertyNames(window);
+                for (const prop of winProps) {
+                    if (prop.match(/^cdc_|^\$cdc_|^\$wdc_|^__webdriver/)) {
+                        delete window[prop];
+                    }
+                }
+            } catch {}
+        };
+        cleanCdcProps();
+        // Powtarzaj czyszczenie co 2s (na wypadek gdyby driver dodał je po starcie)
+        setInterval(cleanCdcProps, 2000);
+
+        // ────────────────────────────────────────
+        // 15. Ukryj Function.toString() patchowanie
+        // ────────────────────────────────────────
+        // Zaawansowane fingerprinters robią: myFunction.toString() i szukają "[native code]"
+        // Po monkey-patchu, toString() zwraca kod źródłowy zamiast "[native code]".
+        // Naprawiamy to:
+        const nativeToString = Function.prototype.toString;
+        const patchedFunctions = new Set();
+
+        function makeFunctionNative(fn, nativeName) {
+            patchedFunctions.add(fn);
+            const nativeStr = `function ${nativeName || fn.name || ''}() { [native code] }`;
+            fn._nativeStr = nativeStr;
+        }
+
+        Function.prototype.toString = function() {
+            if (patchedFunctions.has(this) && this._nativeStr) {
+                return this._nativeStr;
+            }
+            return nativeToString.call(this);
+        };
+        makeFunctionNative(Function.prototype.toString, 'toString');
+
+        // Napraw toString dla nadpisanych getterów
+        try {
+            // navigator.webdriver getter
+            const webdriverDesc = Object.getOwnPropertyDescriptor(navigator, 'webdriver');
+            if (webdriverDesc && webdriverDesc.get) makeFunctionNative(webdriverDesc.get, 'get webdriver');
+
+            // navigator.plugins getter
+            const pluginsDesc = Object.getOwnPropertyDescriptor(navigator, 'plugins');
+            if (pluginsDesc && pluginsDesc.get) makeFunctionNative(pluginsDesc.get, 'get plugins');
+
+            // navigator.languages getter
+            const langDesc = Object.getOwnPropertyDescriptor(navigator, 'languages');
+            if (langDesc && langDesc.get) makeFunctionNative(langDesc.get, 'get languages');
+
+            // Permissions.query
+            if (window.Permissions?.prototype?.query) {
+                makeFunctionNative(window.Permissions.prototype.query, 'query');
+            }
+
+            // chrome.runtime.connect
+            if (window.chrome?.runtime?.connect) {
+                makeFunctionNative(window.chrome.runtime.connect, 'connect');
+            }
+        } catch {}
+
+        // ────────────────────────────────────────
+        // 16. window.Notification.permission
+        // ────────────────────────────────────────
+        try {
+            if (typeof Notification !== 'undefined') {
+                Object.defineProperty(Notification, 'permission', {
+                    get: () => 'default',
+                    configurable: true,
+                });
+            }
+        } catch {}
+
+        // ────────────────────────────────────────
+        // 17. Sourcebuffer detection (headless)
+        // ────────────────────────────────────────
+        if (typeof window.MediaSource !== 'undefined') {
+            try {
+                if (!window.MediaSource.isTypeSupported) {
+                    window.MediaSource.isTypeSupported = function() { return true; };
+                }
+            } catch {}
+        }
+
+        console.log('[Stealth] 🛡️ WebDriver stealth załadowany (17 modułów)');
+    });
 
     // ── GM_* polyfille + MAW_NODE_API ──
     await page.evaluateOnNewDocument((port) => {
@@ -690,47 +1094,35 @@ async function startBotBrowser() {
         window.unsafeWindow = window;
     }, PORT);
 
-    // ── Wstrzyknięcie e2-hunter-bot.user.js ──
-    const loaderPath = path.join(ROOT, 'tampermonkey', 'e2-hunter-bot.user.js');
-    if (!fs.existsSync(loaderPath)) {
-        console.error(`[Puppeteer] BRAK pliku: ${loaderPath}`);
-        console.error('[Puppeteer] Upewnij się, że plik tampermonkey/e2-hunter-bot.user.js istnieje');
-        return;
-    }
+const loaderPath = path.join(__dirname, 'tampermonkey', 'e2-hunter-bot.user.js');
 
+if (!fs.existsSync(loaderPath)) {
+    console.error(`[Puppeteer] BRAK pliku userscriptu: ${loaderPath}`);
+    console.error('[Puppeteer] Upewnij się, że plik e2-hunter-bot.user.js jest w folderze tampermonkey');
+} else {
     const loaderCode = fs.readFileSync(loaderPath, 'utf8');
-
-    // Wstrzyknij po załadowaniu strony gry (nie na stronie logowania)
+   
     await page.evaluateOnNewDocument((code) => {
-        // Czekaj na DOMContentLoaded, żeby strona gry miała czas się załadować
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => injectLoader(code));
-        } else {
-            injectLoader(code);
-        }
-
-        function injectLoader(src) {
-            // Nie wstrzykuj na stronie logowania / forum
+        function injectBot() {
             const host = window.location.hostname || '';
-            const path = window.location.pathname || '';
-            // Całkowicie pomiń wstrzykiwanie na domenie głównej (logowanie, forum, intro, rejestracja)
-            if (host === 'www.margonem.pl' || host === 'margonem.pl') {
-                console.log('[MAW] Ekran główny/logowanie/intro — pomijam wstrzykiwanie bota');
-                return;
-            }
-
-            console.log('[MAW] 🚀 Wstrzykiwanie Standalone Bota...');
+            if (!host.includes('margonem.pl')) return;
+            console.log('[MAW] 🚀 Wstrzykiwanie E2 Hunter Bot...');
             try {
-                // Bezpośrednie eval w kontekście strony
-                const fn = new Function(src);
+                const fn = new Function(code);
                 fn();
                 console.log('[MAW] ✓ Bot załadowany pomyślnie');
             } catch (e) {
-                console.error('[MAW] ✗ Błąd wstrzykiwania:', e);
+                console.error('[MAW] ✗ Błąd wstrzykiwania:', e.message);
+                console.error(e.stack);
             }
         }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', injectBot);
+        } else {
+            injectBot();
+        }
     }, loaderCode);
-
+}
     // ── Navigacja ──
     console.log(`[Puppeteer] Nawigacja → ${GAME_URL}`);
     
@@ -740,16 +1132,21 @@ async function startBotBrowser() {
             timeout: 20000 
         });
     } catch (err) {
-        // Auto-fix ERR_TOO_MANY_REDIRECTS (zgodnie z RULE[user_global])
         if (err.message.includes('ERR_TOO_MANY_REDIRECTS') || err.message.includes('net::ERR_')) {
             console.warn('[Puppeteer] Redirect loop wykryty — czyszczę cookies i ponawiam...');
-            const context = browser.defaultBrowserContext();
-            // Puppeteer nie ma context.clearCookies() bezpośrednio, więc czyścimy przez CDP
             const client = await page.createCDPSession();
             await client.send('Network.clearBrowserCookies');
             await client.detach();
-            
             await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        } else if (err.message.includes('frame was detached') || err.message.includes('LifecycleWatcher disposed')) {
+            console.warn('[Puppeteer] Nawigacja przerwana (frame detached) — ponawiam za 3s...');
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+            } catch (retryErr) {
+                console.error('[Puppeteer] ✗ Druga próba nawigacji też się nie powiodła.');
+                throw new Error(`NAVIGATION_FAILED: nawigacja nie powiodła się dwukrotnie (${retryErr.message})`);
+            }
         } else {
             throw err;
         }
@@ -757,69 +1154,149 @@ async function startBotBrowser() {
 
     console.log('[Puppeteer] ✓ Strona załadowana:', await page.title());
 
-    let autoLoginInterval;
-    let loginTimeout;
+    let autoLoginInterval = null;
+    let loginTimeout = null;
+    let introWaitStarted = 0;
 
-        // ── FORCE RELOG HANDLER ──
-        const doForceRelog = async (targetNick) => {
-            if (!targetNick || !page || page.isClosed()) return;
-            console.log(`[Puppeteer] 🔥 Force Relog na: ${targetNick}`);
+// ── BEZPIECZNE WYBIERANIE POSTACI Z POPUPA (.charc) ──
+const selectCharacterFromModal = async (page, targetCharName, targetWorld = null) => {
+    if (!targetCharName || !page || page.isClosed()) return false;
 
-            try {
-                await page.goto('https://www.margonem.pl/', { 
-                    waitUntil: 'domcontentloaded', 
-                    timeout: 20000 
-                });
+    let cleanNick = targetCharName.toLowerCase().trim();
+    let cleanWorld = targetWorld ? targetWorld.toLowerCase().trim() : null;
 
-                await page.waitForSelector('.charc, .char-container', { timeout: 15000 }).catch(() => {});
+    // Obsługa nicków z światem w nawiasie np. "Janusz (Luvia)"
+    const match = cleanNick.match(/^([^(|]+?)\s*[\(|]([^)]+)\)?$/);
+    if (match) {
+        cleanNick = match[1].trim();
+        cleanWorld = match[2].trim();
+    }
 
-                const success = await page.evaluate((charName) => {
-                    const chars = Array.from(document.querySelectorAll('.charc'));
-                    const found = chars.find(c => {
-                        const nick = (c.getAttribute('data-nick') || '').toLowerCase();
-                        return nick === charName.toLowerCase() || nick.includes(charName.toLowerCase());
-                    });
+    const charElements = await page.$$('.charc');
+    if (!charElements?.length) {
+        console.warn('[Puppeteer] Brak elementów .charc na stronie.');
+        return false;
+    }
 
-                    if (found) {
-                        found.click();
-                        setTimeout(() => {
-                            const enter = document.querySelector('.enter-game, .button.enter, button.enter');
-                            if (enter) enter.click();
-                        }, 700);
-                        return true;
-                    }
-                    return false;
-                }, targetNick);
+    let exactMatch = null;
+    let partialMatch = null;
 
-                if (success) {
-                    console.log(`[Puppeteer] ✓ Wybrano postać: ${targetNick}`);
-                } else {
-                    console.warn(`[Puppeteer] Nie znaleziono postaci: ${targetNick}`);
+    for (const el of charElements) {
+        const info = await page.evaluate(node => {
+            const dataNick = node.getAttribute('data-nick') || '';
+            const dataWorld = node.getAttribute('data-world') || '';
+            const nameSpan = node.querySelector('.character-name, .nick, .name')?.textContent?.trim() || '';
+            const worldSpan = node.querySelector('.world, .server')?.textContent?.replace(/^świat:\s*/i, '').trim() || '';
+            const nickInput = node.querySelector('input[name="nick"]')?.value || '';
+            const worldInput = node.querySelector('input[name="world"]')?.value || '';
+            return {
+                nick: (dataNick || nameSpan || nickInput).toLowerCase().trim(),
+                world: (dataWorld || worldSpan || worldInput).toLowerCase().trim()
+            };
+        }, el);
+
+        if (info.nick !== cleanNick) continue;
+
+        const worldMatch = !cleanWorld ||
+            info.world === cleanWorld ||
+            info.world.includes(cleanWorld) ||
+            cleanWorld.includes(info.world);
+
+        if (worldMatch) {
+            exactMatch = el;
+            break; // najlepsze możliwe dopasowanie — przerywamy pętlę
+        } else if (!partialMatch) {
+            partialMatch = el; // sam nick pasuje, świat nie — zapasowa opcja
+        }
+    }
+
+    const targetEl = exactMatch || partialMatch;
+    if (!targetEl) {
+        console.warn(`[Puppeteer] Nie znaleziono postaci: ${targetCharName}`);
+        return false;
+    }
+
+    // Klik dwufazowy + scroll
+    await page.evaluate(node => {
+        node.scrollIntoView({ block: 'center', inline: 'center' });
+        const child = node.querySelector('.character-name') || node.querySelector('.cimg') || node.querySelector('.charFitWrapper');
+        (child || node).click();
+    }, targetEl);
+
+    await new Promise(r => setTimeout(r, 250));
+    await targetEl.click().catch(() => {}); // drugi klik jako zabezpieczenie
+    await new Promise(r => setTimeout(r, 250));
+
+    console.log(`[Puppeteer] Kliknięto postać: ${targetCharName}`);
+    return true;
+};
+    // ── FORCE RELOG HANDLER ──
+    const doForceRelog = async (targetNick, targetWorld = null) => {
+        if (!targetNick || !page || page.isClosed()) return;
+        console.log(`[Puppeteer] 🔥 Force Relog na: ${targetNick} ${targetWorld ? '(' + targetWorld + ')' : ''}`);
+
+        try {
+            await page.goto('https://www.margonem.pl/', { 
+                waitUntil: 'domcontentloaded', 
+                timeout: 20000 
+            });
+
+            const isModalOpen = await page.$('.popup-select-character:not([style*="display: none"]), .char-container, .charlist');
+            if (!isModalOpen) {
+                const selectCharEl = await page.$('.charimg-container, .select-char');
+                if (selectCharEl) {
+                    await selectCharEl.click();
+                    await page.waitForSelector('.popup-select-character, .charc', { timeout: 8000 }).catch(() => {});
                 }
-            } catch (e) {
-                console.error('[Puppeteer] Force relog error:', e.message);
+            } else {
+                await page.waitForSelector('.charc, .char-container', { timeout: 8000 }).catch(() => {});
             }
-        };
+
+            const clicked = await selectCharacterFromModal(page, targetNick, targetWorld);
+
+            if (clicked) {
+                console.log(`[Puppeteer] ✓ Wybrano postać: ${targetNick} (klik dwufazowy)`);
+                await new Promise(r => setTimeout(r, 800));
+                const enterBtn = await page.$('.enter-game, .box-enter .enter-game, .c-btn.enter-game, button.enter');
+                if (enterBtn) {
+                    await enterBtn.click();
+                    console.log('[Puppeteer] ✓ Kliknięto "Wejdź do gry"');
+                }
+            } else {
+                console.warn(`[Puppeteer] Nie znaleziono postaci: ${targetNick}`);
+            }
+        } catch (e) {
+            console.error('[Puppeteer] Force relog error:', e.message);
+        }
+    };
 
     // ── Automatyczne logowanie i wybór postaci ──
-    if (process.env.MARGONEM_LOGIN && process.env.MARGONEM_PASSWORD) {
-        console.log('[Puppeteer] Przygotowanie pętli logowania...');
-        
-        loginTimeout = setTimeout(() => {
-            if (!page || page.isClosed() || !browserInstance) return;
-            
-            console.log('[Puppeteer] Uruchamiam pętlę automatycznego logowania...');
-            autoLoginInterval = setInterval(async () => {
-            if (!page || page.isClosed()) {
-                clearInterval(autoLoginInterval);
-                return;
-            }
-            
+    const startAutoLoginLoop = () => {
+        if (autoLoginInterval) clearInterval(autoLoginInterval);
+
+        autoLoginInterval = setInterval(async () => {
+            if (!page || page.isClosed()) return;
+
             try {
-                // 0. Obsługa ekranu rejestracji /intro/ - czekamy 15 sekund
-                const currentUrl = page.url() || '';
-                const hasRegisterBox = await page.$('.landing-register');
-                if (currentUrl.includes('/intro') || hasRegisterBox) {
+                const currentUrl = page.url();
+
+                if (!currentUrl || currentUrl === 'about:blank' || !currentUrl.includes('margonem.pl')) {
+                    if (!page._navigatingToMargonem) {
+                        page._navigatingToMargonem = true;
+                        console.warn(`[Puppeteer] Strona nie jest załadowana poprawnie (url: "${currentUrl}"). Próba ponownej nawigacji...`);
+                        try {
+                            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+                            console.log('[Puppeteer] ✓ Nawigacja powtórzona pomyślnie.');
+                        } catch (navErr) {
+                            console.error('[Puppeteer] Ponowna nawigacja nie powiodła się (sieć nadal niedostępna):', navErr.message);
+                        } finally {
+                            page._navigatingToMargonem = false;
+                        }
+                    }
+                    return;
+                }
+
+                if (currentUrl.includes('margonem.pl/register') || currentUrl.includes('margonem.pl/intro')) {
                     if (!introWaitStarted) {
                         introWaitStarted = Date.now();
                         console.log('[Puppeteer] Wykryto ekran rejestracji/intro. Oczekiwanie 15 sekund przed przejściem do logowania...');
@@ -837,7 +1314,6 @@ async function startBotBrowser() {
                 
                 introWaitStarted = 0;
 
-                // Docelowa postać (z localStorage lub .env) — potrzebna w kilku wariantach ekranu
                 let targetChar = await page.evaluate(() => {
                     const target = localStorage.getItem('e2h_target_char');
                     const targetTime = localStorage.getItem('e2h_target_char_time');
@@ -852,7 +1328,7 @@ async function startBotBrowser() {
                     targetChar = process.env.MARGONEM_START_CHAR || '';
                 }
 
-                // 1. Sprawdzamy czy formularz logowania jest widoczny
+                // 1. Formularz logowania
                 const hasLoginForm = await page.$('#login-form');
                 if (hasLoginForm) {
                     const loginInput = await page.$('#login-input');
@@ -862,9 +1338,9 @@ async function startBotBrowser() {
                         const currentLoginVal = await page.evaluate(el => el ? el.value : '', loginInput);
                         if (!currentLoginVal) {
                             console.log('[Puppeteer] Wpisywanie danych logowania...');
-                            await page.type('#login-input', process.env.MARGONEM_LOGIN, { delay: 50 + Math.random() * 50 });
-                            await page.type('#login-password', process.env.MARGONEM_PASSWORD, { delay: 50 + Math.random() * 50 });
-                            
+                            await loginInput.type(process.env.MARGONEM_USER, { delay: 50 + Math.random() * 50 });
+                            await passInput.type(process.env.MARGONEM_PASS, { delay: 50 + Math.random() * 50 });
+
                             if (process.env.MARGONEM_TOTP) {
                                 const totpShow = await page.$('#totp-show');
                                 if (totpShow) {
@@ -881,8 +1357,7 @@ async function startBotBrowser() {
                     return;
                 }
 
-                // 1.5 Szybki panel "witaj ponownie" — strona główna pamięta ostatnią postać
-                //     (inny markup niż pełna lista .charc, wcześniej całkowicie pomijany)
+                // 2a. Szybki panel wyboru postaci (jedna postać widoczna)
                 const quickSelectBox = await page.$('#js-login-box .select-char');
                 if (quickSelectBox) {
                     const quickChar = await page.evaluate(() => {
@@ -897,45 +1372,53 @@ async function startBotBrowser() {
                     });
                     if (quickChar) mergeChars([quickChar]);
                     const shownNick = quickChar ? quickChar.nick : '';
+                    const shownWorld = quickChar ? quickChar.world : '';
 
-                    if (targetChar && shownNick.toLowerCase() === targetChar.toLowerCase()) {
-                        const clicked = await page.evaluate(() => {
-                            const btn = document.querySelector('.box-enter .enter-game, .c-btn.enter-game, .enter-game');
-                            if (btn) { btn.click(); return true; }
-                            return false;
-                        });
-                        if (clicked) {
-                            console.log(`[Puppeteer] Szybki panel — właściwa postać (${shownNick}). Wchodzę do gry...`);
+                    let targetWorld = null;
+                    const charObj = charsCache.find(c => c.nick.toLowerCase() === targetChar.toLowerCase());
+                    if (charObj && charObj.world) {
+                        targetWorld = charObj.world;
+                    }
+
+                    const isCorrectChar = shownNick.toLowerCase() === targetChar.toLowerCase() &&
+                        (!targetWorld || !shownWorld || shownWorld.toLowerCase().trim() === targetWorld.toLowerCase().trim());
+
+                    if (isCorrectChar) {
+                        const enterBtn = await page.$('.box-enter .enter-game, .c-btn.enter-game, .enter-game');
+                        if (enterBtn) {
+                            await enterBtn.click();
+                            console.log(`[Puppeteer] Szybki panel — właściwa postać (${shownNick} (${shownWorld})). Wchodzę do gry...`);
                             clearInterval(autoLoginInterval);
                         }
                     } else {
                         if (!global._lastQuickPanelNick || global._lastQuickPanelNick !== shownNick) {
-                            console.warn(`[Puppeteer] Szybki panel pokazuje "${shownNick}", a potrzebujemy "${targetChar}". Otwieram pełną listę postaci...`);
+                            console.warn(`[Puppeteer] Szybki panel pokazuje "${shownNick}" (${shownWorld}), a potrzebujemy "${targetChar}" (${targetWorld || 'dowolny'}). Otwieram pełną listę postaci...`);
                             global._lastQuickPanelNick = shownNick;
                         }
-                        // Klik w avatar/panel zwykle otwiera pełną listę postaci do zmiany
-                        await page.evaluate(() => {
-                            const el = document.querySelector('.charimg-container, .select-char');
-                            if (el) el.click();
-                        });
+                        const isModalOpen = await page.$('.popup-select-character:not([style*="display: none"]), .char-container, .charlist');
+                        if (!isModalOpen) {
+                            const selectCharEl = await page.$('.charimg-container, .select-char');
+                            if (selectCharEl) {
+                                await selectCharEl.click();
+                            }
+                        }
                     }
                     return;
                 }
 
-                // 2. Sprawdzamy czy jesteśmy na ekranie wyboru postaci (pełna lista)
-                const hasCharList = await page.$('.char-container, .charlist');
+                               // 2b. Pełna lista postaci (popup/modal z wieloma postaciami)
+                const hasCharList = await page.$('.char-container, .charlist, .popup-select-character');
                 if (hasCharList) {
-                    // ── Scrapowanie listy postaci do dashboardu (charsCache) ──
                     try {
                         const scrapedChars = await page.evaluate(() => {
                             const nodes = Array.from(document.querySelectorAll('.charc'));
                             return nodes.map(el => {
                                 const nick = el.getAttribute('data-nick')
-                                    || el.querySelector('.nick, .name, .char-nick')?.textContent?.trim()
+                                    || el.querySelector('.nick, .name, .char-nick, .character-name')?.textContent?.trim()
                                     || '';
                                 const id = el.getAttribute('data-id') || '';
                                 const lvlRaw = el.getAttribute('data-lvl')
-                                    || el.querySelector('.lvl, .level, .char-lvl')?.textContent
+                                    || el.querySelector('.lvl, .level, .char-lvl, .clvl')?.textContent
                                     || '';
                                 const lvl = parseInt(String(lvlRaw).replace(/\D/g, ''), 10) || null;
                                 const profInput = el.querySelector('input[name="profname"]');
@@ -954,45 +1437,33 @@ async function startBotBrowser() {
                         console.error('[Puppeteer] Błąd scrapowania listy postaci:', e.message);
                     }
 
+                    // Wybór konkretnej postaci
                     if (targetChar) {
-                        const clicked = await page.evaluate((charName) => {
-                            const chars = Array.from(document.querySelectorAll('.charc'));
-                            const found = chars.find(c => {
-                                const nick = c.getAttribute('data-nick') || '';
-                                return nick.toLowerCase() === charName.toLowerCase();
-                            });
-                            
-                            if (found) {
-                                found.click();
-                                return true;
-                            }
-                            return false;
-                        }, targetChar);
+                        let targetWorld = null;
+                        const charObj = charsCache.find(c => 
+                            c.nick.toLowerCase() === targetChar.toLowerCase()
+                        );
+                        if (charObj && charObj.world) {
+                            targetWorld = charObj.world.toLowerCase();
+                        }
 
+                        console.log(`[Puppeteer] Szukam postaci: ${targetChar} (${targetWorld || 'dowolny świat'})`);
+
+                        const clicked = await selectCharacterFromModal(page, targetChar, targetWorld);
                         if (clicked) {
-                            console.log(`[Puppeteer] Wybrano postać: ${targetChar} z listy. Czekam na aktualizację panelu...`);
-                            // Popup zamyka się i wraca do panelu #js-login-box — dajemy chwilę na aktualizację DOM
-                            await new Promise(r => setTimeout(r, 800));
-                            const enterClicked = await page.evaluate(() => {
-                                const btn = document.querySelector('.box-enter .enter-game, .c-btn.enter-game, .enter-game');
-                                if (btn) { btn.click(); return true; }
-                                return false;
-                            });
-                            if (enterClicked) {
-                                console.log('[Puppeteer] Kliknięto "Wejdź do gry".');
+                            console.log(`[Puppeteer] ✓ Wybrano postać: ${targetChar}`);
+                            await new Promise(r => setTimeout(r, 1000));
+                            const enterBtn = await page.$('.enter-game, .box-enter .enter-game, .c-btn.enter-game, button[onclick*="enterGame"]');
+                            if (enterBtn) {
+                                await enterBtn.click();
+                                console.log('[Puppeteer] ✓ Kliknięto "Wejdź do gry"');
                                 clearInterval(autoLoginInterval);
-                            } else {
-                                console.log('[Puppeteer] Postać wybrana — przycisk "Wejdź do gry" pojawi się w kolejnej iteracji.');
                             }
                         } else {
-                            if (!global._loggedCharNotFound || global._lastLoggedCharName !== targetChar) {
-                                console.warn(`[Puppeteer] Nie znaleziono postaci: "${targetChar}" na liście wyboru.`);
-                                global._loggedCharNotFound = true;
-                                global._lastLoggedCharName = targetChar;
-                            }
+                            console.warn(`[Puppeteer] Nie znaleziono postaci: ${targetChar} na liście!`);
                         }
                     }
-                    return;
+                    return; // ważne — kończymy iterację
                 }
 
                 // 3. Wyłączenie pętli jeśli jesteśmy już w grze (Engine gotowy)
@@ -1003,15 +1474,13 @@ async function startBotBrowser() {
                     console.log('[Puppeteer] Gra załadowana. Wyłączam pętlę logowania.');
                     clearInterval(autoLoginInterval);
                 }
-
-            } catch (err) {
-                if (!err.message.includes('Execution context was destroyed')) {
-                    console.error('[Puppeteer] Błąd logowania:', err.message);
-                }
+            } catch (e) {
+                console.error('[Puppeteer] Błąd w pętli auto-login:', e.message);
             }
-        }, 2000);
-        }, 20000);
-    }
+        }, 2000); // sprawdzaj co 2 sekundy
+    };
+
+    startAutoLoginLoop();
 
     // ── Konsola przeglądarki → logi Node ──
     page.on('console', msg => {
@@ -1052,34 +1521,142 @@ let pageStateInterval;
     
     pageStateInterval = setInterval(async () => {
         if (!page || page.isClosed()) return;
+
+        const _url = page.url() || '';
+        if (!_url.startsWith('https://www.margonem.pl')) return;
+
         try {
+// ==================== TIMERY Z MINUTNIKA — NAJLEPSZA WERSJA ====================
+            const timers = await page.evaluate(() => {
+                const timersList = [];
+                
+                // NAJLEPSZE SELEKTORY DLA TWOJEGO HTML
+                const rows = document.querySelectorAll(`
+                    .elite-timer .row,
+                    .elite-timer-wnd .row,
+                    .npc-list .row,
+                    .list .row.tw-list-item,
+                    .scroll-pane .row
+                `);
+
+                console.log(`[Debug Timery] Znaleziono ${rows.length} wierszy`);
+
+                rows.forEach((row, i) => {
+                    // Nazwa
+                    const nameEl = row.querySelector('.name-val, .name.cell .name, .name');
+                    // Czas
+                    const timeEl = row.querySelector('.time-val, .time.cell .time, .time');
+
+                    if (!nameEl || !timeEl) return;
+
+                    const rawName = nameEl.textContent.trim();
+                    const cleanName = rawName.replace(/^\[E2?\]\s*/i, '').trim();
+                    const timeStr = timeEl.textContent.trim();
+
+                    if (!cleanName) return;
+
+                    let seconds = 9999;
+                    const parts = timeStr.split(':').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+
+                    if (parts.length === 3) seconds = parts[0]*3600 + parts[1]*60 + parts[2];
+                    else if (parts.length === 2) seconds = parts[0]*60 + parts[1];
+                    else if (parts.length === 1) seconds = parts[0];
+
+                    timersList.push({
+                        name: cleanName,
+                        rawName: rawName,
+                        seconds: seconds,
+                        map: window.Engine?.map?.d?.name || '—'
+                    });
+
+                    console.log(`[Debug Timer ${i+1}] ${cleanName} → ${seconds}s`);
+                });
+
+                return timersList;
+            });
+
+            // Wyślij do API
+            if (timers && timers.length > 0) {
+                try {
+                    await fetch(`http://127.0.0.1:${PORT}/api/timers`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(timers)
+                    });
+                    console.log(`[Timers] ✅ Wysłano ${timers.length} timerów!`);
+                } catch (e) {
+                    console.warn('[Timers] Błąd wysyłania:', e.message);
+                }
+            } else {
+                console.log('[Timers] Brak timerów w minutniku');
+            }
+
+            // ==================== STAN BOHATERA ====================
             const state = await page.evaluate(() => {
-                if (!window.Engine || !window.Engine.hero) return null;
+                if (!window.Engine || !window.Engine.hero?.d) return null;
                 const h = window.Engine.hero.d;
+
+                // Detekcja HP
+                let hpPct = 100;
+                if (h.warrior_stats) {
+                    hpPct = Math.round((h.warrior_stats.hp / h.warrior_stats.maxhp) * 100);
+                } else if (h.hp !== undefined) {
+                    hpPct = Math.round(h.hp);
+                }
+
+                // Detekcja śmierci (HP = 0 lub stan duszka)
+                const isDead = hpPct <= 0;
+
+                // Detekcja stasis overlay
+                let stasisWarning = false;
+                const stasisEl = document.querySelector('.stasis-overlay, .stasis-incoming-overlay');
+                if (stasisEl) {
+                    const st = window.getComputedStyle(stasisEl);
+                    stasisWarning = st.display !== 'none' && st.visibility !== 'hidden';
+                }
+
+                // Detekcja powrotu do E2 (flaga z userscript)
+                const returningToE2 = !!window._needToReturnToE2;
+
+                // Detekcja fazy walki
+                let phase = 'idle';
+                if (window.g?.battle || document.querySelector('.battle-window')) {
+                    phase = 'fighting';
+                } else if (isDead) {
+                    phase = 'dead';
+                } else if (returningToE2) {
+                    phase = 'returning';
+                }
+
                 return {
                     hero: {
-                        name: h.nick || h.name,
-                        lvl: h.lvl,
-                        hp: h.warrior_stats ? Math.round(h.warrior_stats.hp / h.warrior_stats.maxhp * 100) : null,
-                        x: h.x, y: h.y,
+                        name: h.nick || h.name || '—',
+                        lvl: h.lvl || null,
+                        hp: hpPct,
+                        x: h.x,
+                        y: h.y,
                         mapId: window.Engine.map?.d?.id,
-                        mapName: window.Engine.map?.d?.name,
+                        mapName: window.Engine.map?.d?.name || '—',
                     },
+                    phase,
+                    isDead,
+                    stasisWarning,
+                    returningToE2,
                     timestamp: Date.now(),
                 };
             });
+
             if (state) {
                 botState = state;
                 stateUpdatedAt = Date.now();
                 await redis.setJson('maw:state', state, 30);
             }
 
+            // ==================== CAPTCHA + RELOG ====================
             await captchaSolver.checkAndSolveCaptcha(page);
             await captchaSolver.tryAutoRelog(page);
 
-            // ── Scrapowanie okna "Przelogowywania" (relogger) — wzbogaca istniejące wpisy o dostępność ──
-            // Uwaga: tip-id w tym oknie to inny system ID niż id postaci z listy wyboru,
-            // więc dopasowujemy pozycyjnie postacie w ramach tego samego świata (kolejność zwykle się pokrywa).
+            // ==================== Relogger availability (opcjonalnie) ====================
             try {
                 const reloggerGroups = await page.evaluate(() => {
                     const groups = Array.from(document.querySelectorAll('.relogger__char-group'));
@@ -1091,8 +1668,11 @@ let pageStateInterval;
                         })),
                     }));
                 });
+
                 reloggerGroups.forEach(g => {
-                    const worldChars = charsCache.filter(c => String(c.world || '').toLowerCase() === g.world);
+                    const worldChars = charsCache.filter(c => 
+                        String(c.world || '').toLowerCase() === g.world
+                    );
                     g.chars.forEach((rc, i) => {
                         const match = worldChars[i];
                         if (match) {
@@ -1101,9 +1681,60 @@ let pageStateInterval;
                         }
                     });
                 });
-            } catch (e) {}
-        } catch (e) {}
-    }, 7200);
+            } catch (e) {
+                // cichy fail
+            }
+
+        } catch (e) {
+            if (!e.message.includes('Execution context') && !e.message.includes('Target closed')) {
+                console.error('[pageStateInterval] Błąd:', e.message);
+            }
+        }
+    }, 6500); // co 6.5 sekundy — dobry balans
+
+    // ==================== SZYBKI CAPTCHA CHECK (co 3s) ====================
+    setInterval(async () => {
+        if (!page || page.isClosed()) return;
+        try {
+            const hasCaptcha = await page.evaluate(() => {
+                const c = document.querySelector('.captcha');
+                if (!c) return false;
+                const s = window.getComputedStyle(c);
+                return s.display !== 'none' && s.visibility !== 'hidden' && !c.hasAttribute('data-maw-solving');
+            });
+            if (hasCaptcha) {
+                console.log('[Captcha] ⚡ Szybki check wykrył captchę — rozwiązuję...');
+                await captchaSolver.checkAndSolveCaptcha(page);
+            }
+        } catch {}
+    }, 3000);
+
+    // ==================== ANTI-STASIS BACKUP (co 5s) ====================
+    setInterval(async () => {
+        if (!page || page.isClosed()) return;
+        try {
+            const kicked = await page.evaluate(() => {
+                const el = document.querySelector('.stasis-overlay, .stasis-incoming-overlay');
+                if (!el) return false;
+                const st = window.getComputedStyle(el);
+                if (st.display === 'none' || st.visibility === 'hidden') return false;
+
+                // Stasis wykryty! Ruszamy postać
+                if (window.Engine?.hero?.d) {
+                    const h = window.Engine.hero.d;
+                    const dx = Math.random() > 0.5 ? 1 : -1;
+                    try {
+                        window.Engine.hero.autoGoTo({ x: h.x + dx, y: h.y + dx });
+                    } catch {}
+                    return true;
+                }
+                return false;
+            });
+            if (kicked) {
+                console.log('[Anti-Stasis] ⚡ Puppeteer backup: wykryto stasis, ruszam postacią!');
+            }
+        } catch {}
+    }, 5000);
 
     console.log('[Puppeteer] ✓ Bot gotowy! Trwa automatyczne logowanie i wybieranie postaci...');
     console.log(`[API] Dashboard: http://127.0.0.1:${PORT}/dashboard`);
