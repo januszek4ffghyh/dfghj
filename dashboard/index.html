@@ -2,7 +2,11 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ff6a2b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <title>🤖 Margonem E2 Bot — Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,6 +14,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- LOADING SCREEN -->
+    <div id="app-loader" style="position:fixed;inset:0;background:#0a0806;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s ease;">
+        <div class="topbar-logo" style="width:80px;height:80px;font-size:40px;margin-bottom:20px;">⚔️</div>
+        <h2 style="font-family:'Cinzel';color:#ff6a2b;margin-bottom:10px;letter-spacing:2px;">ŁADOWANIE...</h2>
+        <div style="width:200px;height:4px;background:rgba(255,106,43,0.1);border-radius:2px;overflow:hidden;">
+            <div id="loader-bar" style="width:0%;height:100%;background:#ff6a2b;transition:width 0.3s ease;"></div>
+        </div>
+        <p id="loader-msg" style="color:#6e6252;font-size:12px;margin-top:15px;font-family:'JetBrains Mono';">Inicjalizacja połączenia...</p>
+    </div>
+
     <!-- TOP BAR -->
     <header class="topbar">
         <div class="topbar-brand">
@@ -147,12 +161,17 @@
 
                 <!-- SCREENSHOT -->
                 <div class="log-card">
-                    <div class="card-hdr">
+                    <div class="card-hdr" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
                         <span>📷 Podgląd przeglądarki</span>
-                        <button class="btn btn-ghost btn-sm" id="btn-refresh-ss">Odśwież</button>
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <label style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
+                                <input type="checkbox" id="chk-auto-ss" style="cursor:pointer"> Auto-odświeżanie (3s)
+                            </label>
+                            <button class="btn btn-ghost btn-sm" id="btn-refresh-ss">Odśwież</button>
+                        </div>
                     </div>
                     <div class="screenshot-wrap" id="screenshot-wrap">
-                        <div class="empty-state"><div class="empty-icon">📷</div><div>Kliknij Odśwież</div></div>
+                        <div class="empty-state"><div class="empty-icon">📷</div><div>Kliknij Odśwież lub włącz auto-odświeżanie</div></div>
                     </div>
                 </div>
 

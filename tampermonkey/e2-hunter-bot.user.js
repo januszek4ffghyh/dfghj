@@ -3670,6 +3670,19 @@ function waitForEngine(cb) {
                 <div class="e2h-stat-row"><span class="e2h-stat-label">Pozycja</span><span class="e2h-stat-val" id="e2h-pos">-</span></div>
                 <div class="e2h-stat-row"><span class="e2h-stat-label">Bohater</span><span class="e2h-stat-val" id="e2h-hero-info">-</span></div>
             </div>
+
+            <!-- Kopia zapasowa ustawień -->
+            <div class="e2h-card">
+                <div class="e2h-card-title" style="color:#facc15">⚙️ Kopia zapasowa ustawień</div>
+                <div style="display:flex;gap:6px;margin-top:6px">
+                    <button class="e2h-btn" id="e2h-copy-cfg" style="background:#4b5563;font-size:10px;padding:6px 4px" title="Skopiuj kod konfiguracji do schowka">📋 Kopiuj kod</button>
+                    <button class="e2h-btn" id="e2h-export-cfg" style="background:#2563eb;font-size:10px;padding:6px 4px" title="Pobierz plik z ustawieniami bota">💾 Zapisz plik</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+                    <textarea id="e2h-import-txt" placeholder="Wklej kod konfiguracji tutaj..." style="width:100%;height:40px;background:#111;color:#fff;border:1px solid #444;border-radius:6px;padding:4px;font-size:10px;resize:vertical;outline:none"></textarea>
+                    <button class="e2h-btn" id="e2h-import-cfg" style="background:#10b981;font-size:10px;padding:6px 4px">📥 Wczytaj ustawienia</button>
+                </div>
+            </div>
         </div>
 
         <!-- TAB: AI AUTO-REPLY -->
@@ -3848,6 +3861,59 @@ function waitForEngine(cb) {
                     cfg.aiModel = val;
                     saveCfg();
                     log(`🧠 Model AI: ${cfg.aiModel}`, 'ok');
+                }
+            });
+        }
+
+        // Config backup listeners
+        const btnCopy = document.getElementById('e2h-copy-cfg');
+        if (btnCopy) {
+            btnCopy.addEventListener('click', () => {
+                const text = JSON.stringify(cfg, null, 2);
+                navigator.clipboard.writeText(text).then(() => {
+                    log('📋 Skopiowano konfigurację do schowka!', 'ok');
+                }).catch(() => {
+                    log('❌ Błąd kopiowania do schowka', 'err');
+                });
+            });
+        }
+
+        const btnExport = document.getElementById('e2h-export-cfg');
+        if (btnExport) {
+            btnExport.addEventListener('click', () => {
+                const text = JSON.stringify(cfg, null, 2);
+                const blob = new Blob([text], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `e2h_config_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                log('💾 Pobrano plik konfiguracyjny!', 'ok');
+            });
+        }
+
+        const btnImport = document.getElementById('e2h-import-cfg');
+        const txtImport = document.getElementById('e2h-import-txt');
+        if (btnImport && txtImport) {
+            btnImport.addEventListener('click', () => {
+                const str = txtImport.value.trim();
+                if (!str) {
+                    log('❌ Wklej najpierw kod konfiguracji!', 'err');
+                    return;
+                }
+                try {
+                    const parsed = JSON.parse(str);
+                    if (typeof parsed !== 'object' || parsed === null) throw new Error('Format JSON jest nieprawidłowy.');
+                    
+                    cfg = { ...DEFAULT_CFG, ...parsed };
+                    saveCfg();
+                    log('📥 Ustawienia wczytane! Odświeżam stronę...', 'ok');
+                    setTimeout(() => window.location.reload(), 1500);
+                } catch (err) {
+                    log(`❌ Błąd wczytywania: ${err.message}`, 'err');
                 }
             });
         }

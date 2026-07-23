@@ -4,7 +4,24 @@
    MARGONEM E2 HUNTER — DASHBOARD APP.JS
    ═══════════════════════════════════════════ */
 
-const API = window.location.origin; // http://127.0.0.1:3847
+const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+    ? window.location.origin
+    : 'https://zephyr.proxy.rlwy.net:14192';
+
+// ── LOADER HELPER ──
+function updateLoader(pct, msg) {
+    const bar = document.getElementById('loader-bar');
+    const txt = document.getElementById('loader-msg');
+    const screen = document.getElementById('app-loader');
+    if (bar) bar.style.width = pct + '%';
+    if (txt) txt.textContent = msg;
+    if (pct >= 100 && screen) {
+        setTimeout(() => {
+            screen.style.opacity = '0';
+            setTimeout(() => screen.remove(), 500);
+        }, 800);
+    }
+}
 
 // ── STATE ──
 let state = {
@@ -458,23 +475,61 @@ document.getElementById('btn-clear-log').addEventListener('click', () => {
 });
 
 // SCREENSHOT
-async function refreshScreenshot() {
+let autoSsInterval = null;
+
+async function refreshScreenshot(isAuto = false) {
     const wrap = document.getElementById('screenshot-wrap');
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div>Pobieranie...</div></div>';
+    
+    const existingImg = wrap.querySelector('img');
+    if (!existingImg) {
+        wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div>Pobieranie...</div></div>';
+    }
+    
     try {
         const res = await fetch(`${API}/api/browser/screenshot`);
         const data = await res.json();
         if (data.ok && data.image) {
-            wrap.innerHTML = `<img src="data:image/jpeg;base64,${data.image}" alt="Screenshot" style="width:100%;border-radius:0 0 12px 12px">`;
+            const newSrc = `data:image/jpeg;base64,${data.image}`;
+            
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                wrap.innerHTML = `<img src="${newSrc}" alt="Screenshot" style="width:100%;border-radius:0 0 12px 12px;display:block;">`;
+            };
+            tempImg.src = newSrc;
         } else {
-            wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>Brak podglądu (bot nieaktywny?)</div></div>';
+            if (!isAuto || !existingImg) {
+                wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>Brak podglądu (bot nieaktywny?)</div></div>';
+            }
         }
     } catch {
-        wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>Błąd połączenia</div></div>';
+        if (!isAuto || !existingImg) {
+            wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div>Błąd połączenia</div></div>';
+        }
     }
 }
-document.getElementById('btn-refresh-ss').addEventListener('click', refreshScreenshot);
-document.getElementById('btn-screenshot').addEventListener('click', refreshScreenshot);
+
+document.getElementById('btn-refresh-ss').addEventListener('click', () => refreshScreenshot(false));
+document.getElementById('btn-screenshot').addEventListener('click', () => refreshScreenshot(false));
+
+const chkAutoSs = document.getElementById('chk-auto-ss');
+if (chkAutoSs) {
+    chkAutoSs.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            refreshScreenshot(true);
+            autoSsInterval = setInterval(() => {
+                const monitorTab = document.getElementById('tab-monitor');
+                if (monitorTab && monitorTab.classList.contains('active')) {
+                    refreshScreenshot(true);
+                }
+            }, 3000);
+        } else {
+            if (autoSsInterval) {
+                clearInterval(autoSsInterval);
+                autoSsInterval = null;
+            }
+        }
+    });
+}
 
 // ── SCHEDULE TAB ──
 async function loadSchedule() {
@@ -635,8 +690,27 @@ if (timersData.ok) {
 }
 
 // ── INITIAL LOAD ──
-fetchAll();
-loadSchedule();
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+            console.log('[PWA] ServiceWorker registered');
+        }).catch(err => {
+            console.log('[PWA] ServiceWorker registration failed:', err);
+        });
+    });
+}
+
+async function initApp() {
+    updateLoader(20, 'Nawiązywanie połączenia...');
+    await fetchAll();
+    updateLoader(60, 'Pobieranie konfiguracji...');
+    await loadConfig();
+    updateLoader(80, 'Synchronizacja harmonogramu...');
+    await loadSchedule();
+    updateLoader(100, 'Gotowy!');
+}
+
+initApp();
 
 // ── POLLING every 5s ──
 setInterval(fetchAll, 5000);

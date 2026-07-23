@@ -44,8 +44,13 @@ let browserInstance = null; // ref do instancji przeglądarki
 let isStartingBrowser = false; // flaga zapobiegająca jednoczesnym restartom
 let introWaitStarted = 0; // znacznik czasu rozpoczęcia czekania na /intro/
 
+// ═══ Globalne referencje do funkcji z startBotBrowser ═══
+let _forceRelogFn = null;       // doForceRelog(nick, world)
+let _restartLoginLoopFn = null; // startAutoLoginLoop()
+
 // ═══ Nowy stan rozszerzony ═══
 let dropsPerChar = {};    // { nick: { leg: 0, hero: 0, uni: 0, kills: 0, e2kills: 0 } }
+let lastSessionStats = {}; // { nick: { leg: 0, hero: 0, uni: 0, kills: 0, e2kills: 0 } }
 let charsCache = [];      // lista postaci z konta
 let timersCache = [];     // timery E2 ze gry
 let scheduleConfig = {    // harmonogram
@@ -64,6 +69,28 @@ function loadCharsFromDB() {
         }
     } catch (e) {
         console.error('[DB] Błąd wczytywania charsCache:', e.message);
+    }
+}
+
+// ── Ładowanie dropów z bazy przy starcie ──
+function loadDropsFromDB() {
+    try {
+        const saved = db.getSetting('dropsPerChar');
+        if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
+            dropsPerChar = saved;
+            console.log(`[DB] 📊 Wczytano dropy ${Object.keys(dropsPerChar).length} postaci z bazy SQLite`);
+        }
+    } catch (e) {
+        console.error('[DB] Błąd wczytywania dropsPerChar:', e.message);
+    }
+}
+
+// ── Zapis dropów do bazy ──
+function saveDropsToDB() {
+    try {
+        db.saveSetting('dropsPerChar', dropsPerChar);
+    } catch (e) {
+        console.error('[DB] Błąd zapisu dropsPerChar:', e.message);
     }
 }
 
@@ -193,6 +220,7 @@ async function watchdogStart() {
 // ═══ Inicjalizacja ═══
 db.init();
 loadCharsFromDB();
+loadDropsFromDB();
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║   🤖  MARGONEM STANDALONE BOT  v4.0                     ║
@@ -399,24 +427,37 @@ if (urlPath.startsWith('/api/config')) {
                 const nick = (body && body.nick) ? String(body.nick) : '';
                 if (!nick) { sendJson(res, 400, { ok: false, error: 'Brak nicku' }); return; }
 
+                // Znajdź world z cache dla tej postaci
+                const charObj = charsCache.find(c => c.nick && c.nick.toLowerCase() === nick.toLowerCase());
+                const world = charObj ? charObj.world : null;
+
                 activeChar = nick;
+                pendingConfigPatch.forceRelogToChar = nick;
+                console.log(`[API] Zmiana postaci na: ${nick} (${world || 'dowolny'})`);
 
                 if (page && !page.isClosed()) {
+                    // Ustaw target w localStorage
                     await page.evaluate((charName) => {
                         localStorage.setItem('e2h_target_char', charName);
                         localStorage.setItem('e2h_target_char_time', String(Date.now()));
                     }, nick);
 
-                    console.log(`[API] Force relog → ${nick}`);
-                    await page.goto('https://www.margonem.pl/', {
+                    console.log(`[API] Przekierowanie do strony głównej i restart pętli logowania...`);
+                    
+                    // Wywołaj asynchronicznie, żeby nie blokować odpowiedzi API
+                    page.goto('https://www.margonem.pl/', {
                         waitUntil: 'domcontentloaded',
-                        timeout: 15000
-                    }).catch(() => {});
+                        timeout: 20000
+                    }).catch(err => {
+                        console.log('[API] Goto Margonem.pl (silent):', err.message);
+                    });
+
+                    if (_restartLoginLoopFn) {
+                        _restartLoginLoopFn();
+                    }
                 }
 
-                pendingConfigPatch.forceRelogToChar = nick;
-                console.log(`[API] Zmiana postaci na: ${nick}`);
-                sendJson(res, 200, { ok: true, nick });
+                sendJson(res, 200, { ok: true, nick, world: world || null });
             } catch (e) {
                 sendJson(res, 400, { ok: false, error: e.message });
             }
@@ -433,18 +474,35 @@ if (urlPath.startsWith('/api/config')) {
         if (req.method === 'POST') {
             try {
                 const body = await readBody(req);
-                // { nick, leg, hero, uni, kills, e2kills } — pełny snapshot
+                // { nick, leg, hero, uni, kills, e2kills, expGained, goldGained }
                 if (body && body.nick) {
-                    dropsPerChar[body.nick] = {
-                        leg:     body.leg     || 0,
-                        hero:    body.hero    || 0,
-                        uni:     body.uni     || 0,
-                        kills:   body.kills   || 0,
-                        e2kills: body.e2kills || 0,
-                        expGained:  body.expGained  || 0,
-                        goldGained: body.goldGained || 0,
-                        updatedAt:  Date.now()
-                    };
+                    const nick = body.nick;
+                    
+                    if (!dropsPerChar[nick]) {
+                        dropsPerChar[nick] = { leg: 0, hero: 0, uni: 0, kills: 0, e2kills: 0, expGained: 0, goldGained: 0 };
+                    }
+                    if (!lastSessionStats[nick]) {
+                        lastSessionStats[nick] = { leg: 0, hero: 0, uni: 0, kills: 0, e2kills: 0, expGained: 0, goldGained: 0 };
+                    }
+
+                    const current = dropsPerChar[nick];
+                    const session = lastSessionStats[nick];
+
+                    const fields = ['leg', 'hero', 'uni', 'kills', 'e2kills', 'expGained', 'goldGained'];
+                    fields.forEach(field => {
+                        const val = body[field] || 0;
+                        if (val < (session[field] || 0)) {
+                            session[field] = 0;
+                        }
+                        const delta = val - (session[field] || 0);
+                        current[field] = (current[field] || 0) + delta;
+                        session[field] = val;
+                    });
+                    
+                    current.updatedAt = Date.now();
+
+                    // Persystuj do SQLite
+                    saveDropsToDB();
                 }
                 sendJson(res, 200, { ok: true });
             } catch (e) {
@@ -637,6 +695,12 @@ async function startBotBrowser() {
                 const useSystemChromium =
                     process.platform === 'linux' && fs.existsSync(linuxChromiumPath);
 
+                // Flagi typu --single-process / --no-zygote / --disable-gpu / --disable-dev-shm-usage
+                // są sensowne tylko na ograniczonych VPS-ach linuksowych. Na Windowsie / desktopie
+                // potrafią powodować crash Chromium chwilę po starcie (dokładnie objaw:
+                // "Przeglądarka rozłączona!" + "frame detached" przy próbie nawigacji).
+                const isLinuxVps = process.platform === 'linux';
+
                 const browser = await puppeteer.launch({
             headless: HEADLESS,
             userDataDir,
@@ -645,9 +709,16 @@ async function startBotBrowser() {
             // Usuwamy --enable-automation z domyślnych flag Chromium
             ignoreDefaultFlags: false,
             args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
+                ...(isLinuxVps ? [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--single-process',
+                    '--disable-gpu',
+                    '--no-zygote',
+                ] : []),
+                '--disable-accelerated-2d-canvas',
+                '--disable-software-rasterizer',
                 '--window-size=1280,960',
                 '--disable-web-security',
                 '--disable-features=IsolateOrigins,site-per-process',
@@ -674,6 +745,17 @@ async function startBotBrowser() {
 
         const pages = await browser.pages();
         page = pages[0] || await browser.newPage();
+
+        // ── AGRESYWNE OGRANICZANIE ZASOBÓW (Lekka wersja na VPS) ──
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const resourceType = req.resourceType();
+            if (['image', 'font', 'media'].includes(resourceType)) {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
 
         console.log('[Puppeteer] ✅ Połączenie bez proxy (bezpośrednio)');
 
@@ -1270,6 +1352,9 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
         }
     };
 
+    // Expose do global scope for API access
+    _forceRelogFn = doForceRelog;
+
     // ── Automatyczne logowanie i wybór postaci ──
     const startAutoLoginLoop = () => {
         if (autoLoginInterval) clearInterval(autoLoginInterval);
@@ -1314,18 +1399,12 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
                 
                 introWaitStarted = 0;
 
-                let targetChar = await page.evaluate(() => {
-                    const target = localStorage.getItem('e2h_target_char');
-                    const targetTime = localStorage.getItem('e2h_target_char_time');
-                    if (target && targetTime) {
-                        if (Date.now() - parseInt(targetTime) < 300000) {
-                            return target;
-                        }
-                    }
-                    return null;
-                });
-                if (!targetChar) {
-                    targetChar = process.env.MARGONEM_START_CHAR || '';
+                let targetChar = activeChar || process.env.MARGONEM_START_CHAR || '';
+                if (targetChar && page && !page.isClosed()) {
+                    await page.evaluate((tc) => {
+                        localStorage.setItem('e2h_target_char', tc);
+                        localStorage.setItem('e2h_target_char_time', String(Date.now()));
+                    }, targetChar).catch(() => {});
                 }
 
                 // 1. Formularz logowania
@@ -1357,58 +1436,16 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
                     return;
                 }
 
-                // 2a. Szybki panel wyboru postaci (jedna postać widoczna)
-                const quickSelectBox = await page.$('#js-login-box .select-char');
-                if (quickSelectBox) {
-                    const quickChar = await page.evaluate(() => {
-                        const nick = document.querySelector('#chnick')?.textContent.trim() || '';
-                        if (!nick) return null;
-                        const prof = document.querySelector('#charprof-name')?.textContent.trim() || '';
-                        const lvlRaw = document.querySelector('#chlvl')?.textContent.trim() || '';
-                        const lvl = parseInt(lvlRaw, 10) || null;
-                        const world = document.querySelector('#chworld')?.textContent.trim() || '';
-                        const id = document.querySelector('#chid')?.value || '';
-                        return { nick, prof, lvl, world, id };
-                    });
-                    if (quickChar) mergeChars([quickChar]);
-                    const shownNick = quickChar ? quickChar.nick : '';
-                    const shownWorld = quickChar ? quickChar.world : '';
+                // Sprawdź czy popup/modal wyboru postaci jest otwarty i widoczny
+                const isModalOpen = await page.evaluate(() => {
+                    const el = document.querySelector('.popup-select-character, .char-container, .charlist');
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden';
+                });
 
-                    let targetWorld = null;
-                    const charObj = charsCache.find(c => c.nick.toLowerCase() === targetChar.toLowerCase());
-                    if (charObj && charObj.world) {
-                        targetWorld = charObj.world;
-                    }
-
-                    const isCorrectChar = shownNick.toLowerCase() === targetChar.toLowerCase() &&
-                        (!targetWorld || !shownWorld || shownWorld.toLowerCase().trim() === targetWorld.toLowerCase().trim());
-
-                    if (isCorrectChar) {
-                        const enterBtn = await page.$('.box-enter .enter-game, .c-btn.enter-game, .enter-game');
-                        if (enterBtn) {
-                            await enterBtn.click();
-                            console.log(`[Puppeteer] Szybki panel — właściwa postać (${shownNick} (${shownWorld})). Wchodzę do gry...`);
-                            clearInterval(autoLoginInterval);
-                        }
-                    } else {
-                        if (!global._lastQuickPanelNick || global._lastQuickPanelNick !== shownNick) {
-                            console.warn(`[Puppeteer] Szybki panel pokazuje "${shownNick}" (${shownWorld}), a potrzebujemy "${targetChar}" (${targetWorld || 'dowolny'}). Otwieram pełną listę postaci...`);
-                            global._lastQuickPanelNick = shownNick;
-                        }
-                        const isModalOpen = await page.$('.popup-select-character:not([style*="display: none"]), .char-container, .charlist');
-                        if (!isModalOpen) {
-                            const selectCharEl = await page.$('.charimg-container, .select-char');
-                            if (selectCharEl) {
-                                await selectCharEl.click();
-                            }
-                        }
-                    }
-                    return;
-                }
-
-                               // 2b. Pełna lista postaci (popup/modal z wieloma postaciami)
-                const hasCharList = await page.$('.char-container, .charlist, .popup-select-character');
-                if (hasCharList) {
+                if (isModalOpen) {
+                    // 2b. Pełna lista postaci (popup/modal z wieloma postaciami)
                     try {
                         const scrapedChars = await page.evaluate(() => {
                             const nodes = Array.from(document.querySelectorAll('.charc'));
@@ -1453,17 +1490,57 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
                         if (clicked) {
                             console.log(`[Puppeteer] ✓ Wybrano postać: ${targetChar}`);
                             await new Promise(r => setTimeout(r, 1000));
-                            const enterBtn = await page.$('.enter-game, .box-enter .enter-game, .c-btn.enter-game, button[onclick*="enterGame"]');
-                            if (enterBtn) {
-                                await enterBtn.click();
-                                console.log('[Puppeteer] ✓ Kliknięto "Wejdź do gry"');
-                                clearInterval(autoLoginInterval);
-                            }
                         } else {
                             console.warn(`[Puppeteer] Nie znaleziono postaci: ${targetChar} na liście!`);
                         }
                     }
                     return; // ważne — kończymy iterację
+                }
+
+                // 2a. Szybki panel wyboru postaci (jedna postać widoczna)
+                const quickSelectBox = await page.$('#js-login-box .select-char');
+                if (quickSelectBox) {
+                    const quickChar = await page.evaluate(() => {
+                        const nick = document.querySelector('#chnick')?.textContent.trim() || '';
+                        if (!nick) return null;
+                        const prof = document.querySelector('#charprof-name')?.textContent.trim() || '';
+                        const lvlRaw = document.querySelector('#chlvl')?.textContent.trim() || '';
+                        const lvl = parseInt(lvlRaw, 10) || null;
+                        const world = document.querySelector('#chworld')?.textContent.trim() || '';
+                        const id = document.querySelector('#chid')?.value || '';
+                        return { nick, prof, lvl, world, id };
+                    });
+                    if (quickChar) mergeChars([quickChar]);
+                    const shownNick = quickChar ? quickChar.nick : '';
+                    const shownWorld = quickChar ? quickChar.world : '';
+
+                    let targetWorld = null;
+                    const charObj = charsCache.find(c => c.nick.toLowerCase() === targetChar.toLowerCase());
+                    if (charObj && charObj.world) {
+                        targetWorld = charObj.world;
+                    }
+
+                    const isCorrectChar = shownNick.toLowerCase() === targetChar.toLowerCase() &&
+                        (!targetWorld || !shownWorld || shownWorld.toLowerCase().trim() === targetWorld.toLowerCase().trim());
+
+                    if (isCorrectChar) {
+                        const enterBtn = await page.$('.box-enter .enter-game, .c-btn.enter-game, .enter-game');
+                        if (enterBtn) {
+                            await enterBtn.click();
+                            console.log(`[Puppeteer] Szybki panel — właściwa postać (${shownNick} (${shownWorld})). Wchodzę do gry...`);
+                            clearInterval(autoLoginInterval);
+                        }
+                    } else {
+                        if (!global._lastQuickPanelNick || global._lastQuickPanelNick !== shownNick) {
+                            console.warn(`[Puppeteer] Szybki panel pokazuje "${shownNick}" (${shownWorld}), a potrzebujemy "${targetChar}" (${targetWorld || 'dowolny'}). Otwieram pełną listę postaci...`);
+                            global._lastQuickPanelNick = shownNick;
+                        }
+                        const selectCharEl = await page.$('.charimg-container, .select-char');
+                        if (selectCharEl) {
+                            await selectCharEl.click();
+                        }
+                    }
+                    return;
                 }
 
                 // 3. Wyłączenie pętli jeśli jesteśmy już w grze (Engine gotowy)
@@ -1480,6 +1557,7 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
         }, 2000); // sprawdzaj co 2 sekundy
     };
 
+    _restartLoginLoopFn = startAutoLoginLoop;
     startAutoLoginLoop();
 
     // ── Konsola przeglądarki → logi Node ──
