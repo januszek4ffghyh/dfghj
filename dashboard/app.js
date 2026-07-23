@@ -6,7 +6,7 @@
 
 const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
     ? window.location.origin
-    : 'https://zephyr.proxy.rlwy.net:14192';
+    : 'sakura.proxy.rlwy.net:38814';
 
 // ── LOADER HELPER ──
 function updateLoader(pct, msg) {
