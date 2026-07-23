@@ -1,0 +1,21 @@
+{
+  "name": "MargoBot Control",
+  "short_name": "MargoBot",
+  "description": "Sterowanie botem Margonem E2 Hunter",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0806",
+  "theme_color": "#ff6a2b",
+  "icons": [
+    {
+      "src": "https://www.margonem.pl/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "https://www.google.com/s2/favicons?sz=128&domain=margonem.pl",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}
