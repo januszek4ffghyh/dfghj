@@ -953,7 +953,6 @@ async function startBotBrowser() {
 
     // ── Główny skrypt stealth (wstrzykiwany PRZED załadowaniem jakiejkolwiek strony) ──
     await page.evaluateOnNewDocument(() => {
-        return; // Tymczasowo wyłącz stealth (do testów)
         // ────────────────────────────────────────
         // 1. navigator.webdriver = undefined
         // ────────────────────────────────────────
