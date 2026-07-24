@@ -59,6 +59,7 @@ public class FloatingUfoService extends Service {
                         initialTouchY = event.getRawY();
                         return true;
                     case MotionEvent.ACTION_UP:
+                        v.performClick();
                         int centerY = windowManager.getDefaultDisplay().getHeight() / 2;
                         if (params.y > centerY + 300) { // Dragged to bottom area
                             Intent intent = new Intent(FloatingUfoService.this, MainActivity.class);

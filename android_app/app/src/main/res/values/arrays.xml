@@ -10,4 +10,26 @@
         <item>1</item>
         <item>2</item>
     </string-array>
+
+    <string-array name="panic_entries">
+        <item>Wyłączone</item>
+        <item>Zamknij aplikację</item>
+        <item>Wyczyść dane i zamknij</item>
+        <item>Zminimalizuj natychmiast</item>
+    </string-array>
+    <string-array name="panic_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="stealth_type_entries">
+        <item>Strona WWW (Wikipedia itp.)</item>
+        <item>Kalkulator (Funkcjonalny)</item>
+    </string-array>
+    <string-array name="stealth_type_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
 </resources>

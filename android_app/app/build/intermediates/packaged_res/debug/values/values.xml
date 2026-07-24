@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="orientation_entries">
+        <item>Automatycznie</item>
+        <item>Tylko Pionowo (Portrait)</item>
+        <item>Tylko Poziomo (Landscape)</item>
+    </string-array>
+    <string-array name="orientation_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="panic_entries">
+        <item>Wyłączone</item>
+        <item>Zamknij aplikację</item>
+        <item>Wyczyść dane i zamknij</item>
+        <item>Zminimalizuj natychmiast</item>
+    </string-array>
+    <string-array name="panic_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+    <string-array name="stealth_type_entries">
+        <item>Strona WWW (Wikipedia itp.)</item>
+        <item>Kalkulator (Funkcjonalny)</item>
+    </string-array>
+    <string-array name="stealth_type_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+    <color name="accent">#64FFDA</color>
+    <color name="background">#121212</color>
+    <color name="primary">#00E676</color>
+    <color name="primary_dark">#00C853</color>
+    <color name="surface">#1E1E1E</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <string name="app_name">Margonem E2 Bot</string>
+    <string name="clear_cache">Wyczyść Cache</string>
+    <string name="clear_cache_summary">Usuwa dane tymczasowe przeglądarki</string>
+    <string name="desktop_mode">Tryb Desktop</string>
+    <string name="desktop_mode_summary">Udaje przeglądarkę komputerową</string>
+    <string name="enable_sound">Dźwięki systemowe</string>
+    <string name="enable_sound_summary">Graj dźwięk przy starcie i błędach</string>
+    <string name="force_dark">Wymuś Ciemny Motyw</string>
+    <string name="force_dark_summary">Wymusza tryb nocny na stronach www</string>
+    <string name="keep_screen_on">Zawsze włączony ekran</string>
+    <string name="keep_screen_on_summary">Zapobiega wygaszaniu ekranu podczas działania bota</string>
+    <string name="log_console">Logi Konsoli (Toast)</string>
+    <string name="log_console_summary">Pokazuj błędy JavaScript jako powiadomienia</string>
+    <string name="morse_flashlight">Sygnał Adios Amor (Latarka)</string>
+    <string name="morse_flashlight_summary">Mruga latarką w kodzie morsa przy alertach</string>
+    <string name="screenshot_protect">Ochrona prywatności</string>
+    <string name="screenshot_protect_summary">Blokuje robienie screenshotów bota</string>
+    <string name="server_url">Adres Serwera</string>
+    <string name="server_url_summary">Zmień adres URL bota</string>
+    <string name="settings">Ustawienia</string>
+    <string name="shake_refresh">Wstrząśnij aby odświeżyć</string>
+    <string name="shake_refresh_summary">Odśwież bota potrząsając telefonem</string>
+    <string name="ufo_abduction">Protokół UFO (Abduction)</string>
+    <string name="ufo_abduction_summary">Gest 3 palców wciąga bota do statku UFO</string>
+    <string name="volume_control">Klawisz głośności = Odśwież</string>
+    <string name="volume_control_summary">Przycisk Głośność+ odświeża stronę</string>
+    <style name="Theme.MargonemBot" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+    </style>
+</resources>

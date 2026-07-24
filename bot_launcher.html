@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MargoBot Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        /* Styl wbudowany dla szybkości */
+        body, html { margin: 0; padding: 0; background: #0a0806; height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; }
+
+        #launcher-loader {
+            position: fixed; inset: 0; background: #0a0806; z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .loader-art { font-size: 50px; margin-bottom: 20px; filter: drop-shadow(0 0 15px #ff6a2b); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+
+        .loader-bar-bg { width: 240px; height: 4px; background: rgba(255,106,43,0.1); border-radius: 2px; overflow: hidden; }
+        #loader-bar-fill { width: 0%; height: 100%; background: #ff6a2b; transition: width 0.4s ease; box-shadow: 0 0 10px #ff6a2b; }
+
+        .loader-status { color: #6e6252; font-size: 11px; margin-top: 15px; font-family: 'JetBrains Mono'; text-transform: uppercase; letter-spacing: 1px; }
+
+        iframe { border: none; width: 100%; height: 100%; opacity: 0; transition: opacity 1s ease; }
+        iframe.ready { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="launcher-loader">
+        <div class="loader-art">⚔️</div>
+        <div style="font-family:'Cinzel'; color:#ff6a2b; margin-bottom:15px; font-size:20px; letter-spacing:3px;">DANESSI BOT</div>
+        <div class="loader-bar-bg">
+            <div id="loader-bar-fill"></div>
+        </div>
+        <div id="loader-msg" class="loader-status">Inicjalizacja protokołu...</div>
+    </div>
+
+    <!-- Przekierowanie do Twojego serwera Railway -->
+    <iframe id="app-frame" src=""></iframe>
+
+    <script>
+        const PROXY_URL = 'https://zephyr.proxy.rlwy.net:14192/dashboard/';
+        const bar = document.getElementById('loader-bar-fill');
+        const msg = document.getElementById('loader-msg');
+        const frame = document.getElementById('app-frame');
+
+        function update(pct, text) {
+            bar.style.width = pct + '%';
+            msg.textContent = text;
+        }
+
+        async function start() {
+            try {
+                update(20, 'Łączenie z Railway...');
+                // Sprawdzamy czy serwer żyje
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                update(40, 'Autoryzacja serwera...');
+
+                // Ustawiamy źródło iframe
+                frame.src = PROXY_URL;
+
+                frame.onload = () => {
+                    update(100, 'Połączono!');
+                    setTimeout(() => {
+                        document.getElementById('launcher-loader').style.opacity = '0';
+                        frame.classList.add('ready');
+                        setTimeout(() => document.getElementById('launcher-loader').remove(), 500);
+                    }, 800);
+                };
+
+            } catch (e) {
+                update(100, 'Błąd połączenia!');
+                msg.style.color = '#f0453f';
+                msg.textContent = 'SERWER OFFLINE. Sprawdź Railway.';
+            }
+        }
+
+        // Start
+        setTimeout(start, 500);
+    </script>
+</body>
+</html>

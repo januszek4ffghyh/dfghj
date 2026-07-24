@@ -1,0 +1,42 @@
+[
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\anim_fade_in.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\anim\\fade_in.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\anim_ufo_abduction.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\anim\\ufo_abduction.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\xml_preferences.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\xml\\preferences.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\layout\\activity_main.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\drawable_ic_bot_logo.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\drawable\\ic_bot_logo.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\raw_startup_music.mp3.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\raw\\startup_music.mp3"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\drawable_ic_ufo.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\drawable\\ic_ufo.xml"
+    },
+    {
+        "merged": "com.danessi.bot.app-merged_res-42:/layout_layout_floating_ufo.xml.flat",
+        "source": "com.danessi.bot.app-main-44:/layout/layout_floating_ufo.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\layout_settings_activity.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\layout\\settings_activity.xml"
+    },
+    {
+        "merged": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-merged_res-42:\\anim_rotate.xml.flat",
+        "source": "C:\\Users\\Janus\\.gradle\\daemon\\8.2\\com.danessi.bot.app-main-44:\\anim\\rotate.xml"
+    }
+]

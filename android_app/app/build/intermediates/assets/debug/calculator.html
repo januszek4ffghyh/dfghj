@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #display { flex: 1; display: flex; align-items: flex-end; justify-content: flex-end; padding: 20px; font-size: 48px; word-break: break-all; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #333; }
+        button { border: none; background: #1a1a1a; color: white; padding: 25px; font-size: 24px; outline: none; }
+        button:active { background: #333; }
+        .op { background: #f39c12; }
+    </style>
+</head>
+<body>
+    <div id="display">0</div>
+    <div class="grid">
+        <button onclick="clearDisplay()">C</button><button onclick="press('/')">/</button><button onclick="press('*')">*</button><button onclick="press('back')">DEL</button>
+        <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button class="op" onclick="press('-')">-</button>
+        <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button class="op" onclick="press('+')">+</button>
+        <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button class="op" onclick="calculate()">=</button>
+        <button style="grid-column: span 2" onclick="press('0')">0</button><button onclick="press('.')">.</button>
+    </div>
+    <script>
+        let current = '0';
+        function update() { document.getElementById('display').innerText = current; }
+        function press(v) {
+            if (v === 'back') { current = current.length > 1 ? current.slice(0,-1) : '0'; }
+            else { current = current === '0' ? v : current + v; }
+            update();
+        }
+        function clearDisplay() { current = '0'; update(); }
+        function calculate() { try { current = eval(current).toString(); } catch(e) { current = 'Error'; } update(); }
+    </script>
+</body>
+</html>

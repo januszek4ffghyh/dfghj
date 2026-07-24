@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">Margonem E2 Bot</string>
+    <string name="settings">Ustawienia</string>
+    <string name="keep_screen_on">Zawsze włączony ekran</string>
+    <string name="keep_screen_on_summary">Zapobiega wygaszaniu ekranu podczas działania bota</string>
+    <string name="desktop_mode">Tryb Desktop</string>
+    <string name="desktop_mode_summary">Udaje przeglądarkę komputerową</string>
+    <string name="server_url">Adres Serwera</string>
+    <string name="server_url_summary">Zmień adres URL bota</string>
+    <string name="clear_cache">Wyczyść Cache</string>
+    <string name="clear_cache_summary">Usuwa dane tymczasowe przeglądarki</string>
+    <string name="enable_sound">Dźwięki systemowe</string>
+    <string name="enable_sound_summary">Graj dźwięk przy starcie i błędach</string>
+    <string name="force_dark">Wymuś Ciemny Motyw</string>
+    <string name="force_dark_summary">Wymusza tryb nocny na stronach www</string>
+    <string name="shake_refresh">Wstrząśnij aby odświeżyć</string>
+    <string name="shake_refresh_summary">Odśwież bota potrząsając telefonem</string>
+    <string name="log_console">Logi Konsoli (Toast)</string>
+    <string name="log_console_summary">Pokazuj błędy JavaScript jako powiadomienia</string>
+    <string name="volume_control">Klawisz głośności = Odśwież</string>
+    <string name="volume_control_summary">Przycisk Głośność+ odświeża stronę</string>
+    <string name="screenshot_protect">Ochrona prywatności</string>
+    <string name="screenshot_protect_summary">Blokuje robienie screenshotów bota</string>
+    <string name="ufo_abduction">Protokół UFO (Abduction)</string>
+    <string name="ufo_abduction_summary">Gest 3 palców wciąga bota do statku UFO</string>
+    <string name="morse_flashlight">Sygnał Adios Amor (Latarka)</string>
+    <string name="morse_flashlight_summary">Mruga latarką w kodzie morsa przy alertach</string>
+</resources>

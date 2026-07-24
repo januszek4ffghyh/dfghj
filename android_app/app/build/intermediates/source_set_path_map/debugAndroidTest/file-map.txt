@@ -1,0 +1,4 @@
+com.danessi.bot.test.app-androidTest-0 C:\Users\Janus\Desktop\danessi\android_app\app\build\generated\res\resValues\androidTest\debug
+com.danessi.bot.test.app-mergeDebugAndroidTestResources-1 C:\Users\Janus\Desktop\danessi\android_app\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+com.danessi.bot.test.app-mergeDebugAndroidTestResources-2 C:\Users\Janus\Desktop\danessi\android_app\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+com.danessi.bot.test.app-merged_res-3 C:\Users\Janus\Desktop\danessi\android_app\app\build\intermediates\merged_res\debugAndroidTest
