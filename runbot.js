@@ -953,6 +953,7 @@ async function startBotBrowser() {
 
     // ── Główny skrypt stealth (wstrzykiwany PRZED załadowaniem jakiejkolwiek strony) ──
     await page.evaluateOnNewDocument(() => {
+        return; // Tymczasowo wyłącz stealth (do testów)
         // ────────────────────────────────────────
         // 1. navigator.webdriver = undefined
         // ────────────────────────────────────────
@@ -1380,6 +1381,9 @@ if (!fs.existsSync(loaderPath)) {
         }
     }, loaderCode);
 }
+    await page.setViewport({ width: 1366, height: 768 });
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
+
     // ── Navigacja ──
     console.log(`[Puppeteer] Nawigacja → ${GAME_URL}`);
     
@@ -1390,11 +1394,26 @@ if (!fs.existsSync(loaderPath)) {
         });
     } catch (err) {
         if (err.message.includes('ERR_TOO_MANY_REDIRECTS') || err.message.includes('net::ERR_')) {
-            console.warn('[Puppeteer] Redirect loop wykryty — czyszczę cookies i ponawiam...');
+            console.warn('[Puppeteer] Redirect loop — agresywne czyszczenie...');
+            
             const client = await page.createCDPSession();
             await client.send('Network.clearBrowserCookies');
+            await client.send('Network.clearBrowserCache');
+            await client.send('Storage.clearDataForOrigin', { origin: 'https://www.margonem.pl' });
             await client.detach();
-            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+
+            // Dodatkowe czyszczenie localStorage + session
+            await page.evaluate(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+            }).catch(() => {});
+
+            await new Promise(r => setTimeout(r, 2000));
+            
+            await page.goto(GAME_URL, { 
+                waitUntil: 'domcontentloaded', 
+                timeout: NAV_TIMEOUT 
+            });
         } else if (err.message.includes('frame was detached') || err.message.includes('LifecycleWatcher disposed')) {
             console.warn('[Puppeteer] Nawigacja przerwana (frame detached) — ponawiam za 3s...');
             await new Promise(r => setTimeout(r, 3000));
