@@ -14,7 +14,9 @@ if (fs.existsSync(ENV_FILE)) {
         if (idx === -1) return;
         const key = clean.slice(0, idx).trim();
         const value = clean.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
-        if (key && process.env[key] == null) process.env[key] = value;
+        if (key && (process.env[key] == null || process.env[key] === '')) {
+            process.env[key] = value;
+        }
     });
 }
 
@@ -35,6 +37,14 @@ const DASHBOARD_DIR = path.join(ROOT, 'dashboard');
 const HEADLESS = String(process.env.MAW_HEADLESS || 'false').toLowerCase() === 'true';
 const GAME_SERVER = process.env.MAW_GAME_SERVER || 'luvia';
 const GAME_URL = process.env.MAW_GAME_URL || 'https://www.margonem.pl/intro/';
+const NAV_TIMEOUT = 60000; // globalny timeout na ładowanie stron (60 sekund dla wolnych VPS)
+
+// Proxy config
+let PROXY_HOST = process.env.MAW_PROXY_HOST || '';
+let PROXY_PORT = process.env.MAW_PROXY_PORT || '';
+let PROXY_USER = process.env.MAW_PROXY_USER || '';
+let PROXY_PASS = process.env.MAW_PROXY_PASS || '';
+let USE_PROXY = !!(PROXY_HOST && PROXY_PORT);
 
 let botState = null;
 let stateUpdatedAt = 0;
@@ -447,7 +457,7 @@ if (urlPath.startsWith('/api/config')) {
                     // Wywołaj asynchronicznie, żeby nie blokować odpowiedzi API
                     page.goto('https://www.margonem.pl/', {
                         waitUntil: 'domcontentloaded',
-                        timeout: 20000
+                        timeout: NAV_TIMEOUT
                     }).catch(err => {
                         console.log('[API] Goto Margonem.pl (silent):', err.message);
                     });
@@ -558,7 +568,7 @@ if (urlPath.startsWith('/api/config')) {
     if (urlPath === '/api/browser/logout' && req.method === 'POST') {
         if (page && !page.isClosed()) {
             try {
-                await page.goto('https://www.margonem.pl/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+                await page.goto('https://www.margonem.pl/', { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
                 sendJson(res, 200, { ok: true });
             } catch (e) {
                 sendJson(res, 500, { ok: false, error: e.message });
@@ -667,6 +677,139 @@ if (urlPath.startsWith('/api/config')) {
     serveFile(res, filePath);
 });
 
+// ── AUTOPROXY FINDER (Darmowe omijanie Cloudflare) ──
+function fetchFreeProxies() {
+    const api = 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=5000&country=all&ssl=all&anonymity=all';
+    return new Promise((resolve) => {
+        const https = require('https');
+        https.get(api, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                const list = data.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line && line.includes(':'));
+                resolve(list);
+            });
+        }).on('error', () => resolve([]));
+    });
+}
+
+function testFreeProxySocks5(proxyIp, proxyPort, targetHost, targetPort) {
+    return new Promise((resolve) => {
+        const net = require('net');
+        const tls = require('tls');
+        
+        const socket = net.connect({
+            port: Number(proxyPort),
+            host: proxyIp,
+            timeout: 5000
+        });
+
+        socket.on('connect', () => {
+            socket.write(Buffer.from([0x05, 0x01, 0x00]));
+        });
+
+        let step = 0;
+        socket.on('data', (chunk) => {
+            if (step === 0) {
+                if (chunk[0] === 0x05 && chunk[1] === 0x00) {
+                    step = 1;
+                    const hostBuf = Buffer.from(targetHost);
+                    const req = Buffer.alloc(4 + 1 + hostBuf.length + 2);
+                    req[0] = 0x05;
+                    req[1] = 0x01;
+                    req[2] = 0x00;
+                    req[3] = 0x03;
+                    req[4] = hostBuf.length;
+                    hostBuf.copy(req, 5);
+                    req.writeUInt16BE(targetPort, 5 + hostBuf.length);
+                    socket.write(req);
+                } else {
+                    socket.destroy();
+                    resolve(false);
+                }
+            } else if (step === 1) {
+                if (chunk[0] === 0x05 && chunk[1] === 0x00) {
+                    step = 2;
+                    socket.removeAllListeners('data');
+                    socket.removeAllListeners('timeout');
+                    socket.removeAllListeners('error');
+
+                    const tlsSocket = tls.connect({
+                        socket: socket,
+                        servername: targetHost,
+                        rejectUnauthorized: false
+                    }, () => {
+                        tlsSocket.write(`GET / HTTP/1.1\r\nHost: ${targetHost}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\nConnection: close\r\n\r\n`);
+                    });
+
+                    tlsSocket.setTimeout(4000);
+
+                    tlsSocket.on('data', (data) => {
+                        const response = data.toString();
+                        if (response.includes('HTTP/') && (response.includes(' 200') || response.includes(' 301') || response.includes(' 302') || response.includes(' 403'))) {
+                            resolve(true);
+                        } else {
+                            resolve(false);
+                        }
+                        tlsSocket.destroy();
+                    });
+
+                    tlsSocket.on('timeout', () => {
+                        tlsSocket.destroy();
+                        resolve(false);
+                    });
+
+                    tlsSocket.on('error', () => {
+                        tlsSocket.destroy();
+                        resolve(false);
+                    });
+                } else {
+                    socket.destroy();
+                    resolve(false);
+                }
+            }
+        });
+
+        socket.on('timeout', () => {
+            socket.destroy();
+            resolve(false);
+        });
+
+        socket.on('error', () => {
+            socket.destroy();
+            resolve(false);
+        });
+    });
+}
+
+async function findWorkingFreeProxy(failedProxies) {
+    const proxies = await fetchFreeProxies();
+    if (!proxies.length) return null;
+
+    const filtered = failedProxies 
+        ? proxies.filter(p => !failedProxies.has(p))
+        : proxies;
+
+    const batchSize = 40;
+    for (let i = 0; i < filtered.length; i += batchSize) {
+        const batch = filtered.slice(i, i + batchSize);
+        let found = null;
+        
+        await Promise.all(batch.map(async (p) => {
+            const [ip, port] = p.split(':');
+            const ok = await testFreeProxySocks5(ip, port, 'www.margonem.pl', 443);
+            if (ok && !found) {
+                found = { host: `socks5://${ip}`, port };
+            }
+        }));
+        
+        if (found) return found;
+    }
+    return null;
+}
+
 // ════════════════════════════════════════════════════════════
 //  PUPPETEER — Chromium z wstrzykiwaniem bota
 // ════════════════════════════════════════════════════════════
@@ -678,86 +821,118 @@ async function startBotBrowser() {
     isStartingBrowser = true;
 
     try {
-        console.log('[Puppeteer] Uruchamianie Chromium...');
-        const userDataDir = path.join(ROOT, 'browser_profile');
+        const failedProxies = new Set();
+        let browser = null;
 
-        if (browserInstance) {
+        while (true) {
             try {
-                await browserInstance.close();
-            } catch {}
-            browserInstance = null;
-        }
-
-                // Na Linuksie (np. VPS) użyj systemowego Chromium, jeśli istnieje.
-                // Na Windowsie (albo gdy ścieżka nie istnieje) Puppeteer użyje
-                // własnej, wbudowanej przeglądarki pobranej przy npm install.
-                const linuxChromiumPath = '/usr/bin/chromium-browser';
-                const useSystemChromium =
-                    process.platform === 'linux' && fs.existsSync(linuxChromiumPath);
-
-                // Flagi typu --single-process / --no-zygote / --disable-gpu / --disable-dev-shm-usage
-                // są sensowne tylko na ograniczonych VPS-ach linuksowych. Na Windowsie / desktopie
-                // potrafią powodować crash Chromium chwilę po starcie (dokładnie objaw:
-                // "Przeglądarka rozłączona!" + "frame detached" przy próbie nawigacji).
-                const isLinuxVps = process.platform === 'linux';
-
-                const browser = await puppeteer.launch({
-            headless: HEADLESS,
-            userDataDir,
-            defaultViewport: HEADLESS ? { width: 1280, height: 960 } : null,
-            ...(useSystemChromium ? { executablePath: linuxChromiumPath } : {}),
-            // Usuwamy --enable-automation z domyślnych flag Chromium
-            ignoreDefaultFlags: false,
-            args: [
-                ...(isLinuxVps ? [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--single-process',
-                    '--disable-gpu',
-                    '--no-zygote',
-                ] : []),
-                '--disable-accelerated-2d-canvas',
-                '--disable-software-rasterizer',
-                '--window-size=1280,960',
-                '--disable-web-security',
-                '--disable-features=IsolateOrigins,site-per-process',
-                // ═══ STEALTH: ukrywanie automatyzacji ═══
-                '--disable-blink-features=AutomationControlled',  // Kluczowe! Usuwa navigator.webdriver
-                '--disable-infobars',                             // Ukrywa "Chrome is being controlled..."
-                '--excludeSwitches=enable-automation',             // Usuwa flagę automatyzacji
-                '--disable-component-extensions-with-background-pages',
-                '--disable-default-apps',
-                '--disable-extensions',
-                '--disable-hang-monitor',
-                '--disable-popup-blocking',
-                '--disable-prompt-on-repost',
-                '--disable-sync',
-                '--disable-translate',
-                '--metrics-recording-only',
-                '--no-first-run',
-                '--password-store=basic',
-                '--use-mock-keychain',
-                '--lang=pl-PL,pl',
-            ],
-        });
-        browserInstance = browser;
-
-        const pages = await browser.pages();
-        page = pages[0] || await browser.newPage();
-
-        // ── AGRESYWNE OGRANICZANIE ZASOBÓW (Lekka wersja na VPS) ──
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            const resourceType = req.resourceType();
-            if (['image', 'font', 'media'].includes(resourceType)) {
-                req.abort();
-            } else {
-                req.continue();
+            if (process.env.MAW_PROXY_HOST === 'auto') {
+                console.log('[Puppeteer] 🔄 Wyszukiwanie działającego darmowego proxy (Socks5)...');
+                const autoProxy = await findWorkingFreeProxy(failedProxies);
+                if (autoProxy) {
+                    PROXY_HOST = autoProxy.host;
+                    PROXY_PORT = autoProxy.port;
+                    PROXY_USER = '';
+                    PROXY_PASS = '';
+                    USE_PROXY = true;
+                    console.log(`[Puppeteer] 🚀 Wybrano automatyczne proxy: ${PROXY_HOST}:${PROXY_PORT}`);
+                } else {
+                    console.warn('[Puppeteer] ⚠️ Nie znaleziono żadnego działającego darmowego proxy. Próba połączenia bezpośredniego.');
+                    USE_PROXY = false;
+                }
             }
-        });
 
-        console.log('[Puppeteer] ✅ Połączenie bez proxy (bezpośrednio)');
+            console.log('[Puppeteer] Uruchamianie Chromium...');
+            const userDataDir = path.join(ROOT, 'browser_profile');
+
+            if (browserInstance) {
+                try {
+                    await browserInstance.close();
+                } catch {}
+                browserInstance = null;
+            }
+
+            // Na Linuksie (np. VPS) użyj systemowego Chromium, jeśli istnieje.
+            // Na Windowsie (albo gdy ścieżka nie istnieje) Puppeteer użyje
+            // własnej, wbudowanej przeglądarki pobranej przy npm install.
+            const linuxChromiumPath = '/usr/bin/chromium-browser';
+            const useSystemChromium =
+                process.platform === 'linux' && fs.existsSync(linuxChromiumPath);
+
+            // Flagi typu --single-process / --no-zygote / --disable-gpu / --disable-dev-shm-usage
+            // są sensowne tylko na ograniczonych VPS-ach linuksowych. Na Windowsie / desktopie
+            // potrafią powodować crash Chromium chwilę po starcie (dokładnie objaw:
+            // "Przeglądarka rozłączona!" + "frame detached" przy próbie nawigacji).
+            const isLinuxVps = process.platform === 'linux';
+
+            browser = await puppeteer.launch({
+                headless: HEADLESS,
+                userDataDir,
+                ignoreHTTPSErrors: true,
+                defaultViewport: HEADLESS ? { width: 1280, height: 960 } : null,
+                ...(useSystemChromium ? { executablePath: linuxChromiumPath } : {}),
+                // Usuwamy --enable-automation z domyślnych flag Chromium
+                ignoreDefaultFlags: false,
+                args: [
+                    ...(isLinuxVps ? [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--single-process',
+                        '--disable-gpu',
+                        '--no-zygote',
+                    ] : []),
+                    ...(USE_PROXY ? [
+                        `--proxy-server=${PROXY_HOST.includes('://') ? PROXY_HOST : 'http://' + PROXY_HOST}:${PROXY_PORT}`
+                    ] : []),
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-software-rasterizer',
+                    '--window-size=1280,960',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    // ═══ STEALTH: ukrywanie automatyzacji ═══
+                    '--disable-blink-features=AutomationControlled',  // Kluczowe! Usuwa navigator.webdriver
+                    '--disable-infobars',                             // Ukrywa "Chrome is being controlled..."
+                    '--excludeSwitches=enable-automation',             // Usuwa flagę automatyzacji
+                    '--disable-component-extensions-with-background-pages',
+                    '--disable-default-apps',
+                    '--disable-extensions',
+                    '--disable-hang-monitor',
+                    '--disable-popup-blocking',
+                    '--disable-prompt-on-repost',
+                    '--disable-sync',
+                    '--disable-translate',
+                    '--metrics-recording-only',
+                    '--no-first-run',
+                    '--password-store=basic',
+                    '--use-mock-keychain',
+                    '--lang=pl-PL,pl',
+                ],
+            });
+            browserInstance = browser;
+
+            const pages = await browser.pages();
+            page = pages[0] || await browser.newPage();
+
+            if (USE_PROXY) {
+                console.log(`[Puppeteer] 🌐 Połączenie przez proxy: ${PROXY_HOST}:${PROXY_PORT}`);
+                if (PROXY_USER && PROXY_PASS) {
+                    await page.authenticate({ username: PROXY_USER, password: PROXY_PASS });
+                }
+            } else {
+                console.log('[Puppeteer] ✅ Połączenie bez proxy (bezpośrednio)');
+            }
+
+            // ── AGRESYWNE OGRANICZANIE ZASOBÓW (Lekka wersja na VPS) ──
+            await page.setRequestInterception(true);
+            page.on('request', (req) => {
+                const resourceType = req.resourceType();
+                if (['image', 'font', 'media'].includes(resourceType)) {
+                    req.abort();
+                } else {
+                    req.continue();
+                }
+            });
 
     // ═══════════════════════════════════════════════════════════
     //  STEALTH: Ukrywanie WebDriver na 100%
@@ -1211,7 +1386,7 @@ if (!fs.existsSync(loaderPath)) {
     try {
         await page.goto(GAME_URL, { 
             waitUntil: 'domcontentloaded', 
-            timeout: 20000 
+            timeout: NAV_TIMEOUT 
         });
     } catch (err) {
         if (err.message.includes('ERR_TOO_MANY_REDIRECTS') || err.message.includes('net::ERR_')) {
@@ -1219,12 +1394,12 @@ if (!fs.existsSync(loaderPath)) {
             const client = await page.createCDPSession();
             await client.send('Network.clearBrowserCookies');
             await client.detach();
-            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
         } else if (err.message.includes('frame was detached') || err.message.includes('LifecycleWatcher disposed')) {
             console.warn('[Puppeteer] Nawigacja przerwana (frame detached) — ponawiam za 3s...');
             await new Promise(r => setTimeout(r, 3000));
             try {
-                await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+                await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
             } catch (retryErr) {
                 console.error('[Puppeteer] ✗ Druga próba nawigacji też się nie powiodła.');
                 throw new Error(`NAVIGATION_FAILED: nawigacja nie powiodła się dwukrotnie (${retryErr.message})`);
@@ -1235,6 +1410,27 @@ if (!fs.existsSync(loaderPath)) {
     }
 
     console.log('[Puppeteer] ✓ Strona załadowana:', await page.title());
+    break; // Sukces! Wychodzimy z pętli while(true)
+        } catch (err) {
+            console.error(`[Puppeteer] ✗ Błąd podczas startu przeglądarki/nawigacji: ${err.message}`);
+            if (browser) {
+                try {
+                    await browser.close();
+                } catch {}
+            }
+            browserInstance = null;
+            page = null;
+
+            if (process.env.MAW_PROXY_HOST === 'auto' && USE_PROXY) {
+                const badProxy = `${PROXY_HOST.replace('socks5://', '')}:${PROXY_PORT}`;
+                console.warn(`[Puppeteer] Dodaję ${badProxy} do czarnej listy zepsutych proxy i spróbuję ponownie z innym...`);
+                failedProxies.add(badProxy);
+                await new Promise(r => setTimeout(r, 1000));
+            } else {
+                throw err;
+            }
+        }
+    }
 
     let autoLoginInterval = null;
     let loginTimeout = null;
@@ -1320,7 +1516,7 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
         try {
             await page.goto('https://www.margonem.pl/', { 
                 waitUntil: 'domcontentloaded', 
-                timeout: 20000 
+                timeout: NAV_TIMEOUT 
             });
 
             const isModalOpen = await page.$('.popup-select-character:not([style*="display: none"]), .char-container, .charlist');
@@ -1370,7 +1566,7 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
                         page._navigatingToMargonem = true;
                         console.warn(`[Puppeteer] Strona nie jest załadowana poprawnie (url: "${currentUrl}"). Próba ponownej nawigacji...`);
                         try {
-                            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+                            await page.goto(GAME_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
                             console.log('[Puppeteer] ✓ Nawigacja powtórzona pomyślnie.');
                         } catch (navErr) {
                             console.error('[Puppeteer] Ponowna nawigacja nie powiodła się (sieć nadal niedostępna):', navErr.message);
@@ -1393,7 +1589,7 @@ const selectCharacterFromModal = async (page, targetCharName, targetWorld = null
                     }
                     console.log('[Puppeteer] Odczekano 15 sekund. Wymuszam twarde przejście na stronę logowania...');
                     introWaitStarted = 0;
-                    await page.goto('https://www.margonem.pl/', { waitUntil: 'domcontentloaded', timeout: 20000 });
+                    await page.goto('https://www.margonem.pl/', { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
                     return;
                 }
                 

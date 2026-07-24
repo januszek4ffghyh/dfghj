@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00FF00"
+        android:pathData="Object path for UFO icon here - simple oval and dome"
+        android:pathData="M12,2C15.87,2 19,4.24 19,7C19,9.76 15.87,12 12,12C8.13,12 5,9.76 5,7C5,4.24 8.13,2 12,2M12,13C17.5,13 22,15.24 22,18C22,20.76 17.5,23 12,23C6.5,23 2,20.76 2,18C2,15.24 6.5,13 12,13Z" />
+</vector>
