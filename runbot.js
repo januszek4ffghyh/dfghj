@@ -326,6 +326,24 @@ function serveFile(res, filePath) {
 const server = http.createServer(async (req, res) => {
     const urlPath = (req.url || '/').replace(/\/\/+/g, '/');
 
+    // ── Timeout zabezpieczenie — zawsze odpowiedz w 15s ──
+    const safetyTimer = setTimeout(() => {
+        if (!res.writableEnded) {
+            console.warn(`[API] ⚠️ Timeout 15s na ${req.method} ${urlPath}`);
+            try {
+                corsHeaders(res);
+                res.writeHead(504, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: 'Timeout — serwer nie zdążył odpowiedzieć' }));
+            } catch {}
+        }
+    }, 15000);
+
+    // ── Zabezpieczenie przed crash ──
+    res.on('finish', () => clearTimeout(safetyTimer));
+    res.on('close', () => clearTimeout(safetyTimer));
+
+    try {
+
     if (req.method === 'OPTIONS') {
         corsHeaders(res);
         res.writeHead(204);
@@ -681,6 +699,17 @@ if (urlPath.startsWith('/api/config')) {
         return;
     }
     serveFile(res, filePath);
+
+    } catch (err) {
+        console.error(`[API] ❌ Błąd w obsłudze ${req.method} ${urlPath}: ${err.message}`);
+        if (!res.writableEnded) {
+            try {
+                corsHeaders(res);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: 'Wewnętrzny błąd serwera' }));
+            } catch {}
+        }
+    }
 });
 
 // ── AUTOPROXY FINDER + BACKGROUND PROXY POOL ──
