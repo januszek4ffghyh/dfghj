@@ -324,7 +324,7 @@ function serveFile(res, filePath) {
 //  HTTP API SERVER
 // ════════════════════════════════════════════════════════════
 const server = http.createServer(async (req, res) => {
-    const urlPath = req.url || '/';
+    const urlPath = (req.url || '/').replace(/\/\/+/g, '/');
 
     if (req.method === 'OPTIONS') {
         corsHeaders(res);
