@@ -747,94 +747,68 @@ async function fetchFreeProxies() {
     return unique;
 }
 
-// Testuje proxy i zwraca latencję w ms (lub -1 jeśli nie działa)
+// Testuje proxy — szybki test: SOCKS5 handshake + CONNECT accepted
+// Nie robimy pełnego TLS bo Puppeteer ma ignoreHTTPSErrors: true
 function testFreeProxySocks5WithLatency(proxyIp, proxyPort, targetHost, targetPort) {
     return new Promise((resolve) => {
         const net = require('net');
-        const tls = require('tls');
         const startTime = Date.now();
+        let resolved = false;
         
+        const done = (val) => {
+            if (resolved) return;
+            resolved = true;
+            try { socket.destroy(); } catch {}
+            resolve(val);
+        };
+
         const socket = net.connect({
             port: Number(proxyPort),
             host: proxyIp,
-            timeout: 5000
+            timeout: 4000
         });
 
         socket.on('connect', () => {
+            // SOCKS5 greeting: version 5, 1 auth method (no auth)
             socket.write(Buffer.from([0x05, 0x01, 0x00]));
         });
 
         let step = 0;
         socket.on('data', (chunk) => {
             if (step === 0) {
-                if (chunk[0] === 0x05 && chunk[1] === 0x00) {
+                // Odpowiedź na greeting: wersja 5, metoda 0 (no auth)
+                if (chunk.length >= 2 && chunk[0] === 0x05 && chunk[1] === 0x00) {
                     step = 1;
+                    // SOCKS5 CONNECT request do target
                     const hostBuf = Buffer.from(targetHost);
                     const req = Buffer.alloc(4 + 1 + hostBuf.length + 2);
-                    req[0] = 0x05;
-                    req[1] = 0x01;
-                    req[2] = 0x00;
-                    req[3] = 0x03;
+                    req[0] = 0x05; // ver
+                    req[1] = 0x01; // CONNECT
+                    req[2] = 0x00; // reserved
+                    req[3] = 0x03; // domain
                     req[4] = hostBuf.length;
                     hostBuf.copy(req, 5);
                     req.writeUInt16BE(targetPort, 5 + hostBuf.length);
                     socket.write(req);
                 } else {
-                    socket.destroy();
-                    resolve(-1);
+                    done(-1);
                 }
             } else if (step === 1) {
-                if (chunk[0] === 0x05 && chunk[1] === 0x00) {
-                    step = 2;
-                    socket.removeAllListeners('data');
-                    socket.removeAllListeners('timeout');
-                    socket.removeAllListeners('error');
-
-                    const tlsSocket = tls.connect({
-                        socket: socket,
-                        servername: targetHost,
-                        rejectUnauthorized: false
-                    }, () => {
-                        tlsSocket.write(`GET / HTTP/1.1\r\nHost: ${targetHost}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\nConnection: close\r\n\r\n`);
-                    });
-
-                    tlsSocket.setTimeout(4000);
-
-                    tlsSocket.on('data', (data) => {
-                        const response = data.toString();
-                        if (response.includes('HTTP/') && (response.includes(' 200') || response.includes(' 301') || response.includes(' 302') || response.includes(' 403'))) {
-                            resolve(Date.now() - startTime);
-                        } else {
-                            resolve(-1);
-                        }
-                        tlsSocket.destroy();
-                    });
-
-                    tlsSocket.on('timeout', () => {
-                        tlsSocket.destroy();
-                        resolve(-1);
-                    });
-
-                    tlsSocket.on('error', () => {
-                        tlsSocket.destroy();
-                        resolve(-1);
-                    });
+                // CONNECT response: wersja 5, status 0x00 = success
+                if (chunk.length >= 2 && chunk[0] === 0x05 && chunk[1] === 0x00) {
+                    // SOCKS5 tunnel otwarty! Proxy działa.
+                    done(Date.now() - startTime);
                 } else {
-                    socket.destroy();
-                    resolve(-1);
+                    done(-1);
                 }
             }
         });
 
-        socket.on('timeout', () => {
-            socket.destroy();
-            resolve(-1);
-        });
+        socket.on('timeout', () => done(-1));
+        socket.on('error', () => done(-1));
 
-        socket.on('error', () => {
-            socket.destroy();
-            resolve(-1);
-        });
+        // Absolutny timeout 5s
+        setTimeout(() => done(-1), 5000);
     });
 }
 
