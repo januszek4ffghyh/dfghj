@@ -2240,8 +2240,8 @@ async function main() {
     // PUBLICZNY NASŁUCH — kluczowa zmiana
     server.listen(PORT, LISTEN_HOST, () => {
         console.log(`[API] Serwer nasłuchuje na http://${LISTEN_HOST}:${PORT}`);
-        console.log(`[API] Dashboard → http://botmargo.duckdns.org:${PORT}/dashboard`);
-        console.log(`[API] IP → http://83.29.135.191:${PORT}/dashboard`);
+        console.log(`[API] Dashboard → http://sakura.proxy.rlwy.net:30762/dashboard`);
+        console.log(`[API] Local   → http://127.0.0.1:${PORT}/dashboard`);
     });
 
     if (process.env.MAW_WATCHDOG_ACTIVE !== 'true') {
