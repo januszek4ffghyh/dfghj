@@ -684,21 +684,38 @@ if (urlPath.startsWith('/api/config')) {
 });
 
 // ── AUTOPROXY FINDER + BACKGROUND PROXY POOL ──
-function fetchFreeProxies() {
-    const api = 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=5000&country=all&ssl=all&anonymity=all';
+function fetchFromUrl(url) {
     return new Promise((resolve) => {
-        const https = require('https');
-        https.get(api, (res) => {
+        const mod = url.startsWith('https') ? require('https') : require('http');
+        const req = mod.get(url, { timeout: 8000 }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 const list = data.split('\n')
                     .map(line => line.trim())
-                    .filter(line => line && line.includes(':'));
+                    .filter(line => /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5}$/.test(line));
                 resolve(list);
             });
-        }).on('error', () => resolve([]));
+        });
+        req.on('error', () => resolve([]));
+        req.on('timeout', () => { req.destroy(); resolve([]); });
     });
+}
+
+async function fetchFreeProxies() {
+    const sources = [
+        'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=5000&country=all&ssl=all&anonymity=all',
+        'https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks5.txt',
+        'https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt',
+        'https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt',
+        'https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt',
+    ];
+
+    const results = await Promise.all(sources.map(url => fetchFromUrl(url)));
+    const all = results.flat();
+    const unique = [...new Set(all)];
+    console.log(`[ProxyPool] 📋 Pobrano ${unique.length} unikalnych proxy z ${sources.length} źródeł`);
+    return unique;
 }
 
 // Testuje proxy i zwraca latencję w ms (lub -1 jeśli nie działa)
@@ -958,46 +975,66 @@ async function findWorkingFreeProxy(failedProxies) {
         return { host: poolProxy.host, port: poolProxy.port };
     }
 
-    // 2. Fallback — skanuj na żywo (wolne, ale niezawodne)
-    console.log('[ProxyPool] 📡 Pula pusta — skanowanie na żywo...');
-    const proxies = await fetchFreeProxies();
-    if (!proxies.length) return null;
+    // 2. Fallback — skanuj na żywo z retry
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        console.log(`[ProxyPool] 📡 Skanowanie na żywo (próba ${attempt}/2)...`);
+        const proxies = await fetchFreeProxies();
+        if (!proxies.length) {
+            console.log('[ProxyPool] ⚠️ Brak proxy z API');
+            if (attempt < 2) { await new Promise(r => setTimeout(r, 5000)); continue; }
+            return null;
+        }
 
-    const filtered = failedProxies 
-        ? proxies.filter(p => !failedProxies.has(p))
-        : proxies;
+        const filtered = failedProxies 
+            ? proxies.filter(p => !failedProxies.has(p) && !proxyPool.blacklist.has(p))
+            : proxies;
 
-    let bestProxy = null;
-    let bestLatency = Infinity;
-    const batchSize = 40;
+        // Losowo przemieszaj dla lepszego pokrycia
+        const shuffled = filtered.sort(() => Math.random() - 0.5);
+        const maxToTest = 200;
+        const toTest = shuffled.slice(0, maxToTest);
 
-    for (let i = 0; i < filtered.length; i += batchSize) {
-        const batch = filtered.slice(i, i + batchSize);
-        
-        await Promise.all(batch.map(async (p) => {
-            const [ip, port] = p.split(':');
-            const latency = await testFreeProxySocks5WithLatency(ip, port, 'www.margonem.pl', 443);
-            if (latency >= 0 && latency < bestLatency) {
-                bestLatency = latency;
-                bestProxy = { host: `socks5://${ip}`, port };
+        let bestProxy = null;
+        let bestLatency = Infinity;
+        const batchSize = 50;
+
+        console.log(`[ProxyPool] 🔍 Testuję do ${toTest.length} proxy (batch po ${batchSize})...`);
+
+        for (let i = 0; i < toTest.length; i += batchSize) {
+            const batch = toTest.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (p) => {
+                const [ip, port] = p.split(':');
+                const latency = await testFreeProxySocks5WithLatency(ip, port, 'www.margonem.pl', 443);
+                if (latency >= 0 && latency < bestLatency) {
+                    bestLatency = latency;
+                    bestProxy = { host: `socks5://${ip}`, port };
+                }
+            }));
+            
+            // Jeśli mamy coś szybszego niż 2000ms, bierzemy
+            if (bestProxy && bestLatency < 2000) {
+                console.log(`[ProxyPool] ⚡ Szybkie proxy po ${i + batch.length} testach`);
+                break;
             }
-        }));
-        
-        // Jeśli mamy coś szybszego niż 1500ms, bierzemy i nie czekamy
-        if (bestProxy && bestLatency < 1500) break;
+        }
+
+        if (bestProxy) {
+            console.log(`[ProxyPool] 🎯 Znaleziono proxy: ${bestProxy.host}:${bestProxy.port} (${bestLatency}ms)`);
+            proxyPool.pool.push({
+                host: bestProxy.host,
+                port: bestProxy.port,
+                latency: bestLatency,
+                testedAt: Date.now()
+            });
+            return bestProxy;
+        }
+
+        console.log(`[ProxyPool] ❌ Próba ${attempt} nie znalazła proxy`);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 5000));
     }
 
-    if (bestProxy) {
-        console.log(`[ProxyPool] 🎯 Znaleziono proxy: ${bestProxy.host}:${bestProxy.port} (${bestLatency}ms)`);
-        // Dodaj do puli
-        proxyPool.pool.push({
-            host: bestProxy.host,
-            port: bestProxy.port,
-            latency: bestLatency,
-            testedAt: Date.now()
-        });
-    }
-    return bestProxy;
+    return null;
 }
 
 // ════════════════════════════════════════════════════════════
