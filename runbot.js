@@ -333,6 +333,12 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ── Proxy Pool status ──
+    if (urlPath === '/api/proxy-pool') {
+        sendJson(res, 200, { ok: true, ...proxyPool.getStatus() });
+        return;
+    }
+
     // ── Stan bota ──
     if (urlPath.startsWith('/api/state')) {
         if (req.method === 'GET') {
@@ -677,7 +683,7 @@ if (urlPath.startsWith('/api/config')) {
     serveFile(res, filePath);
 });
 
-// ── AUTOPROXY FINDER (Darmowe omijanie Cloudflare) ──
+// ── AUTOPROXY FINDER + BACKGROUND PROXY POOL ──
 function fetchFreeProxies() {
     const api = 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=5000&country=all&ssl=all&anonymity=all';
     return new Promise((resolve) => {
@@ -695,10 +701,12 @@ function fetchFreeProxies() {
     });
 }
 
-function testFreeProxySocks5(proxyIp, proxyPort, targetHost, targetPort) {
+// Testuje proxy i zwraca latencję w ms (lub -1 jeśli nie działa)
+function testFreeProxySocks5WithLatency(proxyIp, proxyPort, targetHost, targetPort) {
     return new Promise((resolve) => {
         const net = require('net');
         const tls = require('tls');
+        const startTime = Date.now();
         
         const socket = net.connect({
             port: Number(proxyPort),
@@ -727,7 +735,7 @@ function testFreeProxySocks5(proxyIp, proxyPort, targetHost, targetPort) {
                     socket.write(req);
                 } else {
                     socket.destroy();
-                    resolve(false);
+                    resolve(-1);
                 }
             } else if (step === 1) {
                 if (chunk[0] === 0x05 && chunk[1] === 0x00) {
@@ -749,42 +757,209 @@ function testFreeProxySocks5(proxyIp, proxyPort, targetHost, targetPort) {
                     tlsSocket.on('data', (data) => {
                         const response = data.toString();
                         if (response.includes('HTTP/') && (response.includes(' 200') || response.includes(' 301') || response.includes(' 302') || response.includes(' 403'))) {
-                            resolve(true);
+                            resolve(Date.now() - startTime);
                         } else {
-                            resolve(false);
+                            resolve(-1);
                         }
                         tlsSocket.destroy();
                     });
 
                     tlsSocket.on('timeout', () => {
                         tlsSocket.destroy();
-                        resolve(false);
+                        resolve(-1);
                     });
 
                     tlsSocket.on('error', () => {
                         tlsSocket.destroy();
-                        resolve(false);
+                        resolve(-1);
                     });
                 } else {
                     socket.destroy();
-                    resolve(false);
+                    resolve(-1);
                 }
             }
         });
 
         socket.on('timeout', () => {
             socket.destroy();
-            resolve(false);
+            resolve(-1);
         });
 
         socket.on('error', () => {
             socket.destroy();
-            resolve(false);
+            resolve(-1);
         });
     });
 }
 
+// Stara kompatybilna wersja (true/false)
+function testFreeProxySocks5(proxyIp, proxyPort, targetHost, targetPort) {
+    return testFreeProxySocks5WithLatency(proxyIp, proxyPort, targetHost, targetPort)
+        .then(ms => ms >= 0);
+}
+
+// ═══════════════════════════════════════════════════
+//  BACKGROUND PROXY POOL MANAGER
+//  - Skanuje proxy w tle co 3 minuty
+//  - Testuje latencję każdego proxy (ms)
+//  - Trzyma pulę posortowaną od najszybszych
+//  - Gotowe proxy do natychmiastowego przełączenia
+// ═══════════════════════════════════════════════════
+const proxyPool = {
+    pool: [],               // [{host, port, latency, testedAt}] posortowane po latency
+    blacklist: new Set(),    // zepsute proxy (ip:port)
+    maxPoolSize: 15,         // max proxy w puli
+    maxLatency: 3000,        // max akceptowalna latencja (ms)
+    refreshIntervalMs: 3 * 60 * 1000,  // odświeżanie co 3 minuty
+    _timer: null,
+    _isScanning: false,
+
+    // Uruchom background scanning
+    start() {
+        if (this._timer) return;
+        console.log('[ProxyPool] 🏊 Uruchamiam background proxy pool manager (odświeżanie co 3 min)');
+        // Pierwsze skanowanie po 10s (daj botowi czas się zalogować)
+        setTimeout(() => this.refresh(), 10000);
+        this._timer = setInterval(() => this.refresh(), this.refreshIntervalMs);
+    },
+
+    stop() {
+        if (this._timer) {
+            clearInterval(this._timer);
+            this._timer = null;
+        }
+    },
+
+    // Pobierz najszybsze proxy z puli (z pominięciem blacklisty)
+    getBest(excludeSet) {
+        const now = Date.now();
+        const maxAge = 10 * 60 * 1000; // proxy ważne 10 minut
+        const candidates = this.pool.filter(p => {
+            const key = `${p.host.replace('socks5://', '')}:${p.port}`;
+            if (this.blacklist.has(key)) return false;
+            if (excludeSet && excludeSet.has(key)) return false;
+            if (now - p.testedAt > maxAge) return false;
+            return true;
+        });
+        return candidates.length > 0 ? candidates[0] : null; // już posortowane po latency
+    },
+
+    // Dodaj proxy do blacklisty
+    ban(host, port) {
+        const key = `${host.replace('socks5://', '')}:${port}`;
+        this.blacklist.add(key);
+        this.pool = this.pool.filter(p => {
+            const pk = `${p.host.replace('socks5://', '')}:${p.port}`;
+            return pk !== key;
+        });
+        console.log(`[ProxyPool] 🚫 Zbanowano proxy ${key} (pula: ${this.pool.length})`);
+    },
+
+    // Background refresh — skanuje nowe proxy i mierzy latencję
+    async refresh() {
+        if (this._isScanning) return;
+        this._isScanning = true;
+        try {
+            const allProxies = await fetchFreeProxies();
+            if (!allProxies.length) {
+                console.log('[ProxyPool] ⚠️ Brak proxy z API, pomijam odświeżanie');
+                return;
+            }
+
+            // Filtruj blacklisted i już przetestowane w puli
+            const poolKeys = new Set(this.pool.map(p => `${p.host.replace('socks5://', '')}:${p.port}`));
+            const candidates = allProxies.filter(p => 
+                !this.blacklist.has(p) && !poolKeys.has(p)
+            );
+
+            // Losowo przemieszaj i weź max 60 do testu
+            const shuffled = candidates.sort(() => Math.random() - 0.5).slice(0, 60);
+            
+            if (!shuffled.length) {
+                console.log(`[ProxyPool] ✅ Pula OK (${this.pool.length} proxy), brak nowych do testu`);
+                return;
+            }
+
+            console.log(`[ProxyPool] 🔍 Testuję ${shuffled.length} nowych proxy w tle...`);
+            const newResults = [];
+            const batchSize = 30;
+
+            for (let i = 0; i < shuffled.length; i += batchSize) {
+                const batch = shuffled.slice(i, i + batchSize);
+                await Promise.all(batch.map(async (p) => {
+                    const [ip, port] = p.split(':');
+                    const latency = await testFreeProxySocks5WithLatency(ip, port, 'www.margonem.pl', 443);
+                    if (latency >= 0 && latency <= this.maxLatency) {
+                        newResults.push({
+                            host: `socks5://${ip}`,
+                            port,
+                            latency,
+                            testedAt: Date.now()
+                        });
+                    }
+                }));
+            }
+
+            // Dodaj nowe do puli
+            this.pool = [...this.pool, ...newResults];
+
+            // Usuń stare (>10 min) i blacklisted
+            const now = Date.now();
+            const maxAge = 10 * 60 * 1000;
+            this.pool = this.pool.filter(p => {
+                const key = `${p.host.replace('socks5://', '')}:${p.port}`;
+                return !this.blacklist.has(key) && (now - p.testedAt <= maxAge);
+            });
+
+            // Sortuj po latencji (najszybsze pierwsze)
+            this.pool.sort((a, b) => a.latency - b.latency);
+
+            // Ogranicz rozmiar puli
+            if (this.pool.length > this.maxPoolSize) {
+                this.pool = this.pool.slice(0, this.maxPoolSize);
+            }
+
+            const fastest = this.pool[0];
+            console.log(`[ProxyPool] ✅ Pula gotowa: ${this.pool.length} proxy | Najszybsze: ${fastest ? `${fastest.host}:${fastest.port} (${fastest.latency}ms)` : 'brak'}`);
+            
+            // Wyczyść starą blacklistę (max 200 wpisów)
+            if (this.blacklist.size > 200) {
+                this.blacklist.clear();
+                console.log('[ProxyPool] 🧹 Wyczyszczono starą blacklistę');
+            }
+        } catch (err) {
+            console.error(`[ProxyPool] Błąd podczas odświeżania: ${err.message}`);
+        } finally {
+            this._isScanning = false;
+        }
+    },
+
+    // Pobierz status puli (dla dashboardu)
+    getStatus() {
+        return {
+            poolSize: this.pool.length,
+            blacklistSize: this.blacklist.size,
+            isScanning: this._isScanning,
+            proxies: this.pool.map(p => ({
+                host: p.host,
+                port: p.port,
+                latency: p.latency,
+                age: Math.round((Date.now() - p.testedAt) / 1000)
+            }))
+        };
+    }
+};
+
 async function findWorkingFreeProxy(failedProxies) {
+    // 1. Najpierw sprawdź pulę background (instant!)
+    const poolProxy = proxyPool.getBest(failedProxies);
+    if (poolProxy) {
+        console.log(`[ProxyPool] ⚡ Natychmiastowe proxy z puli: ${poolProxy.host}:${poolProxy.port} (${poolProxy.latency}ms)`);
+        return { host: poolProxy.host, port: poolProxy.port };
+    }
+
+    // 2. Fallback — skanuj na żywo (wolne, ale niezawodne)
+    console.log('[ProxyPool] 📡 Pula pusta — skanowanie na żywo...');
     const proxies = await fetchFreeProxies();
     if (!proxies.length) return null;
 
@@ -792,22 +967,37 @@ async function findWorkingFreeProxy(failedProxies) {
         ? proxies.filter(p => !failedProxies.has(p))
         : proxies;
 
+    let bestProxy = null;
+    let bestLatency = Infinity;
     const batchSize = 40;
+
     for (let i = 0; i < filtered.length; i += batchSize) {
         const batch = filtered.slice(i, i + batchSize);
-        let found = null;
         
         await Promise.all(batch.map(async (p) => {
             const [ip, port] = p.split(':');
-            const ok = await testFreeProxySocks5(ip, port, 'www.margonem.pl', 443);
-            if (ok && !found) {
-                found = { host: `socks5://${ip}`, port };
+            const latency = await testFreeProxySocks5WithLatency(ip, port, 'www.margonem.pl', 443);
+            if (latency >= 0 && latency < bestLatency) {
+                bestLatency = latency;
+                bestProxy = { host: `socks5://${ip}`, port };
             }
         }));
         
-        if (found) return found;
+        // Jeśli mamy coś szybszego niż 1500ms, bierzemy i nie czekamy
+        if (bestProxy && bestLatency < 1500) break;
     }
-    return null;
+
+    if (bestProxy) {
+        console.log(`[ProxyPool] 🎯 Znaleziono proxy: ${bestProxy.host}:${bestProxy.port} (${bestLatency}ms)`);
+        // Dodaj do puli
+        proxyPool.pool.push({
+            host: bestProxy.host,
+            port: bestProxy.port,
+            latency: bestLatency,
+            testedAt: Date.now()
+        });
+    }
+    return bestProxy;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1398,7 +1588,6 @@ if (!fs.existsSync(loaderPath)) {
             const client = await page.createCDPSession();
             await client.send('Network.clearBrowserCookies');
             await client.send('Network.clearBrowserCache');
-            await client.send('Storage.clearDataForOrigin', { origin: 'https://www.margonem.pl' });
             await client.detach();
 
             // Dodatkowe czyszczenie localStorage + session
@@ -1428,6 +1617,12 @@ if (!fs.existsSync(loaderPath)) {
     }
 
     console.log('[Puppeteer] ✓ Strona załadowana:', await page.title());
+
+    // Uruchom background proxy pool po udanym połączeniu
+    if (process.env.MAW_PROXY_HOST === 'auto') {
+        proxyPool.start();
+    }
+
     break; // Sukces! Wychodzimy z pętli while(true)
         } catch (err) {
             console.error(`[Puppeteer] ✗ Błąd podczas startu przeglądarki/nawigacji: ${err.message}`);
@@ -1443,6 +1638,7 @@ if (!fs.existsSync(loaderPath)) {
                 const badProxy = `${PROXY_HOST.replace('socks5://', '')}:${PROXY_PORT}`;
                 console.warn(`[Puppeteer] Dodaję ${badProxy} do czarnej listy zepsutych proxy i spróbuję ponownie z innym...`);
                 failedProxies.add(badProxy);
+                proxyPool.ban(PROXY_HOST, PROXY_PORT);
                 await new Promise(r => setTimeout(r, 1000));
             } else {
                 throw err;

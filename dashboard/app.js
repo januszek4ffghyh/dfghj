@@ -4,9 +4,7 @@
    MARGONEM E2 HUNTER — DASHBOARD APP.JS
    ═══════════════════════════════════════════ */
 
-const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
-    ? window.location.origin
-    : 'sakura.proxy.rlwy.net:38814';
+const API = window.location.origin;
 
 // ── LOADER HELPER ──
 function updateLoader(pct, msg) {
