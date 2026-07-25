@@ -1014,10 +1014,15 @@ async function findWorkingFreeProxy(failedProxies) {
                     bestProxy = { host: `socks5://${ip}`, port };
                 }
             }));
+
+            const tested = i + batch.length;
+            if (bestProxy) {
+                console.log(`[ProxyPool] 📊 Po ${tested} testach — najlepsze: ${bestLatency}ms`);
+            }
             
-            // Jeśli mamy coś szybszego niż 2000ms, bierzemy
-            if (bestProxy && bestLatency < 2000) {
-                console.log(`[ProxyPool] ⚡ Szybkie proxy po ${i + batch.length} testach`);
+            // Bierz natychmiast tylko jeśli < 250ms (błyskawiczne)
+            // W przeciwnym razie testuj minimum 100 proxy
+            if (bestProxy && (bestLatency < 250 || tested >= 100)) {
                 break;
             }
         }
